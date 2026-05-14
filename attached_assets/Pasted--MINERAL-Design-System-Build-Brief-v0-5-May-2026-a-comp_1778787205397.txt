@@ -1,0 +1,854 @@
+# MINERAL
+## Design System & Build Brief · v0.5 · May 2026
+
+*a companion for the creative psyche*
+
+---
+
+## 01 · What this is
+
+**A practice, not a product.**
+
+Mineral is a daily practice app that walks alongside creatives reckoning with their creative callings. The work draws on Integral and Transpersonal Psychology, Aperspectival structures of consciousness, and arts-based research.
+
+Each day is an **encounter** — a short voice guide, a reflection, and a small integration practice. Over time, the user's responses become **field notes**, which the system reflects back as a **field guide** — a living mirror of the patterns moving through their creative psyche.
+
+The architecture is fractal: the same shape — four cardinal Aperspectival structures around an integral still point — appears at three scales. A daily encounter sits inside a phase of the journey, which sits inside the user's 28-year life cycle. One geometry, learned once, deepens.
+
+The product is not a coaching program, a creativity course, or a productivity system. It is a place to enter daily to reconnect with oneself.
+
+### What the user experiences
+
+```
+arrive → listen → reflect → integrate → guide
+```
+
+### The four tabs
+
+| Tab | Role |
+|-----|------|
+| **today** | The daily encounter. Arrive, listen, reflect, integrate. |
+| **notes** | Quick capture of signals — dreams, sparks, resistances, symbols. |
+| **guide** | Patterns reflected back. Chronological field notes feed in v0.5. |
+| **origin** | The spiral life map. Birth-anchored, current position shown. |
+
+### v0.5 scope (May 29 TestFlight beta)
+
+**In v0.5:**
+- Six-screen onboarding
+- Today flow: arrive → listen → reflect → integrate → close → land in guide
+- Notes tab: capture chips + recent feed
+- Guide tab: chronological field notes feed only (no lenses, no pattern engine)
+- Origin tab: birth-anchored spiral, current position, minimal metadata
+- Firebase auth (email/password)
+- Account deletion flow
+- Privacy policy
+
+**Deferred to v1:**
+- Pattern engine (threads, motifs, conditions, recurring resistance)
+- The five Guide lenses
+- "From the field" inline offerings
+- Human Design integration
+- Pendulum centering gesture
+- Atmosphere transitions across phases (Phase I only in v0.5)
+- Paywall / membership (free for beta)
+- Library tab
+
+---
+
+## 02 · Principles
+
+Eight commitments. These constrain every build decision.
+
+**ONE — The engine counts; it does not interpret.**
+Frequencies, direct quotes, distributions. Never "your clearest signals" or "blocks that ask to be seen." The user's pattern is the user's to read.
+
+**TWO — Meaning-making belongs to the user.**
+Wider context appears only in "from the field" offerings — visually distinct, plain-voiced, plural in possibility. *Not in v0.5.*
+
+**THREE — One gesture per screen.**
+The encounter is six screens, not one scroll. Expansive, ritualistic, no dashboard density. Tabs disappear inside the encounter.
+
+**FOUR — Voice-first capture.**
+Reflection and Notes both default to hold-to-record. Text is secondary. The user speaks; the app receives.
+
+**FIVE — Fractal geometry, one shape.**
+Four cardinal Aperspectival structures plus integral center, at three scales: 28-year life cycle, the journey through four phases, today's encounter. Learned once, deepens.
+
+**SIX — The user's voice is primary.**
+Visual hierarchy enforces this. User quotes in serif italic against colored borders. Engine text in plain sans.
+
+**SEVEN — Optional everywhere it can be.**
+Reflections, integration, birth data. The encounter has shape but no gates. Users go as deep as the day allows.
+
+**EIGHT — Atmosphere is descriptive, not prescriptive.**
+Today is archaic because the journey says so, not because the engine thinks the user needs it. Calendar facts only.
+
+---
+
+## 03 · Vocabulary
+
+Twelve words. Each holds a single role. No overlap, no decoration.
+
+| Word | Role |
+|------|------|
+| **encounter** | A daily threshold experience — audio, reflection, integration. |
+| **reflect** | The verb. To respond, in voice or text, to a question. |
+| **field note** | The noun. A captured signal — dream, spark, resistance, symbol. |
+| **field** | The collective territory of the user's captures. |
+| **center** | The verb. Tap the pendulum, return to stillness. *(v1)* |
+| **still point** | The noun. The integral position at the spiral's center. |
+| **origin** | The place. The 28-year spiral — signature in time. Also the fourth tab. |
+| **phase** | One of four positions on the spiral: Signal, Field, Friction, Voice. |
+| **turn** | One full revolution through all four phases. Spiral continues; depth grows. |
+| **cycle** | One 28-year arc of the spiral life map, anchored to birth year. |
+| **taking root** | Guide eyebrow state when a fresh reflection has just landed. |
+| **from the field** | Label for optional inline offerings. *(v1)* |
+
+**Naming rule:** "Reflect" is the verb; "field note" is the noun. The user reflects, producing field notes. Never use "journal," "entry," or "log."
+
+**Copy rules:**
+- No day counts visible to users ("Day 5 of 21" — never)
+- Phase position is shown, not counted: *"in The Signal · first turn of the spiral"*
+- Audio content is an "encounter," never an "episode," "session," or "lesson"
+
+---
+
+## 04 · Color
+
+### The atmosphere system
+
+Five accents, one geometry. Each accent names an Aperspectival structure of consciousness. The whole screen tints to today's atmosphere.
+
+| Structure | Hex | Position | Quality |
+|-----------|-----|----------|---------|
+| Archaic | `#C44A8A` | North | before language · the call |
+| Magical | `#5DCAA5` | East | what is alive · ecology |
+| Mythical | `#D89A3A` | South | the story · shadow + breakthrough |
+| Mental | `#6B8EB8` | West | structure · voice + authority |
+| Integral | `#A89CDC` | Center | the still point · the next turn |
+
+**v0.5 note:** Only the Archaic atmosphere (`#C44A8A`) is active in v0.5. All users are in Phase I (The Signal). The other four accents are defined in the token system but not triggered until v1.
+
+### Background
+
+The default dark background is a subtle gradient:
+
+```
+background: linear-gradient(180deg, #0a0510 0%, #1a0a18 100%)
+```
+
+For the Archaic atmosphere, a very subtle radial glow of `#C44A8A` at ~8% opacity sits behind the center of the screen. It should not announce itself — it's felt, not seen.
+
+### Text colors
+
+```
+Primary:    #FFFFFF
+Secondary:  rgba(255, 255, 255, 0.6)
+Tertiary:   rgba(255, 255, 255, 0.45)
+Muted:      rgba(255, 255, 255, 0.3)
+```
+
+### Guide lens accent colors (v1 only — define now, activate later)
+
+```
+Resistance:    #E08AAF
+Threads:       #88DCBA
+Motifs:        #E9B76B
+Conditions:    #9BB6D6
+Consciousness: #C4BAEA
+```
+
+---
+
+## 05 · Typography
+
+### Two registers, one system
+
+**Sans for the system. Serif for the soul.**
+
+A geometric humanist sans handles structure and navigation. A serif italic handles the poetic — questions, quotes, captions.
+
+### Font families
+
+**Sans:** Inter (for v0.5). In production, upgrade to Söhne, GT Walsheim, or similar geometric humanist sans with strong personality.
+
+**Serif:** Georgia italic (for v0.5 — available as system font). In production, upgrade to GT Sectra, Tiempos Headline, or Iowan Old Style. The italic must feel personal, not decorative.
+
+### Weight rules
+
+Body and titles use **500 (medium)** — never bold. Heaviness is achieved through scale and contrast, not weight. Serif italic is always 400.
+
+### Case rules
+
+- Screen titles and headers: sentence case
+- Tab labels and navigation: lowercase
+- Eyebrows and small metadata: UPPERCASE, letter-spacing 0.22em
+
+### Type scale
+
+| Name | Style | Size | Weight | Notes |
+|------|-------|------|--------|-------|
+| Display / page title | Sans | 28px | 500 | letter-spacing -0.015em, line-height 1.05 |
+| Screen title (H2) | Sans | 22px | 500 | letter-spacing -0.01em, line-height 1.1 |
+| Section title (H3) | Sans | 18px | 500 | letter-spacing 0 |
+| Question (serif large) | Serif italic | 18–22px | 400 | line-height 1.25 |
+| Subtitle (serif medium) | Serif italic | 14–15px | 400 | color: muted |
+| Body | Sans | 13px | 400 | line-height 1.5 |
+| Eyebrow / micro-label | Sans | 9px | 600 | UPPERCASE, letter-spacing 0.22em |
+| Small / metadata | Sans | 11px | 400 | color: muted |
+
+---
+
+## 06 · Iconography
+
+### Tab system
+
+Four icons. Geometric primitives. All sit in an 18×18 slot. Solid forms suggest active presence; outlined forms suggest reflection.
+
+| Tab | Icon | Form |
+|-----|------|------|
+| today | Filled circle | Solid — presence, the moment |
+| notes | Slim slanted rectangle (~22° tilt) | Solid — the stylus, capture |
+| guide | Half-filled circle (left half filled) | Half — reflection, the mirror |
+| origin | Circle with center dot (ringed dot) | Outline + dot — the spiral with still point |
+
+**Active state:** accent color (`#C44A8A` in Phase I). **Inactive:** `rgba(255,255,255,0.4)`.
+
+### Spiral indicator (Today tab)
+
+The spiral indicator sits in the upper portion of the Today screen. For v0.5:
+
+- A simple SVG circle representing the current turn
+- Four small dots at cardinal positions (N, E, S, W) in muted opacity
+- One glowing dot at the user's current position — active accent color with subtle 3s pulse animation (outer ring expanding 100%→110% radius, opacity 50→20→50)
+- Below the spiral: phase name in accent color + turn label in UPPERCASE muted sans
+
+```
+in The Signal
+FIRST TURN OF THE SPIRAL
+```
+
+---
+
+## 07 · Phases
+
+### The journey
+
+Four phases on the spiral. The user walks four cardinal positions. Each turn deepens. Phase V — The Next Turn — is the transition into the next revolution.
+
+| Phase | Direction | Title | Themes & Tone |
+|-------|-----------|-------|---------------|
+| I | North · Archaic | **The Signal** | Something is calling. Longing, identity, resonance, lineage, permission, vocation, devotion. *Tone: awakening, magnetic, intimate.* |
+| II | East · Magical | **The Field** | Learn the ecology of your creativity. Energy, environment, inspiration, rhythm, emotional weather, resistance, synchronicity. *Tone: curious, observant, exploratory.* |
+| III | South · Mythical | **The Friction** | The work meets resistance. Perfectionism, fear of visibility, fragmentation, ambition, control, burnout, grief — balanced with beauty, devotion, breakthroughs, flow. *Tone: honest, transformational, resilient.* |
+| IV | West · Mental | **The Voice** | Expression becomes embodiment. Communication, leadership, visibility, relationships, contribution, creative authority, magnetism. *Tone: alive, expressive, relational.* |
+| V | Center · Integral | **The Next Turn** | You become the environment. Integration, mentorship, generosity, sustainability, legacy, stewardship, living the work. *Tone: spacious, grounded, luminous. Not a standalone phase — the crossing into the next revolution.* |
+
+**The spiral continues.** Through Phase V, the user returns to The Signal — but at a deeper turn. The spiral does not end. Tempo is not enforced by calendar; the engine paces by depth of engagement, not days elapsed.
+
+**v0.5 note:** All beta users are in Phase I (The Signal). The Archaic atmosphere is the only active atmosphere. Phases II–V are defined in the data model but not yet reachable.
+
+---
+
+## 08 · Onboarding
+
+### Six screens to the threshold
+
+Each screen does one thing. The user is in their first encounter before the third minute.
+
+**Screen 1 · Hello**
+The MINERAL mark and tagline. Nothing more. Tap "begin →" to continue.
+
+```
+MINERAL
+a companion for the creative psyche
+                              begin →
+```
+
+**Screen 2 · The architecture**
+Three lines in serif italic, one screen, breathing room. No bullets, no icons.
+
+```
+Each day, a brief encounter.
+
+A reflection of your vision,
+your voice.
+
+A field guide that grows from
+your attention, your intention.
+
+                          continue →
+```
+
+**Screen 3 · The spiral**
+The spiral with north glowing in `#C44A8A`. The user's entry point named.
+
+```
+WHERE YOU'RE BEGINNING
+
+[spiral · north glowing]
+
+You're entering at The Signal — where
+the creative call is felt before it's named.
+
+                          continue →
+```
+
+**Screen 4 · Your signature (optional)**
+Birth data for the spiral life map. Skip is prominent and one tap.
+
+```
+YOUR SIGNATURE
+
+When were you born?
+
+This anchors your spiral life map.
+Your design shapes the guide.
+
+UNLOCKS
+your 28-year cycle
+your bodygraph + type
+readings keyed to your design
+
+[birth date        ]
+[birth time (optional)]
+[birth location    ]
+
+skip · add later              continue →
+```
+
+**Screen 5 · The practice**
+The shape of each daily encounter, named in three steps. One summary block below.
+
+```
+EACH ENCOUNTER
+
+ONE
+listen
+a 3-minute voice guide — a threshold, not a lesson
+
+TWO
+reflect
+speak or write a response
+
+THREE
+integrate
+one small practice for the day
+
+┌─────────────────────────────────────┐
+│ Your reflections become field notes. │
+│ Patterns become a guide.            │
+└─────────────────────────────────────┘
+
+                          continue →
+```
+
+**Screen 6 · Begin**
+The first encounter. This is the canonical Today screen — not a special onboarding wrapper. From this point, the user is inside the real app.
+
+```
+YOUR FIRST ENCOUNTER
+
+The Threshold
+something is calling — what comes
+when you stop naming it?
+
+        [Begin · 3 min]
+
+                    save for later
+```
+
+After tapping Begin, the app enters the standard encounter flow. The user will not see a different UI for their first encounter vs. their fiftieth.
+
+---
+
+## 09 · Today flow
+
+### Six screens, one ritual
+
+```
+Arrive → listen → reflect → integrate → close → land in guide
+```
+
+Tabs disappear inside the encounter (between Begin and close encounter). A back chevron `‹` is always available to exit.
+
+**Screen 1 · Arrive**
+Spiral indicator + encounter title + Begin button. Tabs visible here.
+
+```
+≡  TODAY  ⊙
+
+[spiral indicator]
+
+in The Signal
+FIRST TURN OF THE SPIRAL
+
+The Threshold
+a something is calling
+
+▶  Begin
+   3 MIN · VOICE
+
+today  notes  guide  origin
+```
+
+**Screen 2 · Listen**
+Full-screen audio player. Tabs hidden. Orb (circular form in accent color) is the dominant element.
+
+```
+‹   ENCOUNTER · 1   •••
+
+[breathing orb · archaic pink]
+
+ARCHAIC
+The Threshold
+something is calling
+
+0:42 ─────────────── 3:00
+
+     ←15   ▶   15→
+```
+
+Audio auto-advances to the first reflection question when complete.
+
+**Screen 3–5 · Reflect (1 to 3 screens)**
+One question per screen. All reflections optional. Skip always available.
+
+```
+‹   REFLECT              Skip
+
+— — —  (progress dots, today's count only)
+
+What story am I
+living inside?
+
+  [○]
+  hold to speak — or type
+```
+
+The hold-to-speak button is the primary affordance. Text input is available below it. On hold: the circle pulses, recording begins. Release: recording stops, waveform plays back.
+
+**Screen 6 · Integrate**
+One practice in serif italic, centered. Single CTA.
+
+```
+‹   INTEGRATE
+
+A PRACTICE FOR TODAY
+
+Find one mirror today.
+Stand with it for a breath.
+Notice who is looking back.
+
+
+      [✓  close encounter]
+```
+
+After close encounter, the user lands on the Guide tab with the "taking root" state active.
+
+---
+
+## 10 · Guide (v0.5)
+
+### The evolving mirror · v0.5 state
+
+In v0.5, Guide is a chronological feed of all field notes. No synthesis sentence, no lenses, no pattern engine. The mirror is simple: here is what you have put in the field.
+
+**Guide · Default state (after first encounter)**
+
+```
+≡   FIELD GUIDE   ⊙
+
+• TAKING ROOT
+
+Your field is forming.
+1 signal.
+
+YOUR WORDS, RETURNING
+"Why did I really say yes to this path?"
+reflection · the threshold · just now
+
+RECENT
+
+● REFLECTION · THE THRESHOLD      just now
+  voice · 0:47
+```
+
+**Guide · Default state (after several days)**
+
+```
+≡   FIELD GUIDE   ⊙
+
+[n] signals · [n] turns
+
+RECENT
+
+● REFLECTION · THE THRESHOLD       today
+  "Why did I really say yes to this path?"
+  voice · 0:47
+
+◆ DREAM                         yesterday
+  Standing in a riverbed, water flowing
+  upstream past my ankles.
+
+✦ SPARK                         2 days ago
+  voice · 42 sec
+```
+
+**Taking root state (post-encounter, first visit)**
+
+```
+• TAKING ROOT
+
+[n] signals · [n] turns
+
+YOUR WORDS, RETURNING
+"[most recent reflection verbatim]"
+reflection · [encounter title] · just now
+```
+
+The "taking root" eyebrow fades after the user navigates away. Subsequent visits show "FIELD GUIDE" as the standard header.
+
+**Empty state (first-time user, before any encounter)**
+
+```
+FIELD GUIDE
+
+Your field is waiting.
+
+When you complete your first encounter,
+your reflections will begin to gather here.
+
+[Begin today's encounter →]
+```
+
+**v1 note:** The five Guide lenses (recurring resistance, threads, mythic motifs, conditions noted, consciousness map) and the synthesis sentence appear in v1 once the pattern engine is built.
+
+---
+
+## 11 · Notes
+
+### Capture, sparsely
+
+Notes is for capture. Voice-first, low-pressure. Six primary chip types visible; three more one tap away.
+
+**Capture screen**
+
+```
+≡   FIELD NOTES   ⌕
+
+What's stirring?
+tap to capture a signal
+
+[Dream]   [Spark]   [Resistance]
+[Symbol]  [Synchronicity]  [Vision]
+
+MORE · DESIRE · FEAR · OTHER
+
+RECENT              42 in your field
+
+● REFLECTION · THE MIRROR          9:41
+  voice · 1:14
+
+◆ DREAM                          yesterday
+  Standing in a riverbed...
+
+✦ SPARK                          yesterday
+  voice · 42 sec
+```
+
+**Chip colors (dot indicator)**
+
+| Type | Color |
+|------|-------|
+| Reflection | Accent color of phase when captured (Archaic: `#C44A8A`) |
+| Dream | `rgba(180,140,220,0.9)` — soft lavender |
+| Spark | `#E9B76B` — amber |
+| Resistance | `#E08AAF` — rose |
+| Symbol | `#88DCBA` — teal |
+| Synchronicity | `#9BB6D6` — slate blue |
+| Vision | `#A89CDC` — lavender |
+| Desire | `#C44A8A` — archaic pink |
+| Fear | `rgba(200,80,80,0.9)` — muted red |
+| Other | `rgba(255,255,255,0.4)` — muted white |
+
+**Capture sheet (tap a chip)**
+
+The capture sheet slides up as a modal. The chip type is pre-set. The prompt question is type-specific.
+
+```
+[chip type label]
+
+"What stayed with you?"
+(Dream prompt — each chip type has its own)
+
+  [○]
+  hold to speak — or type
+
+[image]  [cancel]
+```
+
+Prompt questions by type:
+- Dream: *"What stayed with you?"*
+- Spark: *"What's lighting up?"*
+- Resistance: *"Where are you stuck?"*
+- Symbol: *"What keeps appearing?"*
+- Synchronicity: *"What felt connected?"*
+- Vision: *"What are you seeing?"*
+- Desire: *"What do you want?"*
+- Fear: *"What are you afraid of?"*
+- Other: *"What's stirring?"*
+
+**Note detail (tap a note)**
+
+Minimal. Read-only by default. Three actions behind `⋯` overflow menu: Edit text, Change tag, Delete.
+
+```
+‹                          ⋯
+
+DREAM · today 6:14
+
+"Standing in a riverbed, water
+flowing upstream past my ankles.
+Someone behind me I can't turn
+to see."
+```
+
+---
+
+## 12 · Origin (v0.5)
+
+### The spiral life map · minimal
+
+In v0.5, Origin shows the user's spiral anchored to their birth year. Current position glows. No Human Design overlay, no life events, no zoom-in gesture.
+
+**If birth date provided:**
+
+```
+‹   LIFE MAP   ⊕
+
+◎
+Your spiral
+born [year] · cycle [n] · year [n]
+
+[spiral SVG — two concentric arcs,
+ cardinal labels: UNITIVE, MAGICAL,
+ MYTHICAL, MENTAL at compass points,
+ user's current position glowing in
+ accent color]
+
+born        [Month Year]
+now         cycle [n] · year [n]
+```
+
+**If birth date not provided:**
+
+```
+‹   ORIGIN
+
+◎
+
+Your spiral is waiting.
+
+Add your birth date to see your
+28-year cycle and where you stand
+within it.
+
+[Add birth date]
+```
+
+**v1 note:** Human Design (bodygraph, type, profile), life event plotting, and zoom-in gesture are deferred.
+
+---
+
+## 13 · Data model
+
+### Firestore collections
+
+**users/{userId}**
+
+```
+email:           string
+birthDate:       string (ISO date, optional)
+birthTime:       string (HH:MM, optional)
+birthLocation:   string (optional)
+createdAt:       timestamp
+currentPhase:    enum: signal | field | friction | voice
+```
+
+**users/{userId}/fieldNotes/{noteId}**
+
+```
+type:           enum: dream | spark | resistance | symbol |
+                synchronicity | vision | desire | fear | other | reflection
+content:        string (text content)
+audioPath:      string (Firebase Storage path, only if audio)
+contentType:    enum: text | audio
+audioDuration:  number (seconds, only if audio)
+timestamp:      timestamp
+source:         enum: spontaneous | from-encounter
+encounterId:    string (only if source is from-encounter)
+phase:          string (calendar fact: phase when captured)
+```
+
+**encounters/{encounterId}** (read-only from client)
+
+```
+dayNumber:            number (1–21 for Phase I)
+phase:                string: signal
+title:                string
+subtitle:             string
+audioPath:            string (Firebase Storage path)
+audioDuration:        number (seconds)
+reflectionQuestions:  array of strings (1–3, all optional)
+integrationPractice:  string
+```
+
+### Firebase Security Rules
+
+Paste these into Firebase Console → Firestore → Rules before any beta users are added.
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+
+      // Users can only read/write their own field notes
+      match /fieldNotes/{noteId} {
+        allow read, write: if request.auth != null
+                           && request.auth.uid == userId;
+      }
+    }
+
+    // Encounters are read-only for any authenticated user
+    // Only writable from Firebase Console / Admin SDK
+    match /encounters/{encounterId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}
+```
+
+Firebase Storage rules:
+
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Audio encounters: readable by any authenticated user
+    match /encounters/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // User audio (voice reflections): per-user only
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+---
+
+## 14 · Animation specs (v0.5 subset)
+
+Keep animations simple in v0.5. These are the only animations required for launch.
+
+| Element | Spec |
+|---------|------|
+| Spiral position pulse | 3s loop. Outer ring: 100%→110% radius, opacity 50→20→50. Ease in-out. |
+| Tab transition | Standard React Navigation default. No custom animation. |
+| Encounter screen transitions | Slide left on advance (arrive→listen→reflect→integrate). Slide right on back. |
+| Reflect capture button | On hold: scale 1.0→1.08 over 200ms, color brightens 20%. On release: scale back 200ms. |
+| Taking root eyebrow | Fade in at 200ms on Guide landing post-encounter. |
+| Audio orb | Simple opacity pulse: 80%→100%→80% over 2s loop while audio is playing. No scale change. |
+
+**Defer to v1:** Pendulum settling animation, atmospheric cross-fade on phase change, synthesis sentence underline draw, capture sheet spring animation.
+
+---
+
+## 15 · App configuration checklist
+
+Required before TestFlight submission.
+
+### app.json / app.config.js
+
+```json
+{
+  "expo": {
+    "name": "Mineral",
+    "slug": "mineral",
+    "version": "0.5.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.mineral.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
+        "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes."
+      }
+    }
+  }
+}
+```
+
+**All permission strings must be human-readable and accurate. Generic strings are rejected by Apple.**
+
+### Required before submission
+
+- [ ] Privacy policy hosted at stable URL (e.g. `mineral.app/privacy`)
+- [ ] Account deletion flow in-app (Settings → Delete account → confirmation → Firebase account + data deletion)
+- [ ] Microphone permission string as above
+- [ ] App icon (1024×1024, no alpha channel, no rounded corners — Apple adds them)
+- [ ] No placeholder content visible in any screen
+- [ ] Auth works end-to-end: sign up, log out, log back in, data persists
+- [ ] Audio streams from Firebase Storage without crashing
+- [ ] Voice recording saves to Firebase Storage per-user path
+- [ ] App does not crash on iPhone 14 / iOS 17
+
+---
+
+## 16 · Business model (v1)
+
+Not active in v0.5. Beta users have full access, free.
+
+**Model:** Three encounters free, then freemium. Daily encounters and field notes capture always free. Depth tools (Guide lenses, Origin spiral, pattern engine, Human Design) are member-only.
+
+**Pricing:** $11/month or $108/year. Single price, no tiers.
+
+**The invitation moment:** After the third encounter, plainly written, one option:
+
+> *"The practice continues — and Mineral asks for support. Your daily encounters and field notes are always free. To go deeper, you can become a member."*
+
+---
+
+## 17 · What v1 ships with
+
+For reference — not in scope for v0.5.
+
+- Pattern engine: frequency counts, recurring phrases, signal type distribution
+- Five Guide lenses: recurring resistance, threads, mythic motifs, conditions noted, consciousness map
+- "From the field" inline offerings (practitioner-authored, keyed to motifs)
+- Human Design integration (bodygraph, type, profile on Origin)
+- Phase II–V content (The Field, The Friction, The Voice)
+- Atmospheric transitions across phases
+- Pendulum centering gesture on Today
+- Library as sixth Guide lens
+- Paywall / membership
+- Practitioner dashboard (currently Firebase Console direct entry)
+
+---
+
+*Mineral Design System · v0.5 · May 2026*
+*For questions on the design system, refer to the conversation thread in Claude.*

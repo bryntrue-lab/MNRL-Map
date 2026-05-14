@@ -30,7 +30,7 @@ const colors = {
 
     // Muted
     muted: "rgba(255,255,255,0.05)",
-    mutedForeground: "rgba(255,255,255,0.3)",
+    mutedForeground: "rgba(255,255,255,0.4)",
 
     // Accent = Signal
     accent: "#C44A8A",
