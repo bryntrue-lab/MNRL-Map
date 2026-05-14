@@ -1,0 +1,139 @@
+PROMPT DOC
+
+PROJECT: Mineral
+A daily practice app for creatives reckoning with what they're called to make.
+
+TECH STACK
+- Expo + React Native (latest stable, new architecture enabled)
+- Firebase (Auth: email/password; Firestore for data; Storage for audio)
+- expo-router for file-based navigation
+- expo-av for audio playback and recording
+- React Native Reanimated for animation (keep animations simple in v0.5)
+- AsyncStorage for local persistence
+- TypeScript throughout
+
+NAVIGATION
+Four tabs at the bottom (labels lowercase): today / notes / guide / origin
+Tab icons: filled circle (today) / slim slanted rectangle (notes) / half-filled circle (guide) / ringed dot (origin)
+Tabs disappear during the encounter flow (between Begin and Close)
+
+DATA MODEL (Firestore)
+
+users/{userId}
+  - email
+  - birthDate (optional)
+  - birthTime (optional)
+  - birthLocation (optional)
+  - createdAt
+  - currentDay (number, 1-indexed)
+  - currentPhase (enum: signal, field, friction, voice)
+
+users/{userId}/fieldNotes/{noteId}
+  - type (enum: dream, spark, resistance, symbol, synchronicity, vision, desire, fear, other, reflection)
+  - content (string for text, storage path for audio)
+  - contentType (text or audio)
+  - audioDuration (number, only if audio)
+  - timestamp
+  - source (spontaneous or from-encounter)
+  - encounterId (optional, only if source is from-encounter)
+  - phase (calendar fact: which phase user was in when captured)
+
+encounters/{encounterId}
+  - dayNumber (1-21 for Phase I)
+  - phase (signal, field, friction, voice)
+  - title (e.g. "The Threshold")
+  - subtitle (serif italic, e.g. "something is calling")
+  - audioPath (storage path)
+  - audioDuration (number)
+  - reflectionQuestions (array of strings, 1-3)
+  - integrationPractice (string)
+
+FIREBASE SECURITY RULES (write these properly from day 1)
+- users/{userId}: read/write only if request.auth.uid == userId
+- users/{userId}/fieldNotes/{noteId}: read/write only if request.auth.uid == userId
+- encounters: read for any authenticated user, no writes from client
+
+DESIGN TOKENS
+
+Backgrounds:
+- App default: linear gradient #0a0510 → #1a0a18
+- Phase I (Signal/Archaic) atmosphere: same with subtle #C44A8A glow
+
+Atmospheric accents (use only the Signal one for v0.5):
+- Archaic / Signal: #C44A8A
+- Magical / Field: #5DCAA5
+- Mythical / Friction: #D89A3A
+- Mental / Voice: #6B8EB8
+- Integral: #A89CDC
+
+Text colors:
+- Primary: #FFFFFF
+- Secondary (60% opacity): rgba(255,255,255,0.6)
+- Tertiary (45% opacity): rgba(255,255,255,0.45)
+- Muted (30% opacity): rgba(255,255,255,0.3)
+
+TYPOGRAPHY
+
+Two registers:
+- Sans: Inter (or system geometric sans equivalent). Weights: 400, 500.
+- Serif: a serif with meaningful italic — for v0.5 use Georgia italic or similar system fallback; we'll add a proper webfont in v1.
+
+Case rules:
+- Screen titles: sentence case
+- Tab labels and nav: lowercase
+- Eyebrows / micro-labels: UPPERCASE with letter-spacing 0.22em
+
+Type scale:
+- Display: 28px sans 500, line-height 1.05
+- Screen title: 22px sans 500
+- Section title: 18px sans 500
+- Question/serif large: 22px serif italic, line-height 1.25
+- Subtitle/serif medium: 14-15px serif italic, muted
+- Body: 13px sans 400
+- Eyebrow: 9px sans 600 uppercase 0.22em
+- Metadata: 11px sans 400 muted
+
+LANGUAGE RULES
+- "reflect" is the verb. "field note" is the noun. Never use "journal," "entry," "log."
+- Daily content is an "encounter," not a "session" or "episode."
+- The four daily steps: arrive, listen, reflect, integrate.
+- The user's current state: "in [Phase Name] · first turn of the spiral"
+- No day counts visible ("Day 5 of 21"). Phase position is enough.
+
+PRINCIPLES THAT CONSTRAIN BUILD DECISIONS
+1. The engine counts; it does not interpret. The Guide shows frequencies and the user's own words, never inferences about meaning.
+2. Voice-first. Recording is the primary capture method; text is secondary.
+3. One gesture per screen. No multi-purpose screens with stacked features.
+4. The user's voice is primary. Their captured content is visually larger and more present than the engine's text.
+5. Atmosphere is descriptive, not prescriptive.
+
+WHAT'S IN V0.5 (THIS BUILD)
+- Six-screen onboarding (Hello, The Spiral, Signature, The Practice, Begin, Reflect)
+- Today flow: arrive → listen → reflect → integrate → close
+- Notes tab: capture chips (Dream, Spark, Resistance, Symbol, Synchronicity, Vision) + recent feed
+- Guide tab: chronological feed of all field notes (no lenses, no synthesis sentence yet)
+- Origin tab: minimal spiral, user's current position, birth-anchored
+- Account deletion flow
+- Privacy policy link
+
+WHAT'S NOT IN V0.5
+- Pattern engine (threads, motifs, conditions, recurring resistance)
+- The five Guide lenses
+- "From the field" offerings
+- Human Design integration
+- Pendulum centering gesture
+- Atmosphere transitions across phases (Phase I only)
+- Paywall (free for beta)
+- Phase II–V content
+
+CONSTRAINTS ON YOU (THE AGENT)
+- Do not add features I did not ask for.
+- Do not suggest "improvements" to the design system without asking.
+- Do not introduce libraries beyond what's listed above.
+- Do not generate placeholder content. Use the real encounter content I will provide, or use clear empty states.
+- Do not invent product names, taglines, or copy. Ask me when copy is needed.
+- Build the foundation first: navigation shell, design tokens, typography, four empty tabs with correct atmosphere. Then I will guide you screen by screen.
+
+START
+Build the foundation now. Do not build features yet.
+
