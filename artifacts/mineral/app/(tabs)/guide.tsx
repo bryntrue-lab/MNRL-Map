@@ -6,7 +6,7 @@ import AtmosphereBackground from "@/components/AtmosphereBackground";
 import { useColors } from "@/hooks/useColors";
 import { TypeScale } from "@/constants/typography";
 
-export default function TodayScreen() {
+export default function GuideScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -14,13 +14,13 @@ export default function TodayScreen() {
     <AtmosphereBackground>
       <View style={[styles.container, { paddingTop: insets.top + 24 }]}>
         <Text style={[TypeScale.eyebrow, { color: colors.primary, marginBottom: 12 }]}>
-          in signal · first turn of the spiral
+          your field
         </Text>
         <Text style={[TypeScale.screenTitle, { color: colors.textPrimary }]}>
-          today
+          guide
         </Text>
         <Text style={[TypeScale.serifMedium, { color: colors.textTertiary, marginTop: 8 }]}>
-          your encounter awaits
+          patterns reflected back
         </Text>
       </View>
     </AtmosphereBackground>

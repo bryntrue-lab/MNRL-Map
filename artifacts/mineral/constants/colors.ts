@@ -1,59 +1,68 @@
 /**
- * Semantic design tokens for the mobile app.
- *
- * These tokens mirror the naming conventions used in web artifacts (index.css)
- * so that multi-artifact projects share a cohesive visual identity.
- *
- * Replace the placeholder values below with values that match the project's
- * brand. If a sibling web artifact exists, read its index.css and convert the
- * HSL values to hex so both artifacts use the same palette.
- *
- * To add dark mode, add a `dark` key with the same token names.
- * The useColors() hook will automatically pick it up.
+ * Mineral design tokens.
+ * All color values are derived from the Mineral design system.
+ * Phase I (Signal / Archaic) atmosphere: #C44A8A accent on deep #0a0510 ground.
  */
 
 const colors = {
   light: {
-    // Legacy aliases (kept for backward compatibility)
-    text: "#0a0a0a",
-    tint: "#2f95dc",
+    // Legacy aliases
+    text: "#FFFFFF",
+    tint: "#C44A8A",
 
-    // Core surfaces
-    background: "#ffffff",
-    foreground: "#0a0a0a",
+    // App ground
+    background: "#0a0510",
+    backgroundEnd: "#1a0a18",
+    foreground: "#FFFFFF",
 
-    // Cards / elevated surfaces
-    card: "#f9f9f9",
-    cardForeground: "#0a0a0a",
+    // Surfaces / cards
+    card: "rgba(255,255,255,0.05)",
+    cardForeground: "#FFFFFF",
+    cardBorder: "rgba(255,255,255,0.08)",
 
-    // Primary action color (buttons, links, active states)
-    primary: "#2f95dc",
-    primaryForeground: "#ffffff",
+    // Primary action — Signal accent
+    primary: "#C44A8A",
+    primaryForeground: "#FFFFFF",
 
-    // Secondary / less-emphasis interactive surfaces
-    secondary: "#f0f0f0",
-    secondaryForeground: "#1a1a1a",
+    // Secondary
+    secondary: "rgba(255,255,255,0.08)",
+    secondaryForeground: "#FFFFFF",
 
-    // Muted / subdued elements (dividers, timestamps, placeholders)
-    muted: "#f0f0f0",
-    mutedForeground: "#737373",
+    // Muted
+    muted: "rgba(255,255,255,0.05)",
+    mutedForeground: "rgba(255,255,255,0.3)",
 
-    // Accent highlights (badges, selected items, focus rings)
-    accent: "#f0f0f0",
-    accentForeground: "#1a1a1a",
+    // Accent = Signal
+    accent: "#C44A8A",
+    accentForeground: "#FFFFFF",
 
-    // Destructive actions (delete, error states)
+    // Destructive
     destructive: "#ef4444",
-    destructiveForeground: "#ffffff",
+    destructiveForeground: "#FFFFFF",
 
-    // Borders and input outlines
-    border: "#e5e5e5",
-    input: "#e5e5e5",
+    // Borders / inputs
+    border: "rgba(255,255,255,0.08)",
+    input: "rgba(255,255,255,0.08)",
+
+    // Text hierarchy
+    textPrimary: "#FFFFFF",
+    textSecondary: "rgba(255,255,255,0.6)",
+    textTertiary: "rgba(255,255,255,0.45)",
+    textMuted: "rgba(255,255,255,0.3)",
+
+    // Phase accents (all four phases, use Signal for v0.5)
+    signal: "#C44A8A",
+    field: "#5DCAA5",
+    friction: "#D89A3A",
+    voice: "#6B8EB8",
+    integral: "#A89CDC",
+
+    // Atmosphere glow color for Signal phase
+    glowColor: "rgba(196, 74, 138, 0.12)",
   },
 
-  // Border radius (in px). Sync from the sibling web artifact's --radius
-  // CSS variable. This value applies to cards, buttons, inputs, and modals.
-  radius: 8,
+  // Border radius
+  radius: 12,
 };
 
 export default colors;

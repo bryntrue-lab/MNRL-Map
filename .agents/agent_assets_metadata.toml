@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "1coCQ2Rcnxm43KVPMLA5m"
+uri = "file://artifacts/mineral/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "T9QP-SapXXj2pnrpV5fyj"
+uri = "file://artifacts/mineral/assets/images/splash.png"
+type = "image"
+title = "generated_image"
