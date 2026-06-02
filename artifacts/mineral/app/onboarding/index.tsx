@@ -69,7 +69,7 @@ export default function HelloScreen() {
 
       {/* Wordmark + tagline — vertically centered with footer offset */}
       <View style={styles.centerContent}>
-        <MineralWordmark w={250} />
+        <MineralWordmark w={width * 0.72} />
         <Text style={styles.tagline}>a companion for the creative psyche</Text>
       </View>
 
@@ -115,18 +115,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
-    paddingBottom: 40,
+    paddingHorizontal: 24,
+    paddingTop: height * 0.15,
+    paddingBottom: 0,
   },
   tagline: {
     fontFamily: FontFamily.serifItalic,
     fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 22,
-    letterSpacing: 0.15,
-    color: "rgba(255,255,255,0.58)",
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.2,
+    color: "rgba(255,255,255,0.62)",
     textAlign: "center",
-    marginTop: 20,
+    marginTop: 22,
   },
   footer: {
     position: "absolute",
