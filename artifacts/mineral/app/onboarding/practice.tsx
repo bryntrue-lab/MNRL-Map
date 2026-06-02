@@ -1,139 +1,191 @@
 import { router } from "expo-router";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import AtmosphereBackground from "@/components/AtmosphereBackground";
-import { useColors } from "@/hooks/useColors";
-import { TypeScale } from "@/constants/typography";
+import { FontFamily } from "@/constants/typography";
+
+const { width, height } = Dimensions.get("window");
+
+function ArchaicAtmosphere() {
+  return (
+    <Svg
+      width={width * 2}
+      height={height * 0.75}
+      style={[styles.atmosphere, { pointerEvents: "none" }]}
+    >
+      <Defs>
+        <RadialGradient id="archaicGlow4" cx="50%" cy="20%" rx="60%" ry="55%" fx="50%" fy="20%">
+          <Stop offset="0%"   stopColor="#3D1E3D" stopOpacity="0.85" />
+          <Stop offset="35%"  stopColor="#2A1530" stopOpacity="0.6" />
+          <Stop offset="65%"  stopColor="#1A0D1F" stopOpacity="0.25" />
+          <Stop offset="100%" stopColor="#050208" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#archaicGlow4)" />
+    </Svg>
+  );
+}
 
 const STEPS = [
   {
-    number: "ONE",
+    num: "ONE",
     name: "listen",
-    description: "a 3-minute voice guide — a threshold, not a lesson",
+    desc: "a 3-minute voice guide — a threshold, not a lesson",
   },
   {
-    number: "TWO",
+    num: "TWO",
     name: "reflect",
-    description: "speak or write a response",
+    desc: "speak or write a response — voice is first",
   },
   {
-    number: "THREE",
+    num: "THREE",
     name: "integrate",
-    description: "one small practice for the day",
+    desc: "one small practice for the day",
   },
 ];
 
 export default function PracticeScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
+  const footerBottom = Math.max(insets.bottom, 20) + 36;
 
   return (
-    <AtmosphereBackground>
-      <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text
-          style={[TypeScale.eyebrow, { color: colors.textMuted, marginBottom: 36 }]}
-        >
-          each encounter
-        </Text>
+    <View style={styles.container}>
+      <ArchaicAtmosphere />
 
-        {/* Steps */}
+      {/* Content cluster — vertically centered */}
+      <View style={styles.contentWrap}>
+        <Text style={styles.eyebrow}>EACH ENCOUNTER</Text>
+
         <View style={styles.steps}>
-          {STEPS.map((step, i) => (
-            <View
-              key={step.number}
-              style={[styles.step, i < STEPS.length - 1 && styles.stepBorder, { borderColor: colors.border }]}
-            >
-              <Text
-                style={[TypeScale.eyebrow, { color: colors.textMuted, marginBottom: 6 }]}
-              >
-                {step.number}
-              </Text>
-              <Text
-                style={[
-                  TypeScale.sectionTitle,
-                  { color: colors.textPrimary, marginBottom: 6 },
-                ]}
-              >
-                {step.name}
-              </Text>
-              <Text
-                style={[
-                  TypeScale.serifMedium,
-                  { color: colors.textTertiary, fontSize: 15, lineHeight: 22 },
-                ]}
-              >
-                {step.description}
-              </Text>
+          {STEPS.map((step) => (
+            <View key={step.num} style={styles.step}>
+              <Text style={styles.stepNum}>{step.num}</Text>
+              <Text style={styles.stepName}>{step.name}</Text>
+              <Text style={styles.stepDesc}>{step.desc}</Text>
             </View>
           ))}
         </View>
 
-        {/* Summary card */}
-        <View
-          style={[
-            styles.card,
-            { borderColor: colors.border, backgroundColor: colors.card },
-          ]}
-        >
-          <Text
-            style={[TypeScale.body, { color: colors.textSecondary, lineHeight: 22 }]}
-          >
-            Your reflections become field notes.{"\n"}Patterns become a guide.
-          </Text>
-        </View>
+        {/* Closing thought — no container, quiet centered serif italic */}
+        <Text style={styles.closing}>
+          {"Your reflections become field notes.\n"}
+          {"Patterns become a guide."}
+        </Text>
+      </View>
 
-        {/* CTA */}
+      {/* Footer — 5 dots, dot 4 active */}
+      <View style={[styles.footer, { bottom: footerBottom }]}>
+        <View style={styles.dots}>
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
+        </View>
         <Pressable
-          style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.5 : 1 }]}
+          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
           onPress={() => router.push("/onboarding/begin")}
+          hitSlop={12}
         >
-          <Text
-            style={[
-              TypeScale.body,
-              {
-                color: colors.textPrimary,
-                fontFamily: "Inter_500Medium",
-                fontSize: 15,
-              },
-            ]}
-          >
-            continue →
-          </Text>
+          <Text style={styles.continueText}>continue →</Text>
         </Pressable>
-      </ScrollView>
-    </AtmosphereBackground>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 32,
-    flexGrow: 1,
+    flex: 1,
+    backgroundColor: "#050208",
   },
-  steps: {
+  atmosphere: {
+    position: "absolute",
+    top: 0,
+    left: -(width * 0.5),
+  },
+  contentWrap: {
+    flex: 1,
+    paddingHorizontal: 36,
+    paddingTop: height * 0.10,
+    paddingBottom: 140,
+    justifyContent: "center",
+  },
+  eyebrow: {
+    fontFamily: FontFamily.sans600,
+    fontSize: 10,
+    letterSpacing: 2.5,
+    color: "rgba(255,255,255,0.45)",
     marginBottom: 32,
   },
-  step: {
-    paddingVertical: 24,
-  },
-  stepBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    padding: 20,
+  steps: {
+    gap: 28,
     marginBottom: 40,
   },
-  cta: {
-    alignSelf: "flex-end",
+  step: {},
+  stepNum: {
+    fontFamily: FontFamily.sans600,
+    fontSize: 9,
+    letterSpacing: 2.5,
+    color: "rgba(255,255,255,0.4)",
+    marginBottom: 8,
+  },
+  stepName: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 22,
+    letterSpacing: -0.2,
+    color: "rgba(255,255,255,0.95)",
+    marginBottom: 6,
+  },
+  stepDesc: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 14,
+    lineHeight: 21,
+    color: "rgba(255,255,255,0.6)",
+  },
+  closing: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 14,
+    lineHeight: 24,
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
+    letterSpacing: 0.1,
+    paddingHorizontal: 16,
+  },
+  footer: {
+    position: "absolute",
+    left: 36,
+    right: 36,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dots: {
+    flexDirection: "row",
+    gap: 7,
+    alignItems: "center",
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  dotActive: {
+    width: 22,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255,255,255,1)",
+  },
+  continueText: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 14,
+    fontWeight: "400",
+    color: "rgba(255,255,255,0.88)",
+    letterSpacing: 0.4,
   },
 });
