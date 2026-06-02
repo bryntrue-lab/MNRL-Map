@@ -86,11 +86,10 @@ export default function HelloScreen() {
           <View style={styles.dot} />
           <View style={styles.dot} />
           <View style={styles.dot} />
-          <View style={styles.dot} />
         </View>
         <Pressable
           style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-          onPress={() => router.push("/onboarding/spiral")}
+          onPress={() => router.push("/onboarding/entry")}
           testID="begin-button"
           hitSlop={12}
         >
