@@ -118,11 +118,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2.5,
     color: "rgba(255,255,255,0.45)",
-    marginBottom: 32,
+    marginBottom: 16,
   },
   steps: {
     gap: 28,
-    marginBottom: 40,
+    marginBottom: 60,
   },
   step: {},
   stepNum: {
