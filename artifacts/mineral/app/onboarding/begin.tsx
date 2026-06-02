@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(196,74,138,0.18)",
     alignItems: "center",
     justifyContent: "center",
-    paddingLeft: 2,
+    paddingLeft: 1,
   },
   beginTextWrap: {
     alignItems: "flex-start",
