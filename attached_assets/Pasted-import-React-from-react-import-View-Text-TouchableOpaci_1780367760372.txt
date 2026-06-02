@@ -1,0 +1,175 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import Svg, { Defs, RadialGradient, Stop, Rect, Polygon } from 'react-native-svg';
+
+const { width, height } = Dimensions.get('window');
+
+// Shared atmospheric glow — same as splash/spiral/signature/practice
+function ArchaicAtmosphere() {
+  return (
+    <Svg width={width * 2} height={height * 0.75} style={styles.atmosphere} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="archaicGlow" cx="50%" cy="20%" rx="60%" ry="55%" fx="50%" fy="20%">
+          <Stop offset="0%"   stopColor="#3D1E3D" stopOpacity="0.85" />
+          <Stop offset="35%"  stopColor="#2A1530" stopOpacity="0.6" />
+          <Stop offset="65%"  stopColor="#1A0D1F" stopOpacity="0.25" />
+          <Stop offset="100%" stopColor="#050208" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#archaicGlow)" />
+    </Svg>
+  );
+}
+
+// Small play triangle icon for the Begin button
+function PlayIcon() {
+  return (
+    <Svg width={10} height={11} viewBox="0 0 10 11">
+      <Polygon points="0,0 0,11 10,5.5" fill="#050208" />
+    </Svg>
+  );
+}
+
+export default function BeginScreen({ navigation }) {
+  return (
+    <View style={styles.container}>
+      <ArchaicAtmosphere />
+
+      {/* Centered content cluster */}
+      <View style={styles.contentWrap}>
+        <Text style={styles.eyebrow}>YOUR FIRST ENCOUNTER</Text>
+        <Text style={styles.title}>The Threshold</Text>
+        <Text style={styles.subtitle}>
+          something is calling — what comes when you stop naming it?
+        </Text>
+
+        {/* Begin button — restrained, near-white pill with dark text */}
+        <TouchableOpacity
+          style={styles.beginButton}
+          onPress={() => navigation.navigate('Encounter')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.playCircle}>
+            <PlayIcon />
+          </View>
+          <View style={styles.beginTextWrap}>
+            <Text style={styles.beginLabel}>Begin</Text>
+            <Text style={styles.beginMeta}>3 MIN · VOICE</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Save for later — quieter secondary action */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('TodayHome')}
+          style={styles.saveWrap}
+        >
+          <Text style={styles.saveText}>save for later</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#050208',
+  },
+  atmosphere: {
+    position: 'absolute',
+    top: 0,
+    left: -width * 0.5,
+  },
+
+  contentWrap: {
+    flex: 1,
+    paddingHorizontal: 36,
+    paddingTop: height * 0.10,
+    paddingBottom: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  eyebrow: {
+    fontFamily: 'System',
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 2.5,
+    color: 'rgba(196, 74, 138, 0.85)',     // archaic pink — signals this is a Phase I encounter
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontFamily: 'System',
+    fontSize: 30,
+    fontWeight: '500',
+    letterSpacing: -0.4,
+    color: 'rgba(255, 255, 255, 0.98)',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  subtitle: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 15,
+    lineHeight: 23,
+    letterSpacing: 0.1,
+    color: 'rgba(255, 255, 255, 0.62)',
+    textAlign: 'center',
+    maxWidth: 280,
+    marginBottom: 48,
+  },
+
+  // Begin button — restrained, light pill with dark contents
+  beginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: 999,
+    minWidth: 180,
+    justifyContent: 'center',
+  },
+  playCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(196, 74, 138, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 2,                           // optical center for the triangle
+  },
+  beginTextWrap: {
+    alignItems: 'flex-start',
+  },
+  beginLabel: {
+    fontFamily: 'System',
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#050208',
+    letterSpacing: 0.1,
+    lineHeight: 18,
+  },
+  beginMeta: {
+    fontFamily: 'System',
+    fontSize: 9,
+    fontWeight: '500',
+    letterSpacing: 1.8,
+    color: 'rgba(5, 2, 8, 0.55)',
+    marginTop: 1,
+  },
+
+  // Save for later — quiet secondary
+  saveWrap: {
+    marginTop: 24,
+    paddingVertical: 8,
+  },
+  saveText: {
+    fontFamily: 'System',
+    fontSize: 12,
+    letterSpacing: 1.5,
+    color: 'rgba(255, 255, 255, 0.4)',
+  },
+});
