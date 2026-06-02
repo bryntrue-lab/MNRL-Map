@@ -1,0 +1,199 @@
+# Mineral — Splash Screen Revision
+
+
+---
+
+## Goal
+
+Replace the current splash screen with a corrected version that uses the actual Mineral logo, the proper archaic gradient background, vertically centered composition, and a progress indicator with the begin button.
+
+---
+
+## Step 1 — Add the logo SVG to the project
+
+Create a new file at `assets/mineral_logo.svg` (or wherever assets live in this project) with this content:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 259.2 52.05" fill="white"><path d="M204.24,52.05l-9.16-17.02-6.63,14.82h-5.98L204.37.73l22.22,49.12h-5.98l-6.69-14.82-9.68,17.02ZM204.37,14.02l-6.5,14.65,6.5,11.94,6.69-11.94-6.69-14.65Z"/><path d="M42.64.13v49.88h-5.5v-28.49l-15.82,28.71L5.5,21.52v28.49H0V.13l21.32,38.69L42.64.13Z"/><path d="M49.82,50.01V.5h5.5v49.5h-5.5Z"/><path d="M98.95.5v50.02l-30.95-35.76v35.24h-5.5V0l30.95,35.76V.5h5.5Z"/><path d="M111.63,6.01v16.51h20.52v5.5h-20.52v16.49h23.96v5.5h-29.46V.51h29.46v5.5h-23.96Z"/><path d="M178.31,50.01h-6.68l-15.14-22h-8.22v21.99h-5.5V.5h19.26c7.39-.02,13.46,5.81,13.76,13.19s-5.29,13.68-12.65,14.26l15.18,22.05ZM162.03,22.51c3,.08,5.8-1.48,7.32-4.06,1.52-2.58,1.52-5.79,0-8.38-1.52-2.58-4.33-4.14-7.32-4.06h-13.75v16.5h13.75Z"/><path d="M259.2,44.5v5.5h-27.51V.5h5.5v44h22.01Z"/></svg>
+```
+
+This is the real Mineral wordmark set in Radiometry. Use this in place of any typeset "MINERAL" text.
+
+---
+
+## Step 2 — Install SVG support if not already present
+
+If the project doesn't already render SVGs, install:
+
+```bash
+npx expo install react-native-svg react-native-svg-transformer
+```
+
+And configure `metro.config.js` to handle SVG imports as components. If `react-native-svg-transformer` setup is too complex, an alternative is to render the SVG inline using `react-native-svg` directly (see Step 3 alternative below).
+
+---
+
+## Step 3 — Replace the splash screen component
+
+Find the splash/welcome screen component (likely `SplashScreen.js`, `WelcomeScreen.js`, or the first screen in the onboarding stack). Replace its contents entirely with this:
+
+```jsx
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+
+const { width, height } = Dimensions.get('window');
+
+// The real Mineral wordmark, rendered inline as SVG paths
+function MineralWordmark({ width = 220 }) {
+  const aspectRatio = 259.2 / 52.05;
+  const height = width / aspectRatio;
+  return (
+    <Svg viewBox="0 0 259.2 52.05" width={width} height={height} fill="white">
+      <Path d="M204.24,52.05l-9.16-17.02-6.63,14.82h-5.98L204.37.73l22.22,49.12h-5.98l-6.69-14.82-9.68,17.02ZM204.37,14.02l-6.5,14.65,6.5,11.94,6.69-11.94-6.69-14.65Z"/>
+      <Path d="M42.64.13v49.88h-5.5v-28.49l-15.82,28.71L5.5,21.52v28.49H0V.13l21.32,38.69L42.64.13Z"/>
+      <Path d="M49.82,50.01V.5h5.5v49.5h-5.5Z"/>
+      <Path d="M98.95.5v50.02l-30.95-35.76v35.24h-5.5V0l30.95,35.76V.5h5.5Z"/>
+      <Path d="M111.63,6.01v16.51h20.52v5.5h-20.52v16.49h23.96v5.5h-29.46V.51h29.46v5.5h-23.96Z"/>
+      <Path d="M178.31,50.01h-6.68l-15.14-22h-8.22v21.99h-5.5V.5h19.26c7.39-.02,13.46,5.81,13.76,13.19s-5.29,13.68-12.65,14.26l15.18,22.05ZM162.03,22.51c3,.08,5.8-1.48,7.32-4.06,1.52-2.58,1.52-5.79,0-8.38-1.52-2.58-4.33-4.14-7.32-4.06h-13.75v16.5h13.75Z"/>
+      <Path d="M259.2,44.5v5.5h-27.51V.5h5.5v44h22.01Z"/>
+    </Svg>
+  );
+}
+
+export default function SplashScreen({ navigation }) {
+  return (
+    <View style={styles.container}>
+      {/* Soft radial glow at top center — simulates the archaic gradient atmosphere */}
+      <View style={styles.topGlow} pointerEvents="none" />
+
+      {/* Vertically centered content */}
+      <View style={styles.centerContent}>
+        <MineralWordmark width={220} />
+        <Text style={styles.tagline}>a companion for the creative psyche</Text>
+      </View>
+
+      {/* Footer — progress dots left, begin button right */}
+      <View style={styles.footer}>
+        <View style={styles.dots}>
+          <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+        </View>
+        <TouchableOpacity onPress={() => navigation.navigate('Architecture')}>
+          <Text style={styles.beginText}>begin →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#050208', // Deep near-black base (archaic structure)
+    position: 'relative',
+  },
+  topGlow: {
+    position: 'absolute',
+    top: -height * 0.3,
+    left: -width * 0.3,
+    width: width * 1.6,
+    height: height * 0.65,
+    borderRadius: width,
+    backgroundColor: '#1A0D1F', // Deep aubergine — Phase I archaic
+    opacity: 0.85,
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  tagline: {
+    fontFamily: 'Iowan Old Style',         // Fallback to system serif if not loaded
+    fontStyle: 'italic',
+    fontSize: 14,
+    lineHeight: 21,
+    letterSpacing: 0.1,
+    color: 'rgba(255, 255, 255, 0.55)',
+    textAlign: 'center',
+    marginTop: 18,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 48,
+    left: 32,
+    right: 32,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dotActive: {
+    width: 14,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 1)',
+  },
+  beginText: {
+    fontFamily: 'System',                  // Sans
+    fontSize: 13,
+    fontWeight: '400',
+    color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: 0.3,
+  },
+});
+```
+
+---
+
+## What this fixes
+
+**Background.** No more flat pink semicircle. Replaced with a deep aubergine radial glow (`#1A0D1F`) over a near-black base (`#050208`), positioned at top-center, blurred via large border-radius. This is the archaic atmosphere from the design system, rendered without hard edges.
+
+**Wordmark.** Now uses the real Radiometry-set Mineral logo with the distinctive triangular A. Rendered as inline SVG at 220px wide.
+
+**Composition.** Vertically centered in the screen — the eye lands on the wordmark first, with breathing room above and below. No bottom-heavy stacking.
+
+**Tagline specs (now correct).**
+- Font: serif italic — `Iowan Old Style` with fallback to system serif
+- Size: 14px
+- Line height: 21px
+- Letter spacing: 0.1
+- Color: `rgba(255, 255, 255, 0.55)` — 55% white opacity, muted but readable
+- Alignment: centered under the wordmark
+- Margin top: 18px from wordmark baseline
+
+**Footer.** Progress dots in bottom-left (6 dots total — first one active, elongated and bright), begin → in bottom-right in light sans at 13px / 85% white. The dots indicate this is screen 1 of 6 in onboarding.
+
+**Begin button.** Now a tappable touch target with proper navigation to the next screen (`Architecture` — adjust the route name to match your stack).
+
+---
+
+## Verification checklist
+
+After applying:
+
+- [ ] The MINERAL wordmark renders with triangular A's, not a generic serif font
+- [ ] Background is a soft radial glow, no hard-edged shapes visible
+- [ ] Wordmark and tagline are vertically centered on screen
+- [ ] Tagline is in serif italic, muted white, centered below the wordmark
+- [ ] Six progress dots appear in bottom-left, with the first one elongated and bright white
+- [ ] "begin →" appears in bottom-right and is tappable
+- [ ] Tapping "begin →" advances to the next onboarding screen
+
+If `Iowan Old Style` isn't loaded as a custom font, the tagline will fall back to the system serif. To load it properly, you'd add it to the assets folder and register it via Expo's font loader — but the system fallback is acceptable for the prototype.
