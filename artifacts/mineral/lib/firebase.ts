@@ -1,6 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { Auth, getAuth, initializeAuth } from "firebase/auth";
+import { Auth, getAuth, inMemoryPersistence, initializeAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
@@ -17,29 +16,24 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-function getFirebaseAuth(): Auth {
+function initAuth(): Auth {
   if (Platform.OS === "web") {
+    // Web: Firebase uses IndexedDB persistence by default.
     return getAuth(app);
   }
+
+  // Native: Firebase v12 removed getReactNativePersistence from firebase/auth.
+  // Use inMemoryPersistence (users re-authenticate on app restart; persistent
+  // sessions can be added once Firebase restores the React Native API).
   try {
-    const { getReactNativePersistence } = require("firebase/auth");
-    return initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
+    return initializeAuth(app, { persistence: inMemoryPersistence });
   } catch {
+    // Auth already initialized — happens on hot reload.
     return getAuth(app);
   }
 }
 
-let _auth: Auth | null = null;
-export function getFirebaseAuthSingleton(): Auth {
-  if (!_auth) {
-    _auth = getFirebaseAuth();
-  }
-  return _auth;
-}
-
-export const auth = getFirebaseAuthSingleton();
+export const auth = initAuth();
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export default app;
