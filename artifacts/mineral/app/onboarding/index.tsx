@@ -1,16 +1,11 @@
 import { router } from "expo-router";
 import React from "react";
-import {
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import Svg, { Defs, Path, RadialGradient, Rect, Stop } from "react-native-svg";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import { FontFamily } from "@/constants/typography";
+import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import OnboardingFooter from "@/components/OnboardingFooter";
 
 const { width, height } = Dimensions.get("window");
 
@@ -30,42 +25,10 @@ function MineralWordmark({ w = 250 }: { w?: number }) {
   );
 }
 
-// SVG radial gradient atmosphere — fades through four opacity stops so there
-// is no visible edge, just a soft dissolve into the dark base.
-function ArchaicAtmosphere() {
-  return (
-    <Svg
-      width={width * 2}
-      height={height * 0.75}
-      style={[styles.atmosphere, { pointerEvents: "none" }]}
-    >
-      <Defs>
-        <RadialGradient
-          id="archaicGlow"
-          cx="50%"
-          cy="20%"
-          rx="60%"
-          ry="55%"
-          fx="50%"
-          fy="20%"
-        >
-          <Stop offset="0%"   stopColor="#3D1E3D" stopOpacity="0.85" />
-          <Stop offset="35%"  stopColor="#2A1530" stopOpacity="0.6" />
-          <Stop offset="65%"  stopColor="#1A0D1F" stopOpacity="0.25" />
-          <Stop offset="100%" stopColor="#050208" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#archaicGlow)" />
-    </Svg>
-  );
-}
-
 export default function HelloScreen() {
-  const insets = useSafeAreaInsets();
-
   return (
     <View style={styles.container}>
-      <ArchaicAtmosphere />
+      <OnboardingAtmosphere />
 
       {/* Wordmark + tagline — vertically centered with footer offset */}
       <View style={styles.centerContent}>
@@ -73,29 +36,11 @@ export default function HelloScreen() {
         <Text style={styles.tagline}>a companion for the creative psyche</Text>
       </View>
 
-      {/* Footer: dots left, begin right */}
-      <View
-        style={[
-          styles.footer,
-          { bottom: Math.max(insets.bottom, 20) + 36 },
-        ]}
-      >
-        <View style={styles.dots}>
-          <View style={[styles.dot, styles.dotActive]} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-        </View>
-        <Pressable
-          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-          onPress={() => router.push("/onboarding/entry")}
-          testID="begin-button"
-          hitSlop={12}
-        >
-          <Text style={styles.beginText}>begin →</Text>
-        </Pressable>
-      </View>
+      <OnboardingFooter
+        activeIndex={0}
+        onContinue={() => router.push("/onboarding/entry")}
+        continueLabel="begin →"
+      />
     </View>
   );
 }
@@ -104,11 +49,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#050208",
-  },
-  atmosphere: {
-    position: "absolute",
-    top: 0,
-    left: -(width * 0.5),
   },
   centerContent: {
     flex: 1,
@@ -127,37 +67,5 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.62)",
     textAlign: "center",
     marginTop: 22,
-  },
-  footer: {
-    position: "absolute",
-    left: 36,
-    right: 36,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dots: {
-    flexDirection: "row",
-    gap: 7,
-    alignItems: "center",
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "rgba(255,255,255,0.22)",
-  },
-  dotActive: {
-    width: 22,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "rgba(255,255,255,1)",
-  },
-  beginText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 14,
-    fontWeight: "400",
-    color: "rgba(255,255,255,0.88)",
-    letterSpacing: 0.4,
   },
 });

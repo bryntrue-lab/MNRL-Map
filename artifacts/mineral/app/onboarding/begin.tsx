@@ -1,15 +1,10 @@
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, {
-  Defs,
-  Polygon,
-  RadialGradient,
-  Rect,
-  Stop,
-} from "react-native-svg";
+import Svg, { Polygon } from "react-native-svg";
 
 import AuthSheet from "@/components/AuthSheet";
+import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
 import { useUser } from "@/context/UserContext";
 import {
   clearPendingBirthData,
@@ -17,29 +12,9 @@ import {
 } from "@/hooks/useOnboarding";
 import { FontFamily } from "@/constants/typography";
 
-const { width, height } = Dimensions.get("window");
+const { height } = Dimensions.get("window");
 
 type PendingAction = "begin" | "later";
-
-function ArchaicAtmosphere() {
-  return (
-    <Svg
-      width={width * 2}
-      height={height * 0.75}
-      style={[styles.atmosphere, { pointerEvents: "none" }]}
-    >
-      <Defs>
-        <RadialGradient id="archaicGlow5" cx="50%" cy="20%" rx="60%" ry="55%" fx="50%" fy="20%">
-          <Stop offset="0%"   stopColor="#3D1E3D" stopOpacity="0.85" />
-          <Stop offset="35%"  stopColor="#2A1530" stopOpacity="0.6" />
-          <Stop offset="65%"  stopColor="#1A0D1F" stopOpacity="0.25" />
-          <Stop offset="100%" stopColor="#050208" stopOpacity="0" />
-        </RadialGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill="url(#archaicGlow5)" />
-    </Svg>
-  );
-}
 
 function PlayIcon() {
   return (
@@ -76,7 +51,7 @@ export default function BeginScreen() {
 
   return (
     <View style={styles.container}>
-      <ArchaicAtmosphere />
+      <OnboardingAtmosphere />
 
       {/* Centered content cluster */}
       <View style={styles.contentWrap}>
@@ -124,11 +99,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#050208",
-  },
-  atmosphere: {
-    position: "absolute",
-    top: 0,
-    left: -(width * 0.5),
   },
   contentWrap: {
     flex: 1,
