@@ -7,6 +7,14 @@ import { FontFamily } from "@/constants/typography";
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
+const ONBOARDING_ROUTES = [
+  "/onboarding",
+  "/onboarding/entry",
+  "/onboarding/signature",
+  "/onboarding/practice",
+  "/onboarding/begin",
+];
+
 const { width, height } = Dimensions.get("window");
 
 function OnboardingSpiral({ size = 180 }: { size?: number }) {
@@ -67,6 +75,7 @@ export default function EntryScreen() {
 
       <OnboardingFooter
         activeIndex={1}
+        routes={ONBOARDING_ROUTES}
         onContinue={() => router.push("/onboarding/signature")}
       />
     </View>

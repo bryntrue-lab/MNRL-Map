@@ -7,6 +7,14 @@ import { FontFamily } from "@/constants/typography";
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
+const ONBOARDING_ROUTES = [
+  "/onboarding",
+  "/onboarding/entry",
+  "/onboarding/signature",
+  "/onboarding/practice",
+  "/onboarding/begin",
+];
+
 const { width, height } = Dimensions.get("window");
 
 // The Mineral wordmark — Radiometry, white, with triangular A
@@ -38,6 +46,7 @@ export default function HelloScreen() {
 
       <OnboardingFooter
         activeIndex={0}
+        routes={ONBOARDING_ROUTES}
         onContinue={() => router.push("/onboarding/entry")}
         continueLabel="begin →"
       />

@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,33 +7,37 @@ import { FontFamily } from "@/constants/typography";
 
 interface OnboardingFooterProps {
   activeIndex: number;
-  total?: number;
+  routes: string[];
   onContinue: () => void;
   continueLabel?: string;
 }
 
 export default function OnboardingFooter({
   activeIndex,
-  total = 5,
+  routes,
   onContinue,
   continueLabel = "continue →",
 }: OnboardingFooterProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View
-      style={[
-        styles.footer,
-        { bottom: Math.max(insets.bottom, 20) + 36 },
-      ]}
-    >
+    <View style={[styles.footer, { bottom: Math.max(insets.bottom, 20) + 36 }]}>
       <View style={styles.dots}>
-        {Array.from({ length: total }).map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === activeIndex && styles.dotActive]}
-          />
-        ))}
+        {routes.map((route, i) => {
+          const isActive = i === activeIndex;
+          return (
+            <Pressable
+              key={i}
+              onPress={() => !isActive && router.push(route as any)}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                opacity: pressed && !isActive ? 0.5 : 1,
+              })}
+            >
+              <View style={[styles.dot, isActive && styles.dotActive]} />
+            </Pressable>
+          );
+        })}
       </View>
       <Pressable
         style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}

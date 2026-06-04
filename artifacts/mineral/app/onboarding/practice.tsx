@@ -6,6 +6,14 @@ import { FontFamily } from "@/constants/typography";
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
+const ONBOARDING_ROUTES = [
+  "/onboarding",
+  "/onboarding/entry",
+  "/onboarding/signature",
+  "/onboarding/practice",
+  "/onboarding/begin",
+];
+
 const { height } = Dimensions.get("window");
 
 const STEPS = [
@@ -54,6 +62,7 @@ export default function PracticeScreen() {
 
       <OnboardingFooter
         activeIndex={3}
+        routes={ONBOARDING_ROUTES}
         onContinue={() => router.push("/onboarding/begin")}
       />
     </View>
