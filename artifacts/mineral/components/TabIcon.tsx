@@ -1,5 +1,5 @@
 import React from "react";
-import Svg, { Circle, Rect } from "react-native-svg";
+import Svg, { Circle, ClipPath, Defs, G, Rect } from "react-native-svg";
 
 interface TabIconProps {
   name: "today" | "notes" | "guide" | "origin";
@@ -8,64 +8,75 @@ interface TabIconProps {
 }
 
 /**
- * Custom tab icons per the Mineral design system.
- * All icons fit in an 18×18 slot.
- * today:  filled circle (presence)
- * notes:  slim slanted rectangle (capture / the stylus)
- * guide:  half-filled circle (reflection / the mirror)
- * origin: ringed dot (the spiral · with center)
+ * Mineral design system tab icons — fixed 24×24 viewBox.
+ * today:  filled circle
+ * notes:  slim rectangle (4×16px, rotated -22°)
+ * guide:  half-filled circle (left half solid)
+ * origin: circle outline with center dot
  */
-export default function TabIcon({ name, color, size = 18 }: TabIconProps) {
-  const s = size;
-  const cx = s / 2;
-  const cy = s / 2;
-  const r = s * 0.38;
-
+export default function TabIcon({ name, color, size = 22 }: TabIconProps) {
   switch (name) {
     case "today":
-      // Filled circle — full presence
       return (
-        <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-          <Circle cx={cx} cy={cy} r={r} fill={color} />
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Circle cx={12} cy={12} r={7} fill={color} />
         </Svg>
       );
 
     case "notes":
-      // Slim slanted rectangle — the stylus / capture
       return (
-        <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
+        <Svg width={size} height={size} viewBox="0 0 24 24">
           <Rect
-            x={s * 0.38}
-            y={s * 0.12}
-            width={s * 0.24}
-            height={s * 0.76}
-            rx={s * 0.04}
+            x={10}
+            y={4}
+            width={4}
+            height={16}
+            rx={2}
             fill={color}
-            rotation="-15"
-            origin={`${cx}, ${cy}`}
+            rotation="-22"
+            origin="12, 12"
           />
         </Svg>
       );
 
     case "guide":
-      // Half-filled circle — the mirror / reflection
       return (
-        <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-          {/* Unfilled ring */}
-          <Circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={s * 0.09} />
-          {/* Right half fill */}
-          <Circle cx={cx} cy={cy} r={r * 0.72} fill={color} />
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Defs>
+            <ClipPath id="leftHalf">
+              <Rect x={0} y={0} width={12} height={24} />
+            </ClipPath>
+          </Defs>
+          {/* Full circle outline */}
+          <Circle
+            cx={12}
+            cy={12}
+            r={6.5}
+            fill="none"
+            stroke={color}
+            strokeWidth={1.5}
+          />
+          {/* Left half fill */}
+          <G clipPath="url(#leftHalf)">
+            <Circle cx={12} cy={12} r={7} fill={color} />
+          </G>
         </Svg>
       );
 
     case "origin":
-      // Ringed dot — the spiral with center
       return (
-        <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
+        <Svg width={size} height={size} viewBox="0 0 24 24">
           {/* Outer ring */}
-          <Circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={s * 0.09} />
-          {/* Inner dot */}
-          <Circle cx={cx} cy={cy} r={r * 0.32} fill={color} />
+          <Circle
+            cx={12}
+            cy={12}
+            r={6.5}
+            fill="none"
+            stroke={color}
+            strokeWidth={1.5}
+          />
+          {/* Center dot */}
+          <Circle cx={12} cy={12} r={1.8} fill={color} />
         </Svg>
       );
 
