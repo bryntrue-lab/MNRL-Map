@@ -1,0 +1,251 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { ArchaicAtmosphere } from './Atmosphere';
+
+const LENSES = [
+  {
+    id: 'resistance',
+    label: 'recurring resistance',
+    desc: 'patterns of friction across encounters',
+    color: '#e08aaf',
+  },
+  {
+    id: 'threads',
+    label: 'threads',
+    desc: 'phrases that return',
+    color: '#88dcba',
+  },
+  {
+    id: 'motifs',
+    label: 'mythic motifs',
+    desc: 'images and symbols across the field',
+    color: '#e9b76b',
+  },
+  {
+    id: 'conditions',
+    label: 'conditions noted',
+    desc: 'what you name alongside high charge',
+    color: '#9bb6d6',
+  },
+  {
+    id: 'consciousness',
+    label: 'consciousness map',
+    desc: 'where your attention lives across structures',
+    color: '#c4baea',
+  },
+];
+
+// Hardcoded for now — pulls from Firebase later
+const FIELD_STATE = {
+  signalCount: 0,    // total field notes
+  turnNumber: 1,
+  daysIn: 1,
+};
+
+export default function GuideScreen({ navigation }) {
+  const hasField = FIELD_STATE.signalCount > 0;
+
+  return (
+    <View style={styles.container}>
+      <ArchaicAtmosphere />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity><Text style={styles.iconText}>≡</Text></TouchableOpacity>
+          <Text style={styles.eyebrow}>FIELD GUIDE</Text>
+          <TouchableOpacity><Text style={styles.iconText}>⌕</Text></TouchableOpacity>
+        </View>
+
+        {/* State eyebrow — "taking root" if fresh, just count if established */}
+        {hasField ? (
+          <View style={styles.fieldHeader}>
+            <Text style={styles.fieldStateLabel}>YOUR FIELD</Text>
+            <Text style={styles.fieldCount}>
+              {FIELD_STATE.signalCount} signals · {FIELD_STATE.daysIn} days in
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.fieldHeader}>
+            <Text style={styles.fieldStateLabelFresh}>● TAKING ROOT</Text>
+          </View>
+        )}
+
+        {/* Synthesis sentence — speaks differently based on state */}
+        <View style={styles.synthesisWrap}>
+          <Text style={styles.synthesisText}>
+            {hasField
+              ? `Your field is beginning to gather. ${FIELD_STATE.signalCount} signals are taking shape across ${FIELD_STATE.daysIn} days of practice.`
+              : 'Your field begins with your first reflection. Patterns emerge with time and return.'}
+          </Text>
+        </View>
+
+        {/* Lenses — visible even before data exists */}
+        <Text style={styles.lensesLabel}>EXPLORE</Text>
+        {LENSES.map((lens) => (
+          <TouchableOpacity
+            key={lens.id}
+            style={styles.lensRow}
+            onPress={() => navigation.navigate('Lens', { lensId: lens.id })}
+            activeOpacity={0.7}
+          >
+            <View style={styles.lensLeft}>
+              <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
+              <View style={styles.lensTextWrap}>
+                <Text style={styles.lensName}>{lens.label}</Text>
+                <Text style={styles.lensDesc}>{lens.desc}</Text>
+              </View>
+            </View>
+            <Text style={styles.lensArrow}>→</Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Closing thought — quiet footer copy */}
+        {!hasField && (
+          <Text style={styles.closingThought}>
+            The Guide grows as you practice.{'\n'}
+            Return here as your field deepens.
+          </Text>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#050208',
+  },
+  scrollContent: {
+    paddingHorizontal: 28,
+    paddingTop: 60,
+    paddingBottom: 120,
+  },
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  iconText: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  eyebrow: {
+    fontFamily: 'System',
+    fontSize: 9,
+    fontWeight: '500',
+    letterSpacing: 2.5,
+    color: 'rgba(255, 255, 255, 0.4)',
+  },
+
+  // Field state header
+  fieldHeader: {
+    marginBottom: 20,
+  },
+  fieldStateLabel: {
+    fontFamily: 'System',
+    fontSize: 9,
+    fontWeight: '500',
+    letterSpacing: 2.5,
+    color: 'rgba(255, 255, 255, 0.4)',
+    marginBottom: 6,
+  },
+  fieldStateLabelFresh: {
+    fontFamily: 'System',
+    fontSize: 9,
+    fontWeight: '500',
+    letterSpacing: 2.5,
+    color: 'rgba(196, 74, 138, 0.85)',  // archaic pink for taking root state
+    marginBottom: 6,
+  },
+  fieldCount: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+
+  // Synthesis sentence
+  synthesisWrap: {
+    paddingLeft: 14,
+    borderLeftWidth: 1.5,
+    borderLeftColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 6,
+    marginBottom: 36,
+  },
+  synthesisText: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 14,
+    lineHeight: 22,
+    color: 'rgba(255, 255, 255, 0.78)',
+  },
+
+  // Lenses section
+  lensesLabel: {
+    fontFamily: 'System',
+    fontSize: 9,
+    fontWeight: '500',
+    letterSpacing: 2.5,
+    color: 'rgba(255, 255, 255, 0.4)',
+    marginBottom: 16,
+  },
+  lensRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  lensLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  lensDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  lensTextWrap: {
+    flex: 1,
+  },
+  lensName: {
+    fontFamily: 'System',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.92)',
+    marginBottom: 3,
+  },
+  lensDesc: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.42)',
+  },
+  lensArrow: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.3)',
+    marginLeft: 8,
+  },
+
+  // Closing thought (only when field is empty)
+  closingThought: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 13,
+    lineHeight: 22,
+    color: 'rgba(255, 255, 255, 0.4)',
+    textAlign: 'center',
+    marginTop: 40,
+    paddingHorizontal: 24,
+  },
+});
