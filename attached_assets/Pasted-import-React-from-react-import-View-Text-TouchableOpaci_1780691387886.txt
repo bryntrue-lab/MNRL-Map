@@ -1,0 +1,162 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { IntegralAtmosphere } from './Atmosphere';
+import { LifeMapSpiral, OriginMeta } from './SpiralComponents';
+
+// Hardcoded for now — pulls from Firebase later
+const USER_DATA = {
+  birthYear: 1990,
+  birthMonth: 'March',
+  currentYear: 2026,
+  phase: 'signal',
+  turn: 'first',
+  humanDesignType: null,   // not yet provided — will show "add your birth date →"
+};
+
+export default function OriginScreen({ navigation }) {
+  const hasDesign = USER_DATA.humanDesignType !== null;
+  const yearsElapsed = USER_DATA.currentYear - USER_DATA.birthYear;
+  const cycleNumber  = Math.floor(yearsElapsed / 28) + 1;
+  const yearInCycle  = yearsElapsed % 28;
+
+  const ordinals = ['first', 'second', 'third', 'fourth', 'fifth'];
+  const cycleLabel = ordinals[cycleNumber - 1] || `${cycleNumber}th`;
+
+  return (
+    <View style={styles.container}>
+      <IntegralAtmosphere />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <TouchableOpacity><Text style={styles.iconText}>≡</Text></TouchableOpacity>
+          <Text style={styles.eyebrow}>ORIGIN</Text>
+          <TouchableOpacity><Text style={styles.iconText}>⊙</Text></TouchableOpacity>
+        </View>
+
+        {/* Header — title is "your spiral", subtitle names current position */}
+        <View style={styles.header}>
+          <Text style={styles.title}>your spiral</Text>
+          <Text style={styles.subtitle}>
+            {USER_DATA.birthMonth} {USER_DATA.birthYear} · cycle {cycleLabel} · year {yearInCycle}
+          </Text>
+        </View>
+
+        {/* The 28-year wheel */}
+        <View style={styles.wheelWrap}>
+          <LifeMapSpiral
+            birthYear={USER_DATA.birthYear}
+            currentYear={USER_DATA.currentYear}
+            phase={USER_DATA.phase}
+          />
+        </View>
+
+        {/* Meta rows */}
+        <View style={styles.metaWrap}>
+          <OriginMeta
+            birthYear={USER_DATA.birthYear}
+            currentYear={USER_DATA.currentYear}
+            phase={USER_DATA.phase}
+            humanDesignType={USER_DATA.humanDesignType}
+          />
+        </View>
+
+        {/* If no design yet, soft prompt to add it */}
+        {!hasDesign && (
+          <TouchableOpacity
+            style={styles.designPrompt}
+            onPress={() => navigation.navigate('Signature')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.designPromptText}>
+              add your birth time and location to reveal your design →
+            </Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#050208',
+  },
+  scrollContent: {
+    paddingHorizontal: 28,
+    paddingTop: 60,
+    paddingBottom: 120,
+  },
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  iconText: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.6)',
+  },
+  eyebrow: {
+    fontFamily: 'System',
+    fontSize: 9,
+    fontWeight: '500',
+    letterSpacing: 2.5,
+    color: 'rgba(255, 255, 255, 0.4)',
+  },
+
+  // Header
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontFamily: 'System',
+    fontSize: 26,
+    fontWeight: '500',
+    letterSpacing: -0.3,
+    color: 'rgba(255, 255, 255, 0.95)',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 13,
+    color: 'rgba(196, 186, 234, 0.7)',     // lavender — integral phase tint
+    textAlign: 'center',
+    letterSpacing: 0.1,
+  },
+
+  // The wheel
+  wheelWrap: {
+    alignItems: 'center',
+    marginBottom: 36,
+  },
+
+  // Meta rows
+  metaWrap: {
+    paddingHorizontal: 4,
+    marginBottom: 24,
+  },
+
+  // Design prompt — only shown if user hasn't completed Human Design
+  designPrompt: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  designPromptText: {
+    fontFamily: 'Iowan Old Style',
+    fontStyle: 'italic',
+    fontSize: 13,
+    lineHeight: 20,
+    color: 'rgba(196, 186, 234, 0.65)',    // lavender, dim
+    textAlign: 'center',
+  },
+});

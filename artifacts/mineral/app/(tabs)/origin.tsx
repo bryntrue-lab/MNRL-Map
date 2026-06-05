@@ -1,5 +1,7 @@
+import { router } from "expo-router";
 import React from "react";
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,23 +15,38 @@ import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
 
 // Hardcoded for now — pulls from Firebase user profile later
-const ORIGIN_DATA = {
-  born: "—",               // e.g. "march 12, 1989"
-  phase: "in signal",      // current phase name
-  turn: "first turn of the spiral",
-  now: "day 1",            // days since first encounter
-  design: "—",             // birth-anchored design type (future)
+const USER_DATA = {
+  birthYear: 1990,
+  birthMonth: "March",
+  currentYear: 2026,
+  phase: "signal" as const,
+  humanDesignType: null as string | null,
 };
 
-const META_ROWS: { label: string; value: string }[] = [
-  { label: "born",   value: ORIGIN_DATA.born },
-  { label: "phase",  value: `${ORIGIN_DATA.phase} · ${ORIGIN_DATA.turn}` },
-  { label: "now",    value: ORIGIN_DATA.now },
-  { label: "design", value: ORIGIN_DATA.design },
-];
+const ORDINALS = ["first", "second", "third", "fourth", "fifth"];
+
+function computeCycle(birthYear: number, currentYear: number) {
+  const elapsed = currentYear - birthYear;
+  const cycleNumber = Math.floor(elapsed / 28) + 1;
+  const yearInCycle = elapsed % 28;
+  const cycleLabel = ORDINALS[cycleNumber - 1] ?? `${cycleNumber}th`;
+  return { cycleLabel, yearInCycle };
+}
 
 export default function OriginScreen() {
   const insets = useSafeAreaInsets();
+  const { cycleLabel, yearInCycle } = computeCycle(
+    USER_DATA.birthYear,
+    USER_DATA.currentYear
+  );
+  const hasDesign = USER_DATA.humanDesignType !== null;
+
+  const META_ROWS = [
+    { label: "born",   value: `${USER_DATA.birthMonth} ${USER_DATA.birthYear}` },
+    { label: "phase",  value: `in signal · first turn of the spiral` },
+    { label: "cycle",  value: `${cycleLabel} · year ${yearInCycle}` },
+    { label: "design", value: USER_DATA.humanDesignType ?? "—" },
+  ];
 
   return (
     <View style={styles.container}>
@@ -44,29 +61,40 @@ export default function OriginScreen() {
       >
         <TabTopBar title="ORIGIN" />
 
-        {/* Life map spiral — the screen's primary visual */}
-        <View style={styles.spiralWrap}>
-          <SpiralIndicator phase="signal" size={220} />
-          <Text style={styles.spiralCaption}>
-            {ORIGIN_DATA.phase} · {ORIGIN_DATA.turn}
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>your spiral</Text>
+          <Text style={styles.subtitle}>
+            {USER_DATA.birthMonth} {USER_DATA.birthYear} · cycle {cycleLabel} · year {yearInCycle}
           </Text>
         </View>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        {/* Life map spiral — primary visual */}
+        <View style={styles.wheelWrap}>
+          <SpiralIndicator phase={USER_DATA.phase} size={220} />
+        </View>
 
-        {/* Origin meta rows */}
-        {META_ROWS.map((row) => (
-          <View key={row.label} style={styles.metaRow}>
-            <Text style={styles.metaLabel}>{row.label}</Text>
-            <Text style={styles.metaValue}>{row.value}</Text>
-          </View>
-        ))}
+        {/* Meta rows */}
+        <View style={styles.metaWrap}>
+          {META_ROWS.map((row) => (
+            <View key={row.label} style={styles.metaRow}>
+              <Text style={styles.metaLabel}>{row.label}</Text>
+              <Text style={styles.metaValue}>{row.value}</Text>
+            </View>
+          ))}
+        </View>
 
-        {/* Still point — closing line */}
-        <Text style={styles.stillPoint}>
-          the still point at the center
-        </Text>
+        {/* Design prompt — only shown if birth data not yet provided */}
+        {!hasDesign && (
+          <Pressable
+            style={({ pressed }) => [styles.designPrompt, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => router.push("/onboarding/signature")}
+          >
+            <Text style={styles.designPromptText}>
+              add your birth time and location to reveal your design →
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -81,26 +109,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
 
-  spiralWrap: {
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  title: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 26,
+    letterSpacing: -0.3,
+    color: "rgba(255,255,255,0.95)",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 13,
+    color: "rgba(196,186,234,0.7)",
+    textAlign: "center",
+    letterSpacing: 0.1,
+  },
+
+  wheelWrap: {
     alignItems: "center",
     marginBottom: 36,
   },
-  spiralCaption: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 12,
-    letterSpacing: 0.3,
-    color: "rgba(255,255,255,0.4)",
-    marginTop: 14,
-    textAlign: "center",
-  },
 
-  divider: {
-    height: 0.5,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    marginBottom: 28,
+  metaWrap: {
+    paddingHorizontal: 4,
+    marginBottom: 24,
   },
-
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -122,14 +159,17 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.72)",
   },
 
-  stillPoint: {
+  designPrompt: {
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  designPromptText: {
     fontFamily: FontFamily.serifItalic,
     fontStyle: "italic",
-    fontSize: 12,
-    letterSpacing: 0.3,
-    color: "rgba(255,255,255,0.25)",
+    fontSize: 13,
+    lineHeight: 20,
+    color: "rgba(196,186,234,0.65)",
     textAlign: "center",
-    marginTop: 40,
-    paddingHorizontal: 24,
   },
 });
