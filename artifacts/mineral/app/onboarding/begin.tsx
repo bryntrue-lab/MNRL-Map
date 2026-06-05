@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Polygon } from "react-native-svg";
 
 import AuthSheet from "@/components/AuthSheet";
+import BeginButton from "@/components/BeginButton";
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
 import { useUser } from "@/context/UserContext";
 import {
@@ -15,14 +15,6 @@ import { FontFamily } from "@/constants/typography";
 const { height } = Dimensions.get("window");
 
 type PendingAction = "begin" | "later";
-
-function PlayIcon() {
-  return (
-    <Svg width={10} height={11} viewBox="0 0 10 11">
-      <Polygon points="0,0 0,11 10,5.5" fill="#050208" />
-    </Svg>
-  );
-}
 
 export default function BeginScreen() {
   const { updateProfile } = useUser();
@@ -53,7 +45,6 @@ export default function BeginScreen() {
     <View style={styles.container}>
       <OnboardingAtmosphere />
 
-      {/* Centered content cluster */}
       <View style={styles.contentWrap}>
         <Text style={styles.eyebrow}>YOUR FIRST ENCOUNTER</Text>
         <Text style={styles.title}>The Threshold</Text>
@@ -61,20 +52,7 @@ export default function BeginScreen() {
           something is calling — what comes when you stop naming it?
         </Text>
 
-        {/* Begin button — restrained near-white pill */}
-        <Pressable
-          style={({ pressed }) => [styles.beginButton, { opacity: pressed ? 0.85 : 1 }]}
-          onPress={() => openAuth("begin")}
-          testID="begin-encounter-button"
-        >
-          <View style={styles.playCircle}>
-            <PlayIcon />
-          </View>
-          <View style={styles.beginTextWrap}>
-            <Text style={styles.beginLabel}>Begin</Text>
-            <Text style={styles.beginMeta}>3 MIN · VOICE</Text>
-          </View>
-        </Pressable>
+        <BeginButton onPress={() => openAuth("begin")} />
 
         {/* Save for later — quiet secondary */}
         <Pressable
@@ -134,43 +112,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 280,
     marginBottom: 48,
-  },
-  beginButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 999,
-    minWidth: 180,
-    justifyContent: "center",
-  },
-  playCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(196,74,138,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingLeft: 1,
-  },
-  beginTextWrap: {
-    alignItems: "flex-start",
-  },
-  beginLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 15,
-    color: "#050208",
-    letterSpacing: 0.1,
-    lineHeight: 18,
-  },
-  beginMeta: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 9,
-    letterSpacing: 1.8,
-    color: "rgba(5,2,8,0.55)",
-    marginTop: 1,
   },
   saveWrap: {
     marginTop: 24,

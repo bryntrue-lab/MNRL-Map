@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
 
 const { width } = Dimensions.get("window");
@@ -42,16 +43,7 @@ export default function NotesScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <Pressable hitSlop={12}>
-            <Text style={styles.iconText}>≡</Text>
-          </Pressable>
-          <Text style={styles.eyebrow}>NOTES</Text>
-          <Pressable hitSlop={12}>
-            <Text style={styles.iconText}>⌕</Text>
-          </Pressable>
-        </View>
+        <TabTopBar title="NOTES" rightIcon="⌕" />
 
         {/* Header */}
         <View style={styles.header}>
@@ -115,23 +107,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 28,
-  },
-
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 28,
-  },
-  iconText: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.6)",
-  },
-  eyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
   },
 
   header: {

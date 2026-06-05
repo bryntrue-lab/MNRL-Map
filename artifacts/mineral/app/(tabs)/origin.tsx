@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import TabTopBar from "@/components/TabTopBar";
 import { FontFamily, TypeScale } from "@/constants/typography";
 
 export default function OriginScreen() {
@@ -11,7 +12,8 @@ export default function OriginScreen() {
   return (
     <View style={styles.container}>
       <OnboardingAtmosphere />
-      <View style={[styles.content, { paddingTop: insets.top + 24 }]}>
+      <View style={[styles.content, { paddingTop: insets.top + 16 }]}>
+        <TabTopBar title="ORIGIN" />
         <Text style={[TypeScale.eyebrow, styles.eyebrow]}>the spiral</Text>
         <Text style={[TypeScale.screenTitle, styles.title]}>origin</Text>
         <Text style={[TypeScale.serifMedium, styles.subtitle]}>

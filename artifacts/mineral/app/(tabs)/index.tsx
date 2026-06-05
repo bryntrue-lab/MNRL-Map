@@ -1,29 +1,18 @@
-import { router } from "expo-router";
 import React from "react";
 import {
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import Svg, { Polygon } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import BeginButton from "@/components/BeginButton";
 import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
 import SpiralIndicator from "@/components/SpiralIndicator";
+import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
-
-const { height } = Dimensions.get("window");
-
-function PlayIcon() {
-  return (
-    <Svg width={10} height={11} viewBox="0 0 10 11">
-      <Polygon points="0,0 0,11 10,5.5" fill="#050208" />
-    </Svg>
-  );
-}
 
 const currentEncounter = {
   phase: "signal" as const,
@@ -46,16 +35,7 @@ export default function TodayScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <Pressable hitSlop={12}>
-            <Text style={styles.iconText}>≡</Text>
-          </Pressable>
-          <Text style={styles.eyebrow}>TODAY</Text>
-          <Pressable hitSlop={12}>
-            <Text style={styles.iconText}>⊙</Text>
-          </Pressable>
-        </View>
+        <TabTopBar title="TODAY" />
 
         {/* Spiral indicator */}
         <View style={styles.spiralWrap}>
@@ -68,20 +48,12 @@ export default function TodayScreen() {
           <Text style={styles.encounterTitle}>{currentEncounter.title}</Text>
           <Text style={styles.encounterSubtitle}>{currentEncounter.subtitle}</Text>
 
-          <Pressable
-            style={({ pressed }) => [styles.beginButton, { opacity: pressed ? 0.88 : 1 }]}
+          <BeginButton
             onPress={() => {
               // Encounter flow not yet built — navigate when ready
             }}
-          >
-            <View style={styles.playCircle}>
-              <PlayIcon />
-            </View>
-            <View style={styles.beginTextWrap}>
-              <Text style={styles.beginLabel}>Begin</Text>
-              <Text style={styles.beginMeta}>{currentEncounter.durationMin} MIN · VOICE</Text>
-            </View>
-          </Pressable>
+            meta={`${currentEncounter.durationMin} MIN · VOICE`}
+          />
         </View>
 
         {/* Past encounters affordance */}
@@ -100,23 +72,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 28,
-  },
-
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 28,
-  },
-  iconText: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.6)",
-  },
-  eyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
   },
 
   spiralWrap: {
@@ -155,44 +110,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 280,
     marginBottom: 36,
-  },
-
-  beginButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 999,
-    minWidth: 180,
-    justifyContent: "center",
-  },
-  playCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(196,74,138,0.18)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingLeft: 2,
-  },
-  beginTextWrap: {
-    alignItems: "flex-start",
-  },
-  beginLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 15,
-    color: "#050208",
-    letterSpacing: 0.1,
-    lineHeight: 18,
-  },
-  beginMeta: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 1.8,
-    color: "rgba(5,2,8,0.55)",
-    marginTop: 1,
   },
 
   pastWrap: {
