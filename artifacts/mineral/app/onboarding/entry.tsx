@@ -1,11 +1,11 @@
 import { router } from "expo-router";
 import React from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Text as SvgText } from "react-native-svg";
 
 import { FontFamily } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
+import { OnboardingSpiral } from "@/components/SpiralComponents";
 
 const ONBOARDING_ROUTES = [
   "/onboarding",
@@ -16,35 +16,6 @@ const ONBOARDING_ROUTES = [
 ];
 
 const { width, height } = Dimensions.get("window");
-
-function OnboardingSpiral({ size = 180 }: { size?: number }) {
-  return (
-    <Svg viewBox="0 0 160 160" width={size} height={size}>
-      <Circle cx="80" cy="80" r="64" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.6" />
-
-      {/* North — Phase I · ACTIVE */}
-      <Circle cx="80" cy="16" r="14" fill="none" stroke="#c44a8a" strokeWidth="0.5" opacity="0.25" />
-      <Circle cx="80" cy="16" r="9"  fill="none" stroke="#c44a8a" strokeWidth="0.6" opacity="0.55" />
-      <Circle cx="80" cy="16" r="4"  fill="#c44a8a" />
-
-      {/* East — Phase II dim */}
-      <Circle cx="144" cy="80" r="2.5" fill="rgba(93,202,165,0.55)" />
-      {/* South — Phase III dim */}
-      <Circle cx="80" cy="144" r="2.5" fill="rgba(216,154,58,0.55)" />
-      {/* West — Phase IV dim */}
-      <Circle cx="16" cy="80" r="2.5" fill="rgba(107,142,184,0.55)" />
-
-      {/* Still point */}
-      <Circle cx="80" cy="80" r="7"   fill="none" stroke="rgba(168,156,220,0.3)" strokeWidth="0.5" />
-      <Circle cx="80" cy="80" r="3.5" fill="rgba(168,156,220,0.7)" />
-
-      {/* PHASE I label above active dot */}
-      <SvgText x="80" y="6" textAnchor="middle" fill="#c44a8a" fontSize="6.5" letterSpacing="2" fontFamily="System">
-        PHASE I
-      </SvgText>
-    </Svg>
-  );
-}
 
 export default function EntryScreen() {
   return (

@@ -10,11 +10,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IntegralAtmosphere } from "@/components/Atmosphere";
-import SpiralIndicator from "@/components/SpiralIndicator";
+import { LifeMapSpiral, OriginMeta } from "@/components/SpiralComponents";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
 
-// Hardcoded for now — pulls from Firebase user profile later
 const USER_DATA = {
   birthYear: 1990,
   birthMonth: "March",
@@ -26,10 +25,10 @@ const USER_DATA = {
 const ORDINALS = ["first", "second", "third", "fourth", "fifth"];
 
 function computeCycle(birthYear: number, currentYear: number) {
-  const elapsed = currentYear - birthYear;
-  const cycleNumber = Math.floor(elapsed / 28) + 1;
-  const yearInCycle = elapsed % 28;
-  const cycleLabel = ORDINALS[cycleNumber - 1] ?? `${cycleNumber}th`;
+  const elapsed      = currentYear - birthYear;
+  const cycleNumber  = Math.floor(elapsed / 28) + 1;
+  const yearInCycle  = elapsed % 28;
+  const cycleLabel   = ORDINALS[cycleNumber - 1] ?? `${cycleNumber}th`;
   return { cycleLabel, yearInCycle };
 }
 
@@ -40,13 +39,6 @@ export default function OriginScreen() {
     USER_DATA.currentYear
   );
   const hasDesign = USER_DATA.humanDesignType !== null;
-
-  const META_ROWS = [
-    { label: "born",   value: `${USER_DATA.birthMonth} ${USER_DATA.birthYear}` },
-    { label: "phase",  value: `in signal · first turn of the spiral` },
-    { label: "cycle",  value: `${cycleLabel} · year ${yearInCycle}` },
-    { label: "design", value: USER_DATA.humanDesignType ?? "—" },
-  ];
 
   return (
     <View style={styles.container}>
@@ -61,7 +53,6 @@ export default function OriginScreen() {
       >
         <TabTopBar title="ORIGIN" />
 
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>your spiral</Text>
           <Text style={styles.subtitle}>
@@ -69,22 +60,23 @@ export default function OriginScreen() {
           </Text>
         </View>
 
-        {/* Life map spiral — primary visual */}
         <View style={styles.wheelWrap}>
-          <SpiralIndicator phase={USER_DATA.phase} size={220} />
+          <LifeMapSpiral
+            birthYear={USER_DATA.birthYear}
+            currentYear={USER_DATA.currentYear}
+            phase={USER_DATA.phase}
+          />
         </View>
 
-        {/* Meta rows */}
         <View style={styles.metaWrap}>
-          {META_ROWS.map((row) => (
-            <View key={row.label} style={styles.metaRow}>
-              <Text style={styles.metaLabel}>{row.label}</Text>
-              <Text style={styles.metaValue}>{row.value}</Text>
-            </View>
-          ))}
+          <OriginMeta
+            birthYear={USER_DATA.birthYear}
+            currentYear={USER_DATA.currentYear}
+            phase={USER_DATA.phase}
+            humanDesignType={USER_DATA.humanDesignType}
+          />
         </View>
 
-        {/* Design prompt — only shown if birth data not yet provided */}
         {!hasDesign && (
           <Pressable
             style={({ pressed }) => [styles.designPrompt, { opacity: pressed ? 0.6 : 1 }]}
@@ -137,26 +129,6 @@ const styles = StyleSheet.create({
   metaWrap: {
     paddingHorizontal: 4,
     marginBottom: 24,
-  },
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    paddingVertical: 13,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(255,255,255,0.06)",
-  },
-  metaLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.35)",
-  },
-  metaValue: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
-    color: "rgba(255,255,255,0.72)",
   },
 
   designPrompt: {

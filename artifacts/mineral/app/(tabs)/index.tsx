@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BeginButton from "@/components/BeginButton";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
-import SpiralIndicator from "@/components/SpiralIndicator";
+import { SpiralIndicator } from "@/components/SpiralComponents";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
 
