@@ -4,7 +4,7 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 
 import AuthSheet from "@/components/AuthSheet";
 import BeginButton from "@/components/BeginButton";
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { useUser } from "@/context/UserContext";
 import {
   clearPendingBirthData,
@@ -43,7 +43,7 @@ export default function BeginScreen() {
 
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       <View style={styles.contentWrap}>
         <Text style={styles.eyebrow}>YOUR FIRST ENCOUNTER</Text>

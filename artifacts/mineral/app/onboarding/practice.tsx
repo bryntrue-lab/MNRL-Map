@@ -3,7 +3,7 @@ import React from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 
 import { FontFamily } from "@/constants/typography";
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
 const ONBOARDING_ROUTES = [
@@ -37,7 +37,7 @@ const STEPS = [
 export default function PracticeScreen() {
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       {/* Content cluster — vertically centered */}
       <View style={styles.contentWrap}>

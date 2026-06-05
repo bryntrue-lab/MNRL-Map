@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BeginButton from "@/components/BeginButton";
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import SpiralIndicator from "@/components/SpiralIndicator";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
@@ -26,7 +26,7 @@ export default function TodayScreen() {
 
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       <ScrollView
         contentContainerStyle={[

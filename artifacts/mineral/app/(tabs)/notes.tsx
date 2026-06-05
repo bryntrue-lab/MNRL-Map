@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
 
@@ -34,7 +34,7 @@ export default function NotesScreen() {
 
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       <ScrollView
         contentContainerStyle={[

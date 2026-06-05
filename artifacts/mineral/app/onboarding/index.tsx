@@ -4,7 +4,7 @@ import { Dimensions, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { FontFamily } from "@/constants/typography";
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
 const ONBOARDING_ROUTES = [
@@ -36,7 +36,7 @@ function MineralWordmark({ w = 250 }: { w?: number }) {
 export default function HelloScreen() {
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       {/* Wordmark + tagline — vertically centered with footer offset */}
       <View style={styles.centerContent}>

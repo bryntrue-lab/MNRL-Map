@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FontFamily } from "@/constants/typography";
 import { savePendingBirthData } from "@/hooks/useOnboarding";
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
 const ONBOARDING_ROUTES = [
@@ -47,7 +47,7 @@ export default function SignatureScreen() {
 
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       {/* Content cluster — vertically centered */}
       <View style={styles.contentWrap}>

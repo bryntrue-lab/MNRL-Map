@@ -4,7 +4,7 @@ import { Dimensions, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Text as SvgText } from "react-native-svg";
 
 import { FontFamily } from "@/constants/typography";
-import OnboardingAtmosphere from "@/components/OnboardingAtmosphere";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
 const ONBOARDING_ROUTES = [
@@ -49,7 +49,7 @@ function OnboardingSpiral({ size = 180 }: { size?: number }) {
 export default function EntryScreen() {
   return (
     <View style={styles.container}>
-      <OnboardingAtmosphere />
+      <ArchaicAtmosphere />
 
       {/* Content cluster — flex:1 + justifyContent:center lands it at optical center */}
       <View style={styles.contentWrap}>
