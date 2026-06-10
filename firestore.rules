@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Global content library — any authenticated user may read ──────────
+    match /encounters/{encounterId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Practitioner offering library — fully locked ──────────────────────
+    match /practitionerContent/{contentId} {
+      allow read, write: if false;
+    }
+
+    // ── Per-user document ─────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if request.auth.uid == uid;
+
+      // Create: caller must be the owner AND all five server-controlled fields
+      // must be at their initial defaults — prevents forged membershipExpiresAt
+      // or self-upgrade to 'member' on creation.
+      allow create: if request.auth.uid == uid
+        && request.resource.data.membershipStatus    == 'free'
+        && request.resource.data.completedEncounterCount == 0
+        && request.resource.data.membershipSince     == null
+        && request.resource.data.membershipExpiresAt == null
+        && request.resource.data.membershipProductId == null;
+
+      // Update: caller must be the owner AND all five server-controlled fields
+      // must be unchanged — prevents client self-upgrade after account creation.
+      allow update: if request.auth.uid == uid
+        && request.resource.data.membershipStatus        == resource.data.membershipStatus
+        && request.resource.data.membershipSince         == resource.data.membershipSince
+        && request.resource.data.membershipExpiresAt     == resource.data.membershipExpiresAt
+        && request.resource.data.membershipProductId     == resource.data.membershipProductId
+        && request.resource.data.completedEncounterCount == resource.data.completedEncounterCount;
+
+      // ── Encounter instances ─────────────────────────────────────────────
+      match /userEncounters/{encounterId} {
+        allow read, write: if request.auth.uid == uid;
+      }
+
+      // ── Field notes — most private data ────────────────────────────────
+      match /fieldNotes/{noteId} {
+        allow read:   if request.auth.uid == uid;
+        allow delete: if request.auth.uid == uid;
+
+        // Create: charge must be absent entirely — engine-only field.
+        // A field set to null is distinct from absent; !('charge' in ...) enforces absent.
+        allow create: if request.auth.uid == uid
+          && !('charge' in request.resource.data);
+
+        // Update: charge must either remain absent or be unchanged (never client-set).
+        allow update: if request.auth.uid == uid
+          && (
+            !('charge' in request.resource.data)
+            || request.resource.data.charge == resource.data.charge
+          );
+      }
+
+      // ── Derived pattern data — engine writes only ───────────────────────
+      match /patterns/{patternType} {
+        allow read:  if request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+  }
+}

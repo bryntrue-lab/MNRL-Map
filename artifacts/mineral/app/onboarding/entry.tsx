@@ -27,7 +27,7 @@ export default function EntryScreen() {
         <Text style={styles.eyebrow}>WHERE YOU'RE BEGINNING</Text>
 
         <View style={styles.spiralWrap}>
-          <OnboardingSpiral size={width * 0.55} />
+          <OnboardingSpiral />
         </View>
 
         {/* Phase label cluster between spiral and body */}

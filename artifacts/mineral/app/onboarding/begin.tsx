@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import { Timestamp } from "firebase/firestore";
 
 import AuthSheet from "@/components/AuthSheet";
 import BeginButton from "@/components/BeginButton";
@@ -33,7 +34,15 @@ export default function BeginScreen() {
     const birthData = await getPendingBirthData();
     if (birthData) {
       try {
-        await updateProfile(birthData);
+        // Convert PendingBirthData (string fields) to the UserDoc schema types.
+        // birthLocation as a plain string doesn't map to { lat, lng, label } yet —
+        // deferred until the signature screen is wired to the structured schema.
+        await updateProfile({
+          ...(birthData.birthDate
+            ? { birthDate: Timestamp.fromDate(new Date(birthData.birthDate)) }
+            : {}),
+          ...(birthData.birthTime ? { birthTime: birthData.birthTime } : {}),
+        });
       } catch {}
       await clearPendingBirthData();
     }

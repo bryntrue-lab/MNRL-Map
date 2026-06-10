@@ -1,5 +1,15 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { Auth, getAuth, inMemoryPersistence, initializeAuth } from "firebase/auth";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import {
+  Auth,
+  browserLocalPersistence,
+  getAuth,
+  initializeAuth,
+  // @ts-ignore — getReactNativePersistence exists at runtime in the RN bundle
+  // but is missing from some firebase@12 type definitions. §9.
+  getReactNativePersistence,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
@@ -16,24 +26,48 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
+// §9 — Restore AsyncStorage persistence so sessions survive cold start on native.
+// The previous inMemoryPersistence caused a log-out on every cold start — fatal
+// for a daily-return practice. getReactNativePersistence is present at runtime;
+// we suppress the TS error above.
 function initAuth(): Auth {
-  if (Platform.OS === "web") {
-    // Web: Firebase uses IndexedDB persistence by default.
-    return getAuth(app);
-  }
-
-  // Native: Firebase v12 removed getReactNativePersistence from firebase/auth.
-  // Use inMemoryPersistence (users re-authenticate on app restart; persistent
-  // sessions can be added once Firebase restores the React Native API).
   try {
-    return initializeAuth(app, { persistence: inMemoryPersistence });
+    if (Platform.OS === "web") {
+      return initializeAuth(app, { persistence: browserLocalPersistence });
+    }
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
   } catch {
-    // Auth already initialized — happens on hot reload.
+    // Already initialized — happens on hot reload.
     return getAuth(app);
   }
+}
+
+// §3a — App Check: wired here, enforcement disabled in the Firebase console
+// until ≥99% of legitimate requests are attesting successfully. Flip the
+// enforcement toggle in the console — no code change required.
+//
+// Web: reCAPTCHA v3 (free, sufficient for v1).
+// Native: App Attest (iOS) / Play Integrity (Android) with the Firebase JS SDK
+// requires expo-firebase-app-check or a custom provider backed by native modules.
+// That setup is deferred; enforcement stays off until native attestation ships.
+function initAppCheck(): void {
+  if (Platform.OS !== "web") return;
+
+  const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
+  if (!siteKey) return;
+
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(siteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
 }
 
 export const auth = initAuth();
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+initAppCheck();
+
 export default app;

@@ -1,5 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  FieldValue,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import React, {
   createContext,
   useCallback,
@@ -10,17 +16,10 @@ import React, {
 
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { Phase } from "@/constants/theme";
+import type { MembershipStatus, PhaseId, UserDoc } from "@/types/firestore";
 
-export interface UserProfile {
-  email: string;
-  birthDate?: string;
-  birthTime?: string;
-  birthLocation?: string;
-  createdAt: number;
-  currentDay: number;
-  currentPhase: Phase;
-}
+// UserProfile is the public alias used throughout the app.
+export type UserProfile = UserDoc;
 
 interface UserContextValue {
   profile: UserProfile | null;
@@ -44,7 +43,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Load from cache first for instant display
+    // Cache-first: show locally persisted profile instantly on cold start.
     AsyncStorage.getItem(PROFILE_CACHE_KEY).then((cached) => {
       if (cached) {
         try {
@@ -60,15 +59,32 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setProfile(data);
         AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(data));
       } else {
-        // Create default profile for new user
-        const newProfile: UserProfile = {
+        // First sign-in — create the user doc with all required defaults.
+        // Security rules require the five server-controlled fields to be at
+        // their initial values on create (membershipStatus='free', counts=0,
+        // timestamps=null). serverTimestamp() is used for Firestore-side accuracy.
+        const newDoc: Omit<UserDoc, "journeyStartedAt" | "createdAt"> & {
+          journeyStartedAt: FieldValue;
+          createdAt: FieldValue;
+        } = {
           email: user.email ?? "",
-          createdAt: Date.now(),
-          currentDay: 1,
-          currentPhase: "signal",
+          birthDate: null,
+          birthTime: null,
+          birthLocation: null,
+          humanDesignType: null,
+          currentPhase: "signal" as PhaseId,
+          currentTurn: 1,
+          journeyStartedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          membershipStatus: "free" as MembershipStatus,
+          membershipSince: null,
+          membershipExpiresAt: null,
+          membershipProductId: null,
+          completedEncounterCount: 0,
         };
-        setDoc(ref, newProfile).catch(() => {});
-        setProfile(newProfile);
+        setDoc(ref, newDoc).catch(() => {});
+        // Optimistic local state while the write resolves.
+        setProfile(newDoc as unknown as UserProfile);
       }
       setLoading(false);
     });
