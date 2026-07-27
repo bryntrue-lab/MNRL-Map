@@ -28,6 +28,11 @@ function RootLayoutNav() {
       <Stack.Screen name="birthdate" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      {/* The encounter is a held space — no tab bar, no swipe-back out. */}
+      <Stack.Screen
+        name="encounter"
+        options={{ headerShown: false, animation: "fade", gestureEnabled: false }}
+      />
     </Stack>
   );
 }

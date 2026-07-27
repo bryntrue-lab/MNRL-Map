@@ -1,0 +1,14 @@
+{
+  "name": "mineral-functions",
+  "description": "Mineral Cloud Functions — transcription only (Task B §3)",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "dependencies": {
+    "@google-cloud/speech": "^7.2.0",
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

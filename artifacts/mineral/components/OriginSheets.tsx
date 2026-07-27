@@ -34,7 +34,7 @@ interface SheetShellProps {
   children: React.ReactNode;
 }
 
-function SheetShell({ open, onClose, bottomPad, testID, children }: SheetShellProps) {
+export function SheetShell({ open, onClose, bottomPad, testID, children }: SheetShellProps) {
   const slide = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(open);
 

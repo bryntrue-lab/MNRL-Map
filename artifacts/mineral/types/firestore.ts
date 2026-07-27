@@ -68,6 +68,30 @@ export interface UserDoc {
 // encounters/{encounterId}  (global content library)
 // ─────────────────────────────────────────────────────────────
 
+// ── Encounter blocks — one screen per block inside the flow ──
+// The seeded shape: reflection (holds the ⟡ crystallizing prompt),
+// integration, carry. `options` exists in the v1.6 schema but no seeded
+// encounter uses it yet.
+
+export interface ReflectionPrompt {
+  id: string;
+  text: string;
+  subtext?: string;
+  capturable?: boolean;
+  crystallizing?: boolean;
+}
+
+export type EncounterBlock =
+  | { type: "reflection"; intro?: string; prompts: ReflectionPrompt[] }
+  | {
+      type: "integration";
+      title?: string;
+      instruction: string;
+      durationLabel?: string;
+      options?: string[];
+    }
+  | { type: "carry"; intro?: string; closing: string };
+
 export interface EncounterDoc {
   title: string;
   subtitle: string;
@@ -75,9 +99,17 @@ export interface EncounterDoc {
   phase: PhaseId;
   order: number;
   minTurn: number;
-  reflectionQuestions: { id: string; text: string }[];
-  integrationPractice: string;
+  blocks: EncounterBlock[];
+
+  // Legacy v1.6 fields — absent on the current seed; kept optional for
+  // forward compatibility with older documents.
+  reflectionQuestions?: { id: string; text: string }[];
+  integrationPractice?: string;
   fieldOfferings?: { key: string; text: string }[];
+
+  guideNote?: string | null;
+  deepDive?: unknown | null;
+  nextThread?: string | null;
 
   // v1.7: one-line phrase shown on the map the day this encounter is today;
   // falls back to subtitle when null.

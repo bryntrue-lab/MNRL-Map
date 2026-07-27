@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,12 +11,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { CaptureSheet } from "@/components/CaptureSheet";
+import { QuietToast } from "@/components/OriginSheets";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
+import { useAuth } from "@/context/AuthContext";
+import { useUser } from "@/context/UserContext";
+import type { FieldNoteType } from "@/types/firestore";
 
 const { width } = Dimensions.get("window");
 
-const CHIPS = [
+const CHIPS: { id: FieldNoteType; label: string; glyph: string }[] = [
   { id: "dream",         label: "Dream",         glyph: "◐" },
   { id: "spark",         label: "Spark",         glyph: "✦" },
   { id: "resistance",    label: "Resistance",    glyph: "◬" },
@@ -24,13 +30,24 @@ const CHIPS = [
   { id: "vision",        label: "Vision",        glyph: "⌖" },
 ];
 
-const MORE_CHIPS = ["Desire", "Fear", "Other"];
+const MORE_CHIPS: { id: FieldNoteType; label: string }[] = [
+  { id: "desire", label: "DESIRE" },
+  { id: "fear",   label: "FEAR" },
+  { id: "other",  label: "OTHER" },
+];
 
-// Empty for now — wire to Firestore later
+// Recent feed arrives with the Notes milestone — not part of Task B.
 const RECENT_NOTES: unknown[] = [];
 
 export default function NotesScreen() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { profile } = useUser();
+
+  const [captureType, setCaptureType] = useState<FieldNoteType | null>(null);
+  const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
+
+  const tabBarHeight = Platform.OS === "web" ? 84 : 60 + insets.bottom;
 
   return (
     <View style={styles.container}>
@@ -57,9 +74,8 @@ export default function NotesScreen() {
             <Pressable
               key={chip.id}
               style={({ pressed }) => [styles.chip, { opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => {
-                // Capture sheet — wire when built
-              }}
+              onPress={() => setCaptureType(chip.id)}
+              testID={`notes-chip-${chip.id}`}
             >
               <Text style={styles.glyph}>{chip.glyph}</Text>
               <Text style={styles.chipLabel}>{chip.label}</Text>
@@ -68,9 +84,21 @@ export default function NotesScreen() {
         </View>
 
         {/* More row */}
-        <Text style={styles.moreLabel}>
-          MORE · {MORE_CHIPS.join(" · ").toUpperCase()}
-        </Text>
+        <View style={styles.moreRow}>
+          <Text style={styles.moreLabel}>MORE</Text>
+          {MORE_CHIPS.map((chip) => (
+            <React.Fragment key={chip.id}>
+              <Text style={styles.moreLabel}> · </Text>
+              <Pressable
+                onPress={() => setCaptureType(chip.id)}
+                hitSlop={10}
+                testID={`notes-chip-${chip.id}`}
+              >
+                <Text style={styles.moreChip}>{chip.label}</Text>
+              </Pressable>
+            </React.Fragment>
+          ))}
+        </View>
 
         {/* Recent feed */}
         <View style={styles.recentSection}>
@@ -96,6 +124,23 @@ export default function NotesScreen() {
           )}
         </View>
       </ScrollView>
+
+      <CaptureSheet
+        open={captureType != null}
+        onClose={() => setCaptureType(null)}
+        uid={user?.uid ?? null}
+        source="spontaneous"
+        atmosphere={profile?.currentPhase ?? "signal"}
+        bottomPad={tabBarHeight}
+        initialType={captureType}
+        onSaved={() => setToast({ key: Date.now(), text: "kept." })}
+      />
+
+      <QuietToast
+        toast={toast}
+        bottom={tabBarHeight + 24}
+        onDone={() => setToast(null)}
+      />
     </View>
   );
 }
@@ -155,14 +200,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
+  moreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    marginBottom: 24,
+  },
   moreLabel: {
     fontFamily: FontFamily.sans500,
     fontSize: 9,
     letterSpacing: 2,
     color: "rgba(255,255,255,0.35)",
-    textAlign: "center",
-    paddingVertical: 14,
-    marginBottom: 24,
+  },
+  moreChip: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 9,
+    letterSpacing: 2,
+    color: "rgba(255,255,255,0.6)",
   },
 
   recentSection: {

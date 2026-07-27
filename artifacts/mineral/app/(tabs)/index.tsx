@@ -16,10 +16,18 @@ import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
+  setEncounterSession,
+  type EncounterMode,
+  type EncounterSession,
+} from "@/lib/encounter";
+import {
+  beginSequenceEncounter,
   fetchEncounterLibrary,
+  findCrystallizingNote,
   recordVisit,
   resolveAudioUrl,
   selectEncounterForDay,
+  userEncounterId,
   type EncounterWithId,
 } from "@/lib/firestore";
 import { PHASE_ACCENT, dayInTurn, practiceTurnOf, word } from "@/lib/spiral";
@@ -120,17 +128,62 @@ export default function TodayScreen() {
   };
 
   const begin = async () => {
-    if (!encounter || busy.current) return;
+    if (!encounter || busy.current || !user) return;
     busy.current = true;
     try {
-      // Resolve the Storage URL now so Milestone B can hand it straight to
-      // the player — and so a missing file surfaces here, gracefully.
-      await resolveAudioUrl(encounter.audioPath);
+      // Resolve the Storage URL first — a missing file surfaces here and
+      // ends in the quiet return, never inside the held space (§11, §4).
+      const url = await resolveAudioUrl(encounter.audioPath);
+
+      let mode: EncounterMode = visiting ? "visit" : "sequence";
+      let resume: EncounterSession["resume"] = null;
+
+      if (!visiting) {
+        const existing = await beginSequenceEncounter(
+          user.uid,
+          encounter.id,
+          practiceTurn
+        );
+        if (existing?.status === "completed") {
+          // Today's door already closed this turn — entering again is a
+          // visit: full flow, no completion writes (§2).
+          mode = "visit";
+        } else if (existing?.status === "in-progress") {
+          // Only a genuine mid-flow doc resumes; a visited→in-progress
+          // upgrade starts fresh (its old positions belong to the visit).
+          const blockIndex = existing.blockIndex ?? 0;
+          const audioPosition = existing.audioPosition ?? 0;
+          let crystallizing: { content: string | null } | null = null;
+          if (blockIndex === 0) {
+            // Capture already kept but no block reached → resume lands on
+            // the counterweight, not a second ⟡ (§4 resume rules).
+            const note = await findCrystallizingNote(
+              user.uid,
+              userEncounterId(encounter.id, practiceTurn)
+            );
+            if (note) crystallizing = { content: note.content ?? null };
+          }
+          if (blockIndex > 0 || audioPosition > 0 || crystallizing) {
+            resume = { audioPosition, blockIndex, crystallizing };
+          }
+        }
+      }
+
+      setEncounterSession({
+        encounter,
+        turn: practiceTurn,
+        mode,
+        audioUrl: url,
+        resume,
+      });
+      busy.current = false;
+      router.push("/encounter");
     } catch (err) {
-      console.warn("audio not resolvable", err);
+      console.warn("threshold begin failed", err);
+      // Offline or missing audio — the soft refusal (§4). showNotReady's
+      // timer releases the busy latch when the moment passes.
+      showNotReady();
     }
-    // The encounter flow itself is Milestone B — every path ends quietly here.
-    showNotReady();
   };
 
   const phase: PhaseId = encounter?.phase ?? "signal";
