@@ -1,0 +1,40 @@
+{
+  "title": "The Returning Signal",
+  "subtitle": "what keeps finding you",
+  "mapEpigraph": "What returns has survived your forgetting.",
+  "phase": "signal",
+  "order": 4,
+  "minTurn": 1,
+  "audioPath": "encounters/the-returning-signal/audio.mp3",
+  "audioFile": "enc4_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "instruction": "Make the unedited list: ideas, people, places, problems, images, and futures you cannot stop thinking about.",
+      "prompts": [
+        {
+          "id": "r4-alive",
+          "text": "Which three feel alive rather than merely important?"
+        },
+        {
+          "id": "r4-crystallizing",
+          "text": "The three things that feel most alive are…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Things I can't stop thinking about",
+      "instruction": "Write the list. Circle three by aliveness, not logic."
+    },
+    {
+      "type": "carry",
+      "closing": "Notice whether one of the three finds you again before day's end."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

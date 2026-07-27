@@ -21,6 +21,8 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      // §1 — the Origin map is Mineral's primary daily surface.
+      initialRouteName="origin"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

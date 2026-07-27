@@ -1,0 +1,17 @@
+{
+  "name": "mineral-seed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mineral content seed — Admin SDK writer for encounters + practitionerContent",
+  "main": "seed-content.js",
+  "scripts": {
+    "start": "node seed-content.js",
+    "dry-run": "echo 'dry-run mode: comment out ref.set() calls in seed-content.js to preview without writing'"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   FieldValue,
+  Timestamp,
   doc,
   onSnapshot,
   serverTimestamp,
@@ -31,6 +32,36 @@ const UserContext = createContext<UserContextValue | null>(null);
 
 const PROFILE_CACHE_KEY = "mineral_user_profile";
 
+// Firestore Timestamps survive a JSON round-trip only as plain
+// { seconds, nanoseconds } objects — revive them on cache hydration so
+// consumers can rely on real Timestamp instances (`.toDate()` etc).
+const TIMESTAMP_FIELDS = [
+  "birthDate",
+  "journeyStartedAt",
+  "createdAt",
+  "membershipSince",
+  "membershipExpiresAt",
+] as const;
+
+function reviveTimestamp(v: unknown): unknown {
+  if (
+    v &&
+    typeof v === "object" &&
+    typeof (v as { seconds?: unknown }).seconds === "number" &&
+    typeof (v as { nanoseconds?: unknown }).nanoseconds === "number"
+  ) {
+    const t = v as { seconds: number; nanoseconds: number };
+    return new Timestamp(t.seconds, t.nanoseconds);
+  }
+  return v ?? null;
+}
+
+function reviveProfile(raw: Record<string, unknown>): UserProfile {
+  const p: Record<string, unknown> = { ...raw };
+  for (const f of TIMESTAMP_FIELDS) p[f] = reviveTimestamp(p[f]);
+  return p as unknown as UserProfile;
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -47,7 +78,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(PROFILE_CACHE_KEY).then((cached) => {
       if (cached) {
         try {
-          setProfile(JSON.parse(cached));
+          setProfile(reviveProfile(JSON.parse(cached)));
         } catch {}
       }
     });
@@ -74,6 +105,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           humanDesignType: null,
           currentPhase: "signal" as PhaseId,
           currentTurn: 1,
+          sequenceDay: 1,
           journeyStartedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
           membershipStatus: "free" as MembershipStatus,

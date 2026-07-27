@@ -1,0 +1,52 @@
+{
+  "title": "The Soul Has a Posture",
+  "subtitle": "presence before performance",
+  "mapEpigraph": "Presence before performance.",
+  "phase": "signal",
+  "order": 7,
+  "minTurn": 1,
+  "audioPath": "encounters/the-soul-has-a-posture/audio.mp3",
+  "audioFile": "enc7_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "practice",
+      "title": "Claiming your presence",
+      "instruction": "Stand with both feet grounded. Imagine entering the room where you most belong. Let the body find its posture before the mind names it.",
+      "items": [
+        "Feet hip-width. Weight even.",
+        "One slow breath in. Roll the shoulders back.",
+        "Lift the crown of the head, gently.",
+        "Picture the room. See who is there.",
+        "Notice your pace, your voice, your attention.",
+        "Let the body hold that posture for a few breaths."
+      ],
+      "durationLabel": "3–4 min"
+    },
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r7-most-natural",
+          "text": "When are you most naturally yourself?"
+        },
+        {
+          "id": "r7-changes",
+          "text": "What changes in your pace, voice, gaze, and attention?"
+        },
+        {
+          "id": "r7-crystallizing",
+          "text": "Name the quality that appears when I stop performing: …",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "carry",
+      "closing": "Carry the posture, not the pose."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

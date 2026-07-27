@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
   User,
@@ -20,6 +21,8 @@ interface AuthContextValue {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  /** §4 — first-launch anonymous session. linkWithCredential upgrade is Milestone B. */
+  signInAnon: () => Promise<void>;
   logOut: () => Promise<void>;
 }
 
@@ -45,12 +48,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await createUserWithEmailAndPassword(auth, email, password);
   }, []);
 
+  const signInAnon = useCallback(async () => {
+    await signInAnonymously(auth);
+  }, []);
+
   const logOut = useCallback(async () => {
     await signOut(auth);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, logOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signInAnon, logOut }}>
       {children}
     </AuthContext.Provider>
   );

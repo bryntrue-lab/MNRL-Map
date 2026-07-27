@@ -1,0 +1,47 @@
+{
+  "title": "The Quiet Yes",
+  "subtitle": "the invitation held",
+  "mapEpigraph": "It asked again.",
+  "phase": "signal",
+  "order": 5,
+  "minTurn": 1,
+  "audioPath": "encounters/the-quiet-yes/audio.mp3",
+  "audioFile": "enc5_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r5-invitation",
+          "text": "What invitation have you repeatedly postponed?"
+        },
+        {
+          "id": "r5-reasons",
+          "text": "What reasons have been true?"
+        },
+        {
+          "id": "r5-body",
+          "text": "What changed in your body when you admitted the invitation was still there?"
+        },
+        {
+          "id": "r5-crystallizing",
+          "text": "What has been quietly calling that I keep postponing?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "I hear you",
+      "instruction": "Say the invitation aloud in the plainest words you have. Then say only: \"I hear you.\" Before the day ends, make one visible place for it — a note, folder, blank page, or object. Do not begin the work."
+    },
+    {
+      "type": "carry",
+      "closing": "Leave the door open."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

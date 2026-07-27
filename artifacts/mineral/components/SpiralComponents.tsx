@@ -1,8 +1,37 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  Line,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+  Text as SvgText,
+} from "react-native-svg";
 
 import { FontFamily } from "@/constants/typography";
+import {
+  CX,
+  CY,
+  MAP_H,
+  MAP_W,
+  MAX_AGE,
+  PCX,
+  PCY,
+  PHASE_ACCENT,
+  PR,
+  QUARTERS,
+  STATION,
+  pt,
+  phaseOfDay,
+  resolve,
+  spiralLength,
+  spiralPath,
+  type Quarter,
+} from "@/lib/spiral";
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -161,186 +190,420 @@ export function OnboardingSpiral() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// LIFE MAP SPIRAL — 28-year wheel for the Origin screen
+// ORIGIN MAP — §6. The life spiral: three turns of 28 years,
+// birth at the outer edge, the still point at the center (84).
+// Pure renderer — the Origin screen owns every animated number
+// and passes them in as `visual`. No radial gradients here: the
+// still-point glow is layered circles (Atmosphere.tsx is the only
+// file that may define them).
 // ─────────────────────────────────────────────────────────────
 
-interface LifeMapSpiralProps {
-  birthYear?: number;
-  currentYear?: number;
-  phase?: PhaseId;
+export interface OriginMapVisual {
+  /** Choreography cover — 1 fully dark → 0 clear. */
+  blackout: number;
+  /** Still point opacity. */
+  still: number;
+  /** Lived-line draw progress 0..1 (outside-in). */
+  lived: number;
+  /** Future line + hollow crossings opacity. */
+  future: number;
+  /** Needle draw progress 0..1 (center → NOW). */
+  needle: number;
+  /** NOW dot + counterweight line opacity. */
+  nowOn: number;
+  /** Station label opacities (wander raises, settle withdraws). */
+  stationOpacity: Record<Quarter, number>;
+  /** Crossing-year label opacity. */
+  yearsOpacity: number;
+  /** 1 normal · lowered while a sheet is open (arcs recede, needle stays). */
+  arcsDim: number;
 }
 
-export function LifeMapSpiral({
-  birthYear = 1990,
-  currentYear = 2026,
-  phase = "signal",
-}: LifeMapSpiralProps) {
-  const yearsElapsed = currentYear - birthYear;
-  const cycleNumber  = Math.floor(yearsElapsed / 28) + 1;
-  const yearInCycle  = yearsElapsed % 28;
-  const angleDeg     = (yearInCycle / 28) * 360 - 90;
-  const angleRad     = (angleDeg * Math.PI) / 180;
+export const SETTLED_VISUAL: OriginMapVisual = {
+  blackout: 0,
+  still: 1,
+  lived: 1,
+  future: 1,
+  needle: 1,
+  nowOn: 1,
+  stationOpacity: { north: 0, east: 0, south: 0, west: 0 },
+  yearsOpacity: 0,
+  arcsDim: 1,
+};
 
-  const outerR   = 92;
-  const innerR   = 68;
-  const currentR = cycleNumber === 1 ? outerR : innerR;
+interface StationLabelPos {
+  x: number;
+  y: number;
+  anchor: "start" | "middle" | "end";
+}
 
-  const cx = 120 + currentR * Math.cos(angleRad);
-  const cy = 120 + currentR * Math.sin(angleRad);
+const STATION_LABEL_POS: Record<Quarter, StationLabelPos> = {
+  north: { x: CX, y: 122, anchor: "middle" },
+  east:  { x: 336, y: 283, anchor: "end" },
+  south: { x: CX, y: 452, anchor: "middle" },
+  west:  { x: 4, y: 283, anchor: "start" },
+};
 
-  const startX    = 120;
-  const startY    = 120 - currentR;
-  const largeArc  = yearInCycle > 14 ? 1 : 0;
+/** Station a 7-year crossing arrives at (age 7 → east, 14 → south, …). */
+function crossingQuarter(age: number): Quarter {
+  return QUARTERS[(age / 7 - 1) % 4];
+}
 
-  const traveledPath = yearInCycle > 0
-    ? `M ${startX} ${startY} A ${currentR} ${currentR} 0 ${largeArc} 1 ${cx.toFixed(1)} ${cy.toFixed(1)}`
-    : null;
+interface OriginMapProps {
+  /** null → placeholder: the still point alone (§7 no-birth-date state). */
+  currentAge: number | null;
+  /** Pendulum position — equals currentAge when settled. */
+  displayAge: number;
+  birthYear: number | null;
+  visual: OriginMapVisual;
+  width: number;
+  height: number;
+}
 
-  const cycle1Complete = cycleNumber > 1;
-  const phaseColor = PHASE_COLORS[phase] ?? "#c44a8a";
+export function OriginMap({
+  currentAge,
+  displayAge,
+  birthYear,
+  visual,
+  width,
+  height,
+}: OriginMapProps) {
+  const clampedAge = currentAge == null ? null : Math.min(currentAge, MAX_AGE - 0.05);
+
+  const livedGeom = useMemo(() => {
+    if (clampedAge == null) return null;
+    return {
+      d: spiralPath(0, clampedAge),
+      len: spiralLength(0, clampedAge),
+    };
+  }, [clampedAge]);
+
+  const futureD = useMemo(() => {
+    if (clampedAge == null || clampedAge >= MAX_AGE - 0.1) return null;
+    return spiralPath(clampedAge, MAX_AGE);
+  }, [clampedAge]);
+
+  const crossings = useMemo(() => {
+    if (clampedAge == null) return [];
+    const list: { age: number; x: number; y: number; lx: number; ly: number; q: Quarter; lived: boolean }[] = [];
+    for (let a = 7; a < MAX_AGE; a += 7) {
+      const p = pt(a);
+      const out = p.r + 11;
+      list.push({
+        age: a,
+        x: p.x,
+        y: p.y,
+        lx: CX + out * Math.sin(p.th),
+        ly: CY - out * Math.cos(p.th) + 2,
+        q: crossingQuarter(a),
+        lived: a <= clampedAge,
+      });
+    }
+    return list;
+  }, [clampedAge]);
+
+  const now = pt(Math.max(0.2, Math.min(displayAge, MAX_AGE - 0.2)));
+  const nowStation = STATION[resolve(displayAge).quarter];
+  const needleLen = Math.hypot(now.x - CX, now.y - CY);
+  const cw = displayAge >= 14 ? pt(displayAge - 14) : null;
+
+  const placeholder = clampedAge == null;
 
   return (
-    <Svg viewBox="0 0 240 240" width={220} height={220}>
-      {/* Rings */}
-      <Circle cx="120" cy="120" r={outerR} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.5" />
-      <Circle cx="120" cy="120" r={innerR} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
+    <Svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width={width} height={height}>
+      {!placeholder && (
+        <G opacity={visual.arcsDim}>
+          {/* Future — barely there, hollow */}
+          {futureD && (
+            <Path
+              d={futureD}
+              fill="none"
+              stroke="rgba(220,210,255,0.08)"
+              strokeWidth={0.7}
+              opacity={visual.future}
+            />
+          )}
+          {crossings
+            .filter((c) => !c.lived)
+            .map((c) => (
+              <Circle
+                key={`f${c.age}`}
+                cx={c.x}
+                cy={c.y}
+                r={1.8}
+                fill="none"
+                stroke="rgba(220,210,255,0.22)"
+                strokeWidth={0.6}
+                opacity={visual.future}
+              />
+            ))}
 
-      {/* Cardinal arcs */}
-      <Path d="M 120 28 A 92 92 0 0 1 212 120" fill="none" stroke="#5dcaa5" strokeWidth="1.2" opacity="0.35" />
-      <Path d="M 212 120 A 92 92 0 0 1 120 212" fill="none" stroke="#d89a3a" strokeWidth="1.2" opacity="0.35" />
-      <Path d="M 120 212 A 92 92 0 0 1 28 120"  fill="none" stroke="#6b8eb8" strokeWidth="1.2" opacity="0.35" />
-      <Path d="M 28 120 A 92 92 0 0 1 120 28"   fill="none" stroke="#c44a8a" strokeWidth="1.2" opacity="0.35" />
+          {/* Lived — drawn outside-in during the choreography */}
+          {livedGeom && (
+            <Path
+              d={livedGeom.d}
+              fill="none"
+              stroke="rgba(220,210,255,0.33)"
+              strokeWidth={1}
+              strokeDasharray={[livedGeom.len]}
+              strokeDashoffset={livedGeom.len * (1 - visual.lived)}
+            />
+          )}
+          {crossings
+            .filter((c) => c.lived)
+            .map((c) => (
+              <Circle
+                key={`l${c.age}`}
+                cx={c.x}
+                cy={c.y}
+                r={2.4}
+                fill={STATION[c.q].color}
+                opacity={0.85 * (visual.lived >= (c.age / (clampedAge || 1)) ? 1 : 0)}
+              />
+            ))}
 
-      {/* Cardinal markers */}
-      <Circle cx="120" cy="28"  r="3" fill="#c44a8a" />
-      <Circle cx="212" cy="120" r="3" fill="#5dcaa5" />
-      <Circle cx="120" cy="212" r="3" fill="#d89a3a" />
-      <Circle cx="28"  cy="120" r="3" fill="#6b8eb8" />
+          {/* Crossing years — visible while wandering or during the draw */}
+          <G opacity={visual.yearsOpacity}>
+            {birthYear != null &&
+              crossings
+                .filter((c) => c.lived)
+                .map((c) => (
+                  <SvgText
+                    key={`y${c.age}`}
+                    x={c.lx}
+                    y={c.ly}
+                    textAnchor="middle"
+                    fill="rgba(255,255,255,0.38)"
+                    fontSize={6.5}
+                    fontFamily="sans-serif"
+                  >
+                    {birthYear + c.age}
+                  </SvgText>
+                ))}
+          </G>
 
-      {/* Compass labels */}
-      <SvgText x="120" y="14"  textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="7" letterSpacing="2" fontFamily="sans-serif">N</SvgText>
-      <SvgText x="228" y="124" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="7" letterSpacing="2" fontFamily="sans-serif">E</SvgText>
-      <SvgText x="120" y="232" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="7" letterSpacing="2" fontFamily="sans-serif">S</SvgText>
-      <SvgText x="12"  y="124" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="7" letterSpacing="2" fontFamily="sans-serif">W</SvgText>
-
-      {/* Birth year at north */}
-      <SvgText x="120" y="6" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="5.5" fontFamily="sans-serif">
-        {birthYear}
-      </SvgText>
-
-      {/* Completed cycle 1 full ring */}
-      {cycle1Complete && (
-        <Circle cx="120" cy="120" r={outerR} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="0.5" />
+          {/* Station labels — name over structure subscript */}
+          {QUARTERS.map((q) => {
+            const posn = STATION_LABEL_POS[q];
+            const s = STATION[q];
+            return (
+              <G key={q} opacity={visual.stationOpacity[q]}>
+                <SvgText
+                  x={posn.x}
+                  y={posn.y}
+                  textAnchor={posn.anchor}
+                  fill={s.color}
+                  fontSize={8.5}
+                  letterSpacing={2}
+                  fontFamily="sans-serif"
+                  opacity={0.8}
+                >
+                  {s.label}
+                </SvgText>
+                <SvgText
+                  x={posn.x}
+                  y={posn.y + 11}
+                  textAnchor={posn.anchor}
+                  fill="rgba(255,255,255,0.32)"
+                  fontSize={6.5}
+                  letterSpacing={1.6}
+                  fontFamily="sans-serif"
+                >
+                  {s.structure}
+                </SvgText>
+              </G>
+            );
+          })}
+        </G>
       )}
 
-      {/* Traveled arc */}
-      {traveledPath && (
-        <Path d={traveledPath} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.6" />
+      {/* Still point — the destination; carries the visual weight */}
+      <G opacity={visual.still}>
+        <Circle cx={CX} cy={CY} r={26} fill="rgba(200,190,225,0.05)" />
+        <Circle cx={CX} cy={CY} r={15} fill="rgba(200,190,225,0.09)" />
+        <Circle cx={CX} cy={CY} r={8} fill="rgba(210,200,235,0.16)" />
+        <Circle cx={CX} cy={CY} r={3.2} fill="rgba(225,215,250,0.85)" />
+      </G>
+
+      {!placeholder && (
+        <>
+          {/* Counterweight line — dotted, center → 14 years back */}
+          {cw && (
+            <Line
+              x1={CX}
+              y1={CY}
+              x2={cw.x}
+              y2={cw.y}
+              stroke="rgba(200,190,225,0.28)"
+              strokeWidth={0.7}
+              strokeDasharray={[2, 4]}
+              opacity={visual.nowOn}
+            />
+          )}
+
+          {/* Needle — center → NOW, luminous toward the outer end */}
+          <Defs>
+            <LinearGradient
+              id="originNeedle"
+              gradientUnits="userSpaceOnUse"
+              x1={CX}
+              y1={CY}
+              x2={now.x}
+              y2={now.y}
+            >
+              <Stop offset="0%" stopColor="#e6e1ff" stopOpacity="0" />
+              <Stop offset="60%" stopColor="#e6e1ff" stopOpacity="0.35" />
+              <Stop offset="100%" stopColor="#fff0ff" stopOpacity="0.9" />
+            </LinearGradient>
+          </Defs>
+          <Line
+            x1={CX}
+            y1={CY}
+            x2={now.x}
+            y2={now.y}
+            stroke="url(#originNeedle)"
+            strokeWidth={1}
+            strokeDasharray={[needleLen]}
+            strokeDashoffset={needleLen * (1 - visual.needle)}
+          />
+
+          {/* NOW — in the color of the station being approached */}
+          <Circle cx={now.x} cy={now.y} r={3} fill={nowStation.color} opacity={visual.nowOn} />
+        </>
       )}
 
-      {/* Current position — glowing dot */}
-      <Circle cx={cx} cy={cy} r="5"  fill={phaseColor} />
-      <Circle cx={cx} cy={cy} r="9"  fill="none" stroke={phaseColor} strokeWidth="0.5" opacity="0.55" />
-      <Circle cx={cx} cy={cy} r="14" fill="none" stroke={phaseColor} strokeWidth="0.5" opacity="0.25" />
-
-      {/* NOW label */}
-      <SvgText
-        x={cx + 12} y={cy + 4}
-        textAnchor="start"
-        fill="rgba(255,255,255,0.5)"
-        fontSize="5.5"
-        fontFamily="sans-serif"
-        letterSpacing="1"
-      >
-        NOW
-      </SvgText>
-
-      {/* Still point center */}
-      <Circle cx="120" cy="120" r="9" fill="rgba(168,156,220,0.06)" />
-      <Circle cx="120" cy="120" r="4" fill="rgba(168,156,220,0.8)" />
+      {/* Choreography cover */}
+      {visual.blackout > 0.003 && (
+        <Rect x={0} y={0} width={MAP_W} height={MAP_H} fill="#0a0812" opacity={visual.blackout} />
+      )}
     </Svg>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// ORIGIN META — meta rows below the LifeMapSpiral on Origin screen
+// TURN WHEEL — §9. The practice clock: 108 days, day 1 at north,
+// clockwise. Dot grammar: walked days filled in their phase
+// accent · today white with a halo · future barely-there hollow ·
+// visited days carry a thin accent ring.
 // ─────────────────────────────────────────────────────────────
 
-interface OriginMetaProps {
-  birthYear?: number;
-  currentYear?: number;
-  phase?: PhaseId;
-  humanDesignType?: string | null;
+interface TurnWheelProps {
+  /** Today's 1..108 position within the turn. */
+  today: number;
+  visited: ReadonlySet<number>;
+  width: number;
+  height: number;
 }
 
-const ORDINALS: TurnLabel[] = ["first", "second", "third", "fourth", "fifth"];
+const PHASE_LABELS: { name: string; frac: number; phase: PhaseId }[] = [
+  { name: "SIGNAL", frac: 0.125, phase: "signal" },
+  { name: "FIELD", frac: 0.375, phase: "field" },
+  { name: "FRICTION", frac: 0.625, phase: "friction" },
+  { name: "VOICE", frac: 0.875, phase: "voice" },
+];
 
-export function OriginMeta({
-  birthYear,
-  currentYear = 2026,
-  phase = "signal",
-  humanDesignType = null,
-}: OriginMetaProps) {
-  const yearsElapsed = birthYear ? currentYear - birthYear : 0;
-  const cycleNumber  = Math.floor(yearsElapsed / 28) + 1;
-  const yearInCycle  = yearsElapsed % 28;
-  const cycleLabel   = ORDINALS[cycleNumber - 1] ?? `${cycleNumber}th`;
-
-  const phaseColor = PHASE_COLORS[phase] ?? "#c44a8a";
-  const phaseName  = PHASE_NAMES[phase]  ?? "The Signal";
+export function TurnWheel({ today, visited, width, height }: TurnWheelProps) {
+  const dots = useMemo(() => {
+    const list: { d: number; x: number; y: number; accent: string }[] = [];
+    for (let d = 1; d <= 108; d++) {
+      const th = ((d - 1) / 108) * 2 * Math.PI;
+      list.push({
+        d,
+        x: PCX + PR * Math.sin(th),
+        y: PCY - PR * Math.cos(th),
+        accent: PHASE_ACCENT[phaseOfDay(d)],
+      });
+    }
+    return list;
+  }, []);
 
   return (
-    <View style={metaStyles.container}>
-      {birthYear !== undefined && (
-        <View style={metaStyles.row}>
-          <Text style={metaStyles.key}>born</Text>
-          <Text style={metaStyles.val}>{birthYear} · cycle {cycleLabel} began</Text>
-        </View>
-      )}
-      <View style={metaStyles.row}>
-        <Text style={metaStyles.key}>phase</Text>
-        <Text style={[metaStyles.val, { color: phaseColor }]}>{phaseName}</Text>
-      </View>
-      <View style={metaStyles.row}>
-        <Text style={metaStyles.key}>now</Text>
-        <Text style={[metaStyles.val, { color: "#c4baea" }]}>
-          year {yearInCycle} of cycle {cycleLabel}
-        </Text>
-      </View>
-      <View style={metaStyles.row}>
-        <Text style={metaStyles.key}>design</Text>
-        <Text style={metaStyles.val}>
-          {humanDesignType ?? "add your birth date →"}
-        </Text>
-      </View>
-    </View>
+    <Svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width={width} height={height}>
+      {PHASE_LABELS.map((p) => {
+        const th = p.frac * 2 * Math.PI;
+        const x = PCX + (PR + 26) * Math.sin(th);
+        const y = PCY - (PR + 26) * Math.cos(th) + 2;
+        return (
+          <SvgText
+            key={p.name}
+            x={x}
+            y={y}
+            textAnchor="middle"
+            fill={PHASE_ACCENT[p.phase]}
+            opacity={0.55}
+            fontSize={7}
+            letterSpacing={2.4}
+            fontFamily="sans-serif"
+          >
+            {p.name}
+          </SvgText>
+        );
+      })}
+
+      {dots.map((dot) => {
+        if (dot.d === today) {
+          return (
+            <G key={dot.d}>
+              <Circle cx={dot.x} cy={dot.y} r={3} fill="rgba(255,255,255,0.96)" />
+              <Circle
+                cx={dot.x}
+                cy={dot.y}
+                r={6.5}
+                fill="none"
+                stroke={dot.accent}
+                strokeWidth={0.7}
+                opacity={0.65}
+              />
+            </G>
+          );
+        }
+        const isVisited = visited.has(dot.d);
+        if (dot.d < today) {
+          return (
+            <G key={dot.d}>
+              <Circle cx={dot.x} cy={dot.y} r={2} fill={dot.accent} opacity={0.75} />
+              {isVisited && (
+                <Circle
+                  cx={dot.x}
+                  cy={dot.y}
+                  r={4.2}
+                  fill="none"
+                  stroke={dot.accent}
+                  strokeWidth={0.5}
+                  opacity={0.5}
+                />
+              )}
+            </G>
+          );
+        }
+        return (
+          <G key={dot.d}>
+            <Circle
+              cx={dot.x}
+              cy={dot.y}
+              r={1.4}
+              fill="none"
+              stroke="rgba(255,255,255,0.16)"
+              strokeWidth={0.5}
+            />
+            {isVisited && (
+              <Circle
+                cx={dot.x}
+                cy={dot.y}
+                r={4.2}
+                fill="none"
+                stroke={dot.accent}
+                strokeWidth={0.5}
+                opacity={0.4}
+              />
+            )}
+          </G>
+        );
+      })}
+
+      {/* The still point holds the center of this clock too */}
+      <Circle cx={PCX} cy={PCY} r={12} fill="rgba(200,190,225,0.06)" />
+      <Circle cx={PCX} cy={PCY} r={2.6} fill="rgba(225,215,250,0.7)" />
+    </Svg>
   );
 }
-
-const metaStyles = StyleSheet.create({
-  container: {
-    paddingTop: 14,
-    borderTopWidth: 0.5,
-    borderTopColor: "rgba(255,255,255,0.06)",
-    gap: 10,
-    paddingHorizontal: 24,
-    width: "100%",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-  },
-  key: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 11,
-    color: "rgba(255,255,255,0.4)",
-    letterSpacing: 0.3,
-  },
-  val: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-  },
-});

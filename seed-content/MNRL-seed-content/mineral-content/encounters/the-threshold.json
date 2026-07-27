@@ -1,0 +1,47 @@
+{
+  "title": "The Threshold",
+  "subtitle": "saying yes to not knowing",
+  "mapEpigraph": "The door is already open.",
+  "phase": "signal",
+  "order": 1,
+  "minTurn": 1,
+  "audioPath": "encounters/the-threshold/audio.mp3",
+  "audioFile": "enc1_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "intro": "What's been happening in your life as you choose to begin?",
+      "prompts": [
+        {
+          "id": "r1-context",
+          "text": "What's been happening in your life as you choose to begin?"
+        },
+        {
+          "id": "r1-true-answer",
+          "text": "What answer sounds true — before it becomes impressive?"
+        },
+        {
+          "id": "r1-crystallizing",
+          "text": "Why did I really say yes to this path?",
+          "subtext": "Not the polished answer. The real one.",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Let the body answer first",
+      "instruction": "Sit in silence for sixty seconds. Let the body answer first. Then speak the answer under your breath — without editing it.",
+      "durationLabel": "1 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Notice what feels newly possible now that the yes has been spoken."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

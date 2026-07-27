@@ -1,0 +1,47 @@
+{
+  "title": "The Ache Is a Compass",
+  "subtitle": "the unfinished thing, still pointing",
+  "mapEpigraph": "The unfinished thing is still pointing.",
+  "phase": "signal",
+  "order": 2,
+  "minTurn": 1,
+  "audioPath": "encounters/the-ache-is-a-compass/audio.mp3",
+  "audioFile": "enc2_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r2-location",
+          "text": "Where does the ache live in the body?"
+        },
+        {
+          "id": "r2-duration",
+          "text": "How long has it been there?"
+        },
+        {
+          "id": "r2-conditions",
+          "text": "What quiets it, and what sharpens it?"
+        },
+        {
+          "id": "r2-crystallizing",
+          "text": "The thing that stays unfinished in me is… and it may be pointing toward…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The pocket compass",
+      "instruction": "Carry one small object in your pocket. Each time your hand finds it, notice whether the ache has sharpened, softened, or moved."
+    },
+    {
+      "type": "carry",
+      "closing": "Keep the trace. Do not force a direction."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

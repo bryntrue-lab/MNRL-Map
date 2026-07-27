@@ -1,0 +1,43 @@
+{
+  "title": "Living the Question",
+  "subtitle": "a question worth carrying",
+  "mapEpigraph": "A companion, not a demand.",
+  "phase": "signal",
+  "order": 6,
+  "minTurn": 1,
+  "audioPath": "encounters/living-the-question/audio.mp3",
+  "audioFile": "enc6_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r6-longest",
+          "text": "What question has followed you longest?"
+        },
+        {
+          "id": "r6-opens",
+          "text": "Which question opens the room rather than narrowing it?"
+        },
+        {
+          "id": "r6-crystallizing",
+          "text": "The question I am willing to live beside is…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "A companion, not a demand",
+      "instruction": "Write one open question on paper. Carry it today. Do not answer it."
+    },
+    {
+      "type": "carry",
+      "closing": "Let the question keep its mystery."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

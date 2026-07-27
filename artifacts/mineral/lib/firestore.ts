@@ -4,15 +4,18 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
   where,
 } from "firebase/firestore";
-import { deleteObject, ref as storageRef } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref as storageRef } from "firebase/storage";
 
 import { db, storage } from "@/lib/firebase";
+import { encounterFor, practiceTurnOf } from "@/lib/spiral";
 import type {
   CaptureMode,
   EncounterDoc,
@@ -24,44 +27,121 @@ import type {
 } from "@/types/firestore";
 
 // ─────────────────────────────────────────────────────────────
-// §7 — Today's encounter selection
+// §5 v1.7 — the practice clock selects the encounter.
+// encounterFor(sequenceDay) SUPERSEDES the v1.6 completed-set scan.
 // ─────────────────────────────────────────────────────────────
 
-export async function getTodayEncounter(
+export type EncounterWithId = EncounterDoc & { id: string };
+
+let libraryCache: EncounterWithId[] | null = null;
+
+/** The whole library is seven small docs — fetch once, keep for the session. */
+export async function fetchEncounterLibrary(): Promise<EncounterWithId[]> {
+  if (libraryCache) return libraryCache;
+  const snap = await getDocs(
+    query(collection(db, "encounters"), orderBy("order", "asc"))
+  );
+  libraryCache = snap.docs.map((d) => ({ id: d.id, ...(d.data() as EncounterDoc) }));
+  return libraryCache;
+}
+
+/** Pure selection: sequenceDay → (phase, order), minTurn honored. */
+export function selectEncounterForDay(
+  library: EncounterWithId[],
+  sequenceDay: number,
+  currentTurn: number
+): EncounterWithId | null {
+  const { phase, order } = encounterFor(sequenceDay);
+  return (
+    library.find(
+      (e) => e.phase === phase && e.order === order && e.minTurn <= currentTurn
+    ) ?? null
+  );
+}
+
+const PHASE_ORDER: PhaseId[] = ["signal", "field", "friction", "voice"];
+
+/** 1..108 wheel day an encounter occupies within a practice turn. */
+export function dayOfEncounter(e: Pick<EncounterDoc, "phase" | "order">): number {
+  return PHASE_ORDER.indexOf(e.phase) * 27 + e.order;
+}
+
+/** §11 — Begin resolves the Storage URL; failures surface to the caller. */
+export async function resolveAudioUrl(audioPath: string): Promise<string> {
+  return getDownloadURL(storageRef(storage, audioPath));
+}
+
+// ─────────────────────────────────────────────────────────────
+// userEncounters — turn-scoped instance docs `${encounterId}_t${turn}`
+// ─────────────────────────────────────────────────────────────
+
+export function userEncounterId(encounterId: string, turn: number): string {
+  return `${encounterId}_t${turn}`;
+}
+
+export async function getUserEncounter(
   uid: string,
+  encounterId: string,
+  turn: number
+): Promise<UserEncounterDoc | null> {
+  const snap = await getDoc(
+    doc(db, "users", uid, "userEncounters", userEncounterId(encounterId, turn))
+  );
+  return snap.exists() ? (snap.data() as UserEncounterDoc) : null;
+}
+
+/**
+ * §9 — an out-of-sequence visit records 'visited' + visitedAt, but must never
+ * disturb a stronger status (in-progress / completed). Create-only.
+ */
+export async function recordVisit(
+  uid: string,
+  encounterId: string,
+  turn: number
+): Promise<void> {
+  const ref = doc(db, "users", uid, "userEncounters", userEncounterId(encounterId, turn));
+  const snap = await getDoc(ref);
+  if (snap.exists()) return;
+  const data: Omit<UserEncounterDoc, "visitedAt"> & { visitedAt: FieldValue } = {
+    encounterId,
+    turn,
+    status: "visited",
+    startedAt: null,
+    completedAt: null,
+    visitedAt: serverTimestamp(),
+    audioPosition: 0,
+    blockIndex: 0,
+  };
+  await setDoc(ref, data);
+}
+
+/** All instance docs for a practice turn — drives the turn wheel's dot grammar. */
+export function turnEncountersQuery(uid: string, turn: number) {
+  return query(
+    collection(db, "users", uid, "userEncounters"),
+    where("turn", "==", turn)
+  );
+}
+
+/**
+ * Keep users.currentPhase / currentTurn in sync with the sequenceDay pointer
+ * when a phase or turn boundary is crossed (§5). Merge write; both fields are
+ * client-writable under the v1.6 rules.
+ */
+export async function syncPracticePosition(
+  uid: string,
+  sequenceDay: number,
   currentPhase: PhaseId,
   currentTurn: number
-): Promise<(EncounterDoc & { id: string }) | null> {
-  // Step 2: Query encounters in the current phase, ordered by sequence.
-  const snap = await getDocs(
-    query(
-      collection(db, "encounters"),
-      where("phase", "==", currentPhase),
-      orderBy("order", "asc")
-    )
+): Promise<void> {
+  const phase = encounterFor(sequenceDay).phase;
+  const turn = practiceTurnOf(sequenceDay);
+  if (phase === currentPhase && turn === currentTurn) return;
+  await setDoc(
+    doc(db, "users", uid),
+    { currentPhase: phase, currentTurn: turn },
+    { merge: true }
   );
-
-  // Step 3: Filter minTurn client-side — combining a range filter with phase + order
-  // hits Firestore's range/orderBy restriction; the library is small so this is fine.
-  const eligible = snap.docs
-    .filter((d) => (d.data() as EncounterDoc).minTurn <= currentTurn)
-    .map((d) => ({ id: d.id, ...(d.data() as EncounterDoc) }));
-
-  // Step 4: Build the completed-encounter set for this turn.
-  // Doc ids follow the pattern `${encounterId}_t${turn}` (turn-scoped).
-  const instanceSnap = await getDocs(
-    query(
-      collection(db, "users", uid, "userEncounters"),
-      where("status", "==", "completed"),
-      where("turn", "==", currentTurn)
-    )
-  );
-  const completedIds = new Set(
-    instanceSnap.docs.map((d) => (d.data() as UserEncounterDoc).encounterId)
-  );
-
-  // Step 5: First encounter in the ordered list that hasn't been completed this turn.
-  return eligible.find((e) => !completedIds.has(e.id)) ?? null;
 }
 
 // ─────────────────────────────────────────────────────────────

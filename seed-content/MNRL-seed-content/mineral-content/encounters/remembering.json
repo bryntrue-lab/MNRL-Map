@@ -1,0 +1,50 @@
+{
+  "title": "Remembering",
+  "subtitle": "the seed remembers the tree",
+  "mapEpigraph": "The seed remembers the tree.",
+  "phase": "signal",
+  "order": 3,
+  "minTurn": 1,
+  "audioPath": "encounters/remembering/audio.mp3",
+  "audioFile": "enc3_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r3-gravitation",
+          "text": "What did you naturally gravitate toward before anyone evaluated it?"
+        },
+        {
+          "id": "r3-sensory",
+          "text": "What did the scene feel like — in the body, the light, the sound?"
+        },
+        {
+          "id": "r3-crystallizing",
+          "text": "What thread from that memory still lives in me today?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ],
+      "offerings": [
+        {
+          "key": "seed",
+          "text": "In many Indigenous traditions, the soul has been understood to arrive already carrying a purpose — like a seed encoded with an original intention. Life, in these traditions, is less about inventing a direction than about listening, remembering, and unfolding what was already planted. The seed is often said to be drawn out not alone, but by community and land together."
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Return to a daydream",
+      "instruction": "Revisit one youthful or free-spirited daydream for three minutes. Describe only the sensory scene before naming what it means.",
+      "durationLabel": "3 min"
+    },
+    {
+      "type": "carry",
+      "closing": "Let one quality from the scene accompany you today."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

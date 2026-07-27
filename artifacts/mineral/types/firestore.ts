@@ -27,7 +27,8 @@ export type PatternType =
 
 export type MembershipStatus = "free" | "member";
 
-export type EncounterStatus = "saved" | "in-progress" | "completed";
+// v1.7: 'visited' — an out-of-sequence visit honored without disturbing the sequence.
+export type EncounterStatus = "saved" | "in-progress" | "completed" | "visited";
 
 export type CaptureMode = "audio" | "text";
 
@@ -49,6 +50,10 @@ export interface UserDoc {
   currentTurn: number;
   journeyStartedAt: Timestamp;
   createdAt: Timestamp;
+
+  // v1.7 — 1-indexed pointer into the 108-day practice; starts at 1.
+  // Client-writable (not one of the five guarded fields).
+  sequenceDay: number;
 
   // Server-written only — never set or modified by the client.
   // Security rules enforce their initial values on create and immutability on update.
@@ -73,6 +78,10 @@ export interface EncounterDoc {
   reflectionQuestions: { id: string; text: string }[];
   integrationPractice: string;
   fieldOfferings?: { key: string; text: string }[];
+
+  // v1.7: one-line phrase shown on the map the day this encounter is today;
+  // falls back to subtitle when null.
+  mapEpigraph: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -86,6 +95,13 @@ export interface UserEncounterDoc {
   status: EncounterStatus;
   startedAt: Timestamp | null;
   completedAt: Timestamp | null;
+
+  // v1.7 — first out-of-sequence visit; distinct from startedAt.
+  visitedAt: Timestamp | null;
+  // v1.7 — seconds into audio, for resume (Milestone B writes this).
+  audioPosition: number;
+  // v1.7 — block-screen index, for resume (Milestone B writes this).
+  blockIndex: number;
 }
 
 // ─────────────────────────────────────────────────────────────

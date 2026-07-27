@@ -1,5 +1,5 @@
 import React from "react";
-import { Dimensions } from "react-native";
+import { Animated, Dimensions, Easing, StyleSheet, View } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 const { width, height } = Dimensions.get("window");
@@ -128,5 +128,86 @@ export function IntegralAtmosphere() {
         { offset: "100%", color: "#050208", opacity: "0" },
       ]}
     />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Origin tab — §2. Ground #0a0812, two soft glows (#241a38 / #141024),
+// and a slow ~7s breath. Deliberately darker and stiller than the
+// encounter atmospheres above.
+// ─────────────────────────────────────────────────────────────
+
+export function OriginAtmosphere() {
+  const breath = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: 3500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: 3500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breath]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient id="originGlowA" cx="30%" cy="62%" rx="58%" ry="44%">
+            <Stop offset="0%" stopColor="#241a38" stopOpacity="0.55" />
+            <Stop offset="100%" stopColor="#241a38" stopOpacity="0" />
+          </RadialGradient>
+          <RadialGradient id="originGlowB" cx="72%" cy="26%" rx="52%" ry="42%">
+            <Stop offset="0%" stopColor="#141024" stopOpacity="0.65" />
+            <Stop offset="100%" stopColor="#141024" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#originGlowA)" />
+        <Rect width="100%" height="100%" fill="url(#originGlowB)" />
+      </Svg>
+
+      {/* The breath — a center glow swelling and settling on a ~7s cycle. */}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            opacity: breath.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.4, 0.9],
+            }),
+            transform: [
+              {
+                scale: breath.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 1.05],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Svg width={width} height={height}>
+          <Defs>
+            <RadialGradient id="originBreath" cx="50%" cy="46%" rx="46%" ry="36%">
+              <Stop offset="0%" stopColor="#241a38" stopOpacity="0.32" />
+              <Stop offset="100%" stopColor="#241a38" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#originBreath)" />
+        </Svg>
+      </Animated.View>
+    </View>
   );
 }
