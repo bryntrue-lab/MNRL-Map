@@ -71,6 +71,18 @@ export const COUNTERWEIGHT_QUESTION: Record<PhaseId, string> = {
   voice: "What were you saying then that this season is gathering toward?",
 };
 
+/**
+ * Future-tense counterweight questions (§1b / C.1 §8) — used when the
+ * counterweight's calendar date is AFTER the device's today. Keyed to the
+ * counterweight position's OWN phase.
+ */
+export const COUNTERWEIGHT_QUESTION_FUTURE: Record<PhaseId, string> = {
+  signal: "What will be arriving then that today is already preparing?",
+  field: "What gathers now that you will be speaking then?",
+  friction: "What are you up against now that will have become material by then?",
+  voice: "What are you saying now that then will gather toward?",
+};
+
 export interface Season {
   title: string;
   question: string;
@@ -335,8 +347,8 @@ export interface Companion {
 /** Missing companions are omitted, never greyed. Descriptors verbatim (§5). */
 export function companionsFor(age: number): Companion[] {
   const defs: Companion[] = [
-    { key: "echo",    name: "THE ECHO",    desc: "the same season, one turn behind",  age: age - 28 },
-    { key: "horizon", name: "THE HORIZON", desc: "the same season, one turn ahead",   age: age + 28 },
+    { key: "echo",    name: "THE ECHO",    desc: "the same season, one cycle behind", age: age - 28 },
+    { key: "horizon", name: "THE HORIZON", desc: "the same season, one cycle ahead",  age: age + 28 },
     { key: "ballast", name: "THE BALLAST", desc: "what was gathering then, lived",    age: age - 14 },
     { key: "answer",  name: "THE ANSWER",  desc: "the counterweight still to come",   age: age + 14 },
   ];

@@ -11,6 +11,7 @@ import {
 import { FontFamily } from "@/constants/typography";
 import {
   COUNTERWEIGHT_QUESTION,
+  COUNTERWEIGHT_QUESTION_FUTURE,
   SEASON_MODE,
   companionsFor,
   counterweightDate,
@@ -19,6 +20,7 @@ import {
   ritualDateLabel,
   seasonFor,
 } from "@/lib/spiral";
+import type { PhaseId } from "@/types/firestore";
 
 // ─────────────────────────────────────────────────────────────
 // Sheet shell — slides up to ~45–50% height. Manual dismissal only:
@@ -105,6 +107,16 @@ interface ReadingSheetProps {
   onClose: () => void;
   onCompanions: () => void;
   onSwingTo: (age: number) => void;
+  /** §6 — open the capture sheet for the position being read. */
+  onKeepWhatComes: (mapRef: { date: string; phase: PhaseId }) => void;
+}
+
+/** ISO YYYY-MM-DD, local-calendar (matches the date the sheet is describing). */
+function isoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function ReadingSheet({
@@ -117,12 +129,30 @@ export function ReadingSheet({
   onClose,
   onCompanions,
   onSwingTo,
+  onKeepWhatComes,
 }: ReadingSheetProps) {
   const r = resolve(displayAge);
   const season = seasonFor(r);
   const hasCw = displayAge >= 14;
+  const cwPhase = resolve(displayAge - 14).phase;
   const cwDate = hasCw ? counterweightDate(birthDate, now, displayAge, currentAge) : null;
-  const cwQuestion = hasCw ? COUNTERWEIGHT_QUESTION[resolve(displayAge - 14).phase] : null;
+
+  // Tense is set ONLY by the counterweight's calendar date vs. today.
+  const cwFuture = cwDate != null && cwDate.getTime() > now.getTime();
+  const atNow = Math.abs(displayAge - currentAge) < 0.01;
+  const cwQuestion = hasCw
+    ? cwFuture
+      ? COUNTERWEIGHT_QUESTION_FUTURE[cwPhase]
+      : COUNTERWEIGHT_QUESTION[cwPhase]
+    : null;
+  const cwEyebrow = cwFuture
+    ? "THE COUNTERWEIGHT, TO COME"
+    : atNow
+      ? "YOUR COUNTERWEIGHT TODAY"
+      : "THE COUNTERWEIGHT";
+
+  // The date the sheet is describing — the pendulum's own position.
+  const posDate = dateAtAge(birthDate, displayAge);
 
   return (
     <SheetShell open={open} onClose={onClose} bottomPad={bottomPad} testID="reading-sheet">
@@ -141,19 +171,29 @@ export function ReadingSheet({
       )}
 
       {hasCw && cwDate && cwQuestion && (
-        <Pressable
-          style={styles.cwCard}
-          onPress={() => onSwingTo(displayAge - 14)}
-          testID="counterweight-card"
-        >
-          <Text style={styles.cwEyebrow}>THE COUNTERWEIGHT</Text>
-          <Text style={styles.cwDate}>{ritualDateLabel(cwDate)}</Text>
-          <Text style={styles.cwQuestion}>{cwQuestion}</Text>
-        </Pressable>
+        <View style={styles.cwCard}>
+          <Pressable
+            onPress={() => onSwingTo(displayAge - 14)}
+            testID="counterweight-card"
+          >
+            <Text style={styles.cwEyebrow}>{cwEyebrow}</Text>
+            <Text style={styles.cwDate}>{ritualDateLabel(cwDate)}</Text>
+            <Text style={styles.cwQuestion}>{cwQuestion}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onKeepWhatComes({ date: isoDate(posDate), phase: r.phase })}
+            style={styles.keepLink}
+            testID="keep-what-comes"
+            accessibilityRole="button"
+            accessibilityLabel="keep what comes"
+          >
+            <Text style={styles.keepLinkText}>keep what comes →</Text>
+          </Pressable>
+        </View>
       )}
 
       <Pressable onPress={onCompanions} style={styles.companionsLink} testID="companions-link">
-        <Text style={styles.companionsLinkText}>four companions on the chord →</Text>
+        <Text style={styles.companionsLinkText}>four companions of this moment →</Text>
       </Pressable>
     </SheetShell>
   );
@@ -185,7 +225,7 @@ export function CompanionsSheet({
 
   return (
     <SheetShell open={open} onClose={onClose} bottomPad={bottomPad} testID="companions-sheet">
-      <Text style={styles.eyebrow}>FOUR COMPANIONS ON THE CHORD</Text>
+      <Text style={styles.eyebrow}>THE CONTINUUM OF THIS MOMENT</Text>
 
       {companions.map((c) => (
         <Pressable
@@ -329,8 +369,23 @@ const styles = StyleSheet.create({
     color: "rgba(235,228,255,0.6)",
   },
 
+  keepLink: {
+    marginTop: 14,
+    paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  keepLinkText: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 12.5,
+    letterSpacing: 0.3,
+    color: "rgba(200,190,225,0.6)",
+  },
+
   companionsLink: {
-    paddingVertical: 6,
+    paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: "center",
   },
   companionsLinkText: {
     fontFamily: FontFamily.sans400,

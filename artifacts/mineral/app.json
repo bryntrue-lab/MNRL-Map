@@ -2,34 +2,36 @@
   "expo": {
     "name": "Mineral",
     "slug": "mineral",
-    "version": "0.5.0",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon-1024.png",
     "scheme": "mineral",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#0a0510"
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0610"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mineral.app",
+      "bundleIdentifier": "com.madebymineral.quartz",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
-        "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes."
+        "NSMicrophoneUsageDescription": "Mineral records your voice reflections — they stay in your field.",
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
-      "package": "com.mineral.app",
+      "package": "com.madebymineral.quartz",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#0a0510"
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundImage": "./assets/images/adaptive-icon-background.png"
       }
     },
     "web": {
-      "favicon": "./assets/images/icon.png",
+      "favicon": "./assets/images/icon-1024.png",
       "backgroundColor": "#0a0510"
     },
     "plugins": [
@@ -41,7 +43,12 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Mineral records your voice reflections — they stay in your field."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -11,6 +11,8 @@ interface TabTopBarProps {
   onRightPress?: () => void;
 }
 
+// C.1 §1d — an icon renders ONLY when it has a real handler. Dead chrome
+// (the old default hamburger) is gone; balance is kept with spacers.
 export default function TabTopBar({
   title,
   leftIcon = "≡",
@@ -20,13 +22,21 @@ export default function TabTopBar({
 }: TabTopBarProps) {
   return (
     <View style={styles.topBar}>
-      <Pressable onPress={onLeftPress} hitSlop={12}>
-        <Text style={styles.iconText}>{leftIcon}</Text>
-      </Pressable>
+      {onLeftPress ? (
+        <Pressable onPress={onLeftPress} hitSlop={14} style={styles.iconHit}>
+          <Text style={styles.iconText}>{leftIcon}</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.iconHit} />
+      )}
       <Text style={styles.eyebrow}>{title}</Text>
-      <Pressable onPress={onRightPress} hitSlop={12}>
-        <Text style={styles.iconText}>{rightIcon}</Text>
-      </Pressable>
+      {onRightPress ? (
+        <Pressable onPress={onRightPress} hitSlop={14} style={styles.iconHit} testID="topbar-right">
+          <Text style={styles.iconText}>{rightIcon}</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.iconHit} />
+      )}
     </View>
   );
 }
@@ -37,6 +47,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 28,
+  },
+  iconHit: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconText: {
     fontSize: 18,

@@ -16,6 +16,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OriginAtmosphere } from "@/components/Atmosphere";
+import { CaptureSheet } from "@/components/CaptureSheet";
 import { CompanionsSheet, QuietToast, ReadingSheet } from "@/components/OriginSheets";
 import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralComponents";
 import { FontFamily } from "@/constants/typography";
@@ -348,6 +349,10 @@ export default function OriginScreen() {
   const [sheet, setSheet] = useState<null | "reading" | "companions">(null);
   const arcsDim = useEasedValue(sheet ? 0.55 : 1, 300);
 
+  // §6 — the counterweight capture: the reading sheet asks, the shared
+  // CaptureSheet answers, carrying the mapRef of the position being read.
+  const [capture, setCapture] = useState<{ date: string; phase: PhaseId } | null>(null);
+
   const [turnOpen, setTurnOpen] = useState(false);
   const lifeOp = useRef(new Animated.Value(1)).current;
   const turnOp = useRef(new Animated.Value(0)).current;
@@ -447,9 +452,56 @@ export default function OriginScreen() {
   const mapScale = zone.w > 0 ? Math.min(zone.w / MAP_W, zone.h / MAP_H) : 1;
   const mapOffX = (zone.w - MAP_W * mapScale) / 2;
   const mapOffY = (zone.h - MAP_H * mapScale) / 2;
+
+  // §3 — magnification (life spiral only). The map layer transforms around
+  // the zone center; taps/drags invert it so the spiral math stays true.
+  const ZOOM_MIN = 1;
+  const ZOOM_MAX = 2.5;
+  const [zoom, setZoom] = useState({ scale: 1, tx: 0, ty: 0 });
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const setZoomState = useCallback((z: { scale: number; tx: number; ty: number }) => {
+    zoomRef.current = z;
+    setZoom(z);
+  }, []);
+
+  const zoomResetRaf = useRef<number | null>(null);
+  const resetZoom = useCallback(() => {
+    if (zoomResetRaf.current != null) cancelAnimationFrame(zoomResetRaf.current);
+    const from = { ...zoomRef.current };
+    const start = nowMs();
+    const step = () => {
+      const k = clamp01((nowMs() - start) / 300);
+      const e = easeInOutQuad(k);
+      setZoomState({
+        scale: from.scale + (1 - from.scale) * e,
+        tx: from.tx + (0 - from.tx) * e,
+        ty: from.ty + (0 - from.ty) * e,
+      });
+      if (k < 1) zoomResetRaf.current = requestAnimationFrame(step);
+      else zoomResetRaf.current = null;
+    };
+    zoomResetRaf.current = requestAnimationFrame(step);
+  }, [setZoomState]);
+  useEffect(
+    () => () => {
+      if (zoomResetRaf.current != null) cancelAnimationFrame(zoomResetRaf.current);
+    },
+    []
+  );
+
+  // Invert the map SVG projection AND the current zoom transform (which is
+  // applied around the zone center) to recover viewBox coordinates.
   const toViewBox = useCallback(
-    (x: number, y: number) => ({ x: (x - mapOffX) / mapScale, y: (y - mapOffY) / mapScale }),
-    [mapOffX, mapOffY, mapScale]
+    (x: number, y: number) => {
+      const z = zoomRef.current;
+      const cx = zone.w / 2;
+      const cy = zone.h / 2;
+      const ux = cx + (x - cx - z.tx) / z.scale;
+      const uy = cy + (y - cy - z.ty) / z.scale;
+      return { x: (ux - mapOffX) / mapScale, y: (uy - mapOffY) / mapScale };
+    },
+    [mapOffX, mapOffY, mapScale, zone.w, zone.h]
   );
 
   // ── Actions ───────────────────────────────────────────────
@@ -520,6 +572,8 @@ export default function OriginScreen() {
     swingTo,
     setWandering,
     setDisplayAge,
+    setZoomState,
+    resetZoom,
   });
   actionsRef.current = {
     toViewBox,
@@ -532,6 +586,8 @@ export default function OriginScreen() {
     swingTo,
     setWandering,
     setDisplayAge,
+    setZoomState,
+    resetZoom,
   };
 
   const dragRef = useRef({
@@ -541,6 +597,9 @@ export default function OriginScreen() {
     lastDetent: null as number | null,
     wandered: false,
   });
+
+  const pinchRef = useRef({ startScale: 1, startTx: 0, startTy: 0 });
+  const panZoomRef = useRef({ startTx: 0, startTy: 0 });
 
   const gesture = useMemo(() => {
     const pan = Gesture.Pan()
@@ -633,6 +692,17 @@ export default function OriginScreen() {
           return;
         }
         if (st.clampedCurrent == null) return;
+        // The counterweight-side dot (14 years back from the pendulum) — a
+        // dated thing; tapping it takes the pendulum there (C.1 §1a).
+        const cwAge = displayAgeRef.current - 14;
+        if (cwAge >= 0.2) {
+          const cp = pt(cwAge);
+          if (Math.hypot(cp.x - vb.x, cp.y - vb.y) < 14) {
+            act.setWandering(true);
+            act.swingTo(cwAge);
+            return;
+          }
+        }
         // A 7-year crossing? The needle swings to it.
         for (let a = 7; a < MAX_AGE; a += 7) {
           const p = pt(a);
@@ -645,7 +715,74 @@ export default function OriginScreen() {
         act.openReading();
       });
 
-    return Gesture.Exclusive(pan, tap);
+    // §3 — pinch to magnify the life spiral. Rubber-banded past the bounds
+    // while pinching; clamped on release. Practice wheel is unaffected.
+    const rubber = (s: number) => {
+      if (s < ZOOM_MIN) return ZOOM_MIN - (ZOOM_MIN - s) * 0.35;
+      if (s > ZOOM_MAX) return ZOOM_MAX + (s - ZOOM_MAX) * 0.35;
+      return s;
+    };
+    const pinch = Gesture.Pinch()
+      .runOnJS(true)
+      .onBegin(() => {
+        const z = zoomRef.current;
+        pinchRef.current = { startScale: z.scale, startTx: z.tx, startTy: z.ty };
+      })
+      .onUpdate((e) => {
+        const st = stateRef.current;
+        if (st.introRunning || st.turnOpen || st.sheet) return;
+        const act = actionsRef.current;
+        const s = rubber(pinchRef.current.startScale * e.scale);
+        act.setZoomState({ scale: s, tx: pinchRef.current.startTx, ty: pinchRef.current.startTy });
+      })
+      .onEnd(() => {
+        const act = actionsRef.current;
+        const z = zoomRef.current;
+        const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z.scale));
+        if (clamped <= ZOOM_MIN + 0.001) act.resetZoom();
+        else act.setZoomState({ scale: clamped, tx: z.tx, ty: z.ty });
+      });
+
+    // Two-finger pan — meaningful only when zoomed in.
+    const panZoom = Gesture.Pan()
+      .minPointers(2)
+      .runOnJS(true)
+      .onBegin(() => {
+        const z = zoomRef.current;
+        panZoomRef.current = { startTx: z.tx, startTy: z.ty };
+      })
+      .onUpdate((e) => {
+        const st = stateRef.current;
+        if (st.introRunning || st.turnOpen || st.sheet) return;
+        const act = actionsRef.current;
+        const z = zoomRef.current;
+        if (z.scale <= ZOOM_MIN + 0.001) return; // pan is meaningless at 1×
+        act.setZoomState({
+          scale: z.scale,
+          tx: panZoomRef.current.startTx + e.translationX,
+          ty: panZoomRef.current.startTy + e.translationY,
+        });
+      });
+
+    // Double-tap resets the magnification.
+    const doubleTap = Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDuration(300)
+      .runOnJS(true)
+      .onEnd((_e, success) => {
+        if (!success) return;
+        const st = stateRef.current;
+        if (st.introRunning || st.turnOpen || st.sheet) return;
+        actionsRef.current.resetZoom();
+      });
+
+    // Two-pointer gestures (pinch + pan) run together and win over the
+    // one-finger pendulum drag; double-tap resolves before a single tap.
+    return Gesture.Race(
+      Gesture.Simultaneous(pinch, panZoom),
+      pan,
+      Gesture.Exclusive(doubleTap, tap)
+    );
   }, []);
 
   // ── NOW halo pulse ────────────────────────────────────────
@@ -720,7 +857,7 @@ export default function OriginScreen() {
             {hasBirth && !turnOpen && (
               <>
                 <View style={{ opacity: 1 - wanderFade }}>
-                  <Text style={styles.hudCycle}>turn {word(r.turn)}</Text>
+                  <Text style={styles.hudCycle}>cycle {word(r.turn)}</Text>
                   <Text style={styles.hudCycle}>year {yearWordOf(r)}</Text>
                 </View>
                 <Pressable
@@ -731,7 +868,9 @@ export default function OriginScreen() {
                   ]}
                   testID="today-chip"
                 >
-                  <Text style={styles.todayChipText}>TODAY</Text>
+                  <Text style={styles.todayChipText} numberOfLines={1}>
+                    TODAY
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -773,7 +912,18 @@ export default function OriginScreen() {
             {zone.w > 0 && (
               <>
                 <Animated.View
-                  style={[StyleSheet.absoluteFill, { opacity: lifeOp, pointerEvents: "none" }]}
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      opacity: lifeOp,
+                      pointerEvents: "none",
+                      transform: [
+                        { translateX: zoom.tx },
+                        { translateY: zoom.ty },
+                        { scale: zoom.scale },
+                      ],
+                    },
+                  ]}
                 >
                   <OriginMap
                     currentAge={clampedCurrent}
@@ -842,12 +992,13 @@ export default function OriginScreen() {
                 setWandering(false);
                 if (clampedCurrent != null) setDisplayAge(clampedCurrent);
               }
+              setZoomState({ scale: 1, tx: 0, ty: 0 });
               setTurnOpen((o) => !o);
             }}
             style={[styles.chip, { opacity: ui.cta }]}
             testID="zoom-chip"
           >
-            <Text style={styles.chipText}>{turnOpen ? "⤢  the life" : "⤢  this turn"}</Text>
+            <Text style={styles.chipText}>{turnOpen ? "⤢  the life" : "⤢  the practice"}</Text>
           </Pressable>
         </View>
 
@@ -861,7 +1012,7 @@ export default function OriginScreen() {
                 <Text style={styles.captionStation}>{r.station.name}</Text>
                 <Text style={styles.captionMeta}>
                   {birthDate ? monthYearLabel(dateAtAge(birthDate, displayAge)) : ""} · age{" "}
-                  {displayAge.toFixed(1)} · turn {word(r.turn)} · year {yearWordOf(r)}
+                  {displayAge.toFixed(1)} · cycle {word(r.turn)} · year {yearWordOf(r)}
                 </Text>
               </View>
               {hintDone === false && (
@@ -933,6 +1084,10 @@ export default function OriginScreen() {
             onClose={() => setSheet(null)}
             onCompanions={() => setSheet("companions")}
             onSwingTo={sheetSwingTo}
+            onKeepWhatComes={(mapRef) => {
+              setSheet(null);
+              setCapture(mapRef);
+            }}
           />
           <CompanionsSheet
             open={sheet === "companions"}
@@ -941,6 +1096,16 @@ export default function OriginScreen() {
             bottomPad={tabBarHeight}
             onClose={() => setSheet(null)}
             onSwingTo={sheetSwingTo}
+          />
+          <CaptureSheet
+            open={capture != null}
+            onClose={() => setCapture(null)}
+            uid={user?.uid ?? null}
+            source="spontaneous"
+            initialType="reflection"
+            atmosphere={capture?.phase ?? "signal"}
+            mapRef={capture}
+            bottomPad={tabBarHeight}
           />
         </>
       )}
@@ -966,18 +1131,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    minHeight: 46,
+    minHeight: 52,
   },
   hudLeft: {},
   hudStation: {
     fontFamily: FontFamily.serifItalic,
     fontStyle: "italic",
-    fontSize: 22,
+    fontSize: 24,
     color: "rgba(240,235,255,0.92)",
   },
   hudStructure: {
     fontFamily: FontFamily.sans400,
-    fontSize: 8.5,
+    fontSize: 12,
     letterSpacing: 3,
     color: "rgba(200,190,225,0.45)",
     marginTop: 3,
@@ -988,28 +1153,32 @@ const styles = StyleSheet.create({
   },
   hudCycle: {
     fontFamily: FontFamily.sans400,
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 1.8,
     textTransform: "uppercase",
     color: "rgba(200,190,225,0.55)",
     textAlign: "right",
-    lineHeight: 16,
+    lineHeight: 17,
   },
   todayChip: {
     position: "absolute",
     right: 0,
     top: 0,
+    minWidth: 74,
+    minHeight: 44,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.28)",
     borderRadius: 100,
-    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 13,
   },
   todayChipText: {
     fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    fontSize: 12,
     letterSpacing: 2.4,
     color: "rgba(235,228,255,0.85)",
+    textAlign: "center",
   },
 
   epigraphZone: {

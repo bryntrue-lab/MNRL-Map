@@ -23,6 +23,8 @@ const {
   onDocumentUpdated,
 } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getAuth } = require("firebase-admin/auth");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
@@ -114,6 +116,39 @@ exports.transcribeFieldNote = onDocumentCreated(
       // Graceful degradation — the client's 60s hold fallback covers this.
       await snap.ref.update({ transcriptStatus: "failed" });
     }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────
+// deleteAccount (Task C §3) — callable, full erasure, in strict order:
+//   1. Storage: everything under users/{uid}/ (recordings first — the
+//      most sensitive data must not outlive the rest).
+//   2. Firestore: users/{uid} recursively (all subcollections).
+//   3. Auth: the user record itself.
+// Any failure throws — the client shows "something held on. try again."
+// and the account remains intact enough to retry (order guarantees no
+// half-deleted auth user with orphaned data).
+// ─────────────────────────────────────────────────────────────
+
+exports.deleteAccount = onCall(
+  { memory: "256MiB", timeoutSeconds: 540 },
+  async (request) => {
+    const uid = request.auth && request.auth.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "sign-in required");
+    }
+
+    // 1. Storage prefix.
+    await getStorage().bucket().deleteFiles({ prefix: `users/${uid}/` });
+
+    // 2. Firestore recursive delete.
+    const db = getFirestore();
+    await db.recursiveDelete(db.doc(`users/${uid}`));
+
+    // 3. Auth user.
+    await getAuth().deleteUser(uid);
+
+    return { done: true };
   }
 );
 

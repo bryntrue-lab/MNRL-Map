@@ -64,6 +64,30 @@ export function crystallizingPrompt(
   return null;
 }
 
+/**
+ * Warm-up prompts (C.1 §5 / Task C §5) — the NON-crystallizing prompts from
+ * the same reflection block that holds the ⟡ prompt. Read-only invitations
+ * behind the `NEED A WAY IN? ↓` reveal; never a second capture.
+ */
+export function warmUpPrompts(
+  blocks: EncounterBlock[] | undefined
+): ReflectionPrompt[] {
+  for (const b of blocks ?? []) {
+    if (b.type !== "reflection") continue;
+    if (b.prompts.some((p) => p.crystallizing)) {
+      return b.prompts.filter((p) => !p.crystallizing);
+    }
+  }
+  // Degenerate data (no crystallizing flag) — first reflection block, drop
+  // its first prompt (used as the ⟡ fallback), offer the rest.
+  for (const b of blocks ?? []) {
+    if (b.type === "reflection" && b.prompts.length > 1) {
+      return b.prompts.slice(1);
+    }
+  }
+  return [];
+}
+
 /** Blocks rendered after the ⟡ capture — everything past the reflection block. */
 export function postCaptureBlocks(
   blocks: EncounterBlock[] | undefined

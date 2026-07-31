@@ -6,31 +6,23 @@ import { FontFamily } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
-const ONBOARDING_ROUTES = [
-  "/onboarding",
-  "/onboarding/entry",
-  "/onboarding/signature",
-  "/onboarding/practice",
-  "/onboarding/begin",
-];
-
 const { height } = Dimensions.get("window");
 
 const STEPS = [
   {
     num: "ONE",
-    name: "listen",
+    name: "encounter",
     desc: "a 3-minute voice guide — a threshold, not a lesson",
   },
   {
     num: "TWO",
     name: "reflect",
-    desc: "speak or write a response — voice is first",
+    desc: "speak or write what's real",
   },
   {
     num: "THREE",
-    name: "integrate",
-    desc: "one small practice for the day",
+    name: "the field guide",
+    desc: "your reflections become field notes; patterns become a guide",
   },
 ];
 
@@ -53,18 +45,13 @@ export default function PracticeScreen() {
           ))}
         </View>
 
-        {/* Closing thought — no container, quiet centered serif italic */}
+        {/* Closing thought — one sentence is all the map gets here */}
         <Text style={styles.closing}>
-          {"Your reflections become field notes.\n"}
-          {"Patterns become a guide."}
+          The timing map holds all of it — a life, ever present.
         </Text>
       </View>
 
-      <OnboardingFooter
-        activeIndex={3}
-        routes={ONBOARDING_ROUTES}
-        onContinue={() => router.push("/onboarding/begin")}
-      />
+      <OnboardingFooter onContinue={() => router.push("/onboarding/begin")} />
     </View>
   );
 }

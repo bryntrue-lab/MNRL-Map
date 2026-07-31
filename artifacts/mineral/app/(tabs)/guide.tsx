@@ -1,4 +1,5 @@
-import React from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -11,49 +12,73 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
+import { useAuth } from "@/context/AuthContext";
+import { fetchFieldNotes, type FieldNoteWithId } from "@/lib/firestore";
+import { openingLine, softTimeLabel, TYPE_LABEL } from "@/app/(tabs)/notes";
 
+// Lens rows render but stay quiet until the pattern engine ships (Milestone D).
 const LENSES = [
-  {
-    id: "resistance",
-    label: "recurring resistance",
-    desc: "patterns of friction across encounters",
-    color: "#e08aaf",
-  },
-  {
-    id: "threads",
-    label: "threads",
-    desc: "phrases that return",
-    color: "#88dcba",
-  },
-  {
-    id: "motifs",
-    label: "mythic motifs",
-    desc: "images and symbols across the field",
-    color: "#e9b76b",
-  },
-  {
-    id: "conditions",
-    label: "conditions noted",
-    desc: "what you name alongside high charge",
-    color: "#9bb6d6",
-  },
-  {
-    id: "consciousness",
-    label: "consciousness map",
-    desc: "where your attention lives across structures",
-    color: "#c4baea",
-  },
+  { id: "resistance",    label: "recurring resistance", color: "#e08aaf" },
+  { id: "threads",       label: "threads",              color: "#88dcba" },
+  { id: "motifs",        label: "mythic motifs",        color: "#e9b76b" },
+  { id: "conditions",    label: "conditions noted",     color: "#9bb6d6" },
+  { id: "consciousness", label: "consciousness map",    color: "#c4baea" },
 ];
 
-// Hardcoded for now — pulls from Firebase later
-const FIELD_STATE = {
-  signalCount: 0,
-  daysIn: 1,
-};
+/**
+ * A display title for an encounter, derived from its userEncounters doc id
+ * (e.g. "the-threshold_t1" → "the threshold"). Offline-tolerant — no fetch.
+ */
+function encounterTitle(encounterRef: string | null): string {
+  if (!encounterRef) return "spontaneous";
+  const base = encounterRef.replace(/_t\d+$/, "");
+  const words = base.replace(/-/g, " ").trim();
+  return words.length > 0 ? words : "spontaneous";
+}
+
+/** "reflection · the threshold · 2 days ago" */
+function sourceLabel(note: FieldNoteWithId, now: Date): string {
+  const created = note.createdAt?.toDate?.() ?? null;
+  const where =
+    note.source === "encounter" ? encounterTitle(note.encounterRef) : "spontaneous";
+  const when = created ? softTimeLabel(created, now) : "just now";
+  return `${TYPE_LABEL[note.type]} · ${where} · ${when}`;
+}
+
+/** Distinct calendar days across all notes. */
+function daysAcross(notes: FieldNoteWithId[]): number {
+  const days = new Set<string>();
+  for (const n of notes) {
+    const d = n.createdAt?.toDate?.();
+    if (d) days.add(d.toDateString());
+  }
+  return Math.max(days.size, notes.length > 0 ? 1 : 0);
+}
 
 export default function GuideScreen() {
   const insets = useSafeAreaInsets();
-  const hasField = FIELD_STATE.signalCount > 0;
+  const { user } = useAuth();
+
+  const [notes, setNotes] = useState<FieldNoteWithId[]>([]);
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  const refresh = useCallback(() => {
+    const uid = user?.uid;
+    if (!uid) {
+      setNotes([]);
+      return;
+    }
+    setNow(new Date());
+    fetchFieldNotes(uid)
+      .then(setNotes)
+      .catch((err) => console.warn("guide feed unavailable", err));
+  }, [user?.uid]);
+
+  useFocusEffect(useCallback(() => refresh(), [refresh]));
+
+  const hasField = notes.length > 0;
+  const dayCount = daysAcross(notes);
+  const mostRecent = notes[0] ?? null;
 
   return (
     <View style={styles.container}>
@@ -68,55 +93,87 @@ export default function GuideScreen() {
       >
         <TabTopBar title="FIELD GUIDE" rightIcon="⌕" />
 
-        {/* Field state header */}
         {hasField ? (
-          <View style={styles.fieldHeader}>
-            <Text style={styles.fieldStateLabel}>YOUR FIELD</Text>
-            <Text style={styles.fieldCount}>
-              {FIELD_STATE.signalCount} signals · {FIELD_STATE.daysIn} days in
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.fieldHeader}>
-            <Text style={styles.fieldStateLabelFresh}>● TAKING ROOT</Text>
-          </View>
-        )}
-
-        {/* Synthesis sentence */}
-        <View style={styles.synthesisWrap}>
-          <Text style={styles.synthesisText}>
-            {hasField
-              ? `Your field is beginning to gather. ${FIELD_STATE.signalCount} signals are taking shape across ${FIELD_STATE.daysIn} days of practice.`
-              : "Your field begins with your first reflection. Patterns emerge with time and return."}
-          </Text>
-        </View>
-
-        {/* Lenses */}
-        <Text style={styles.lensesLabel}>EXPLORE</Text>
-        {LENSES.map((lens) => (
-          <Pressable
-            key={lens.id}
-            style={({ pressed }) => [styles.lensRow, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => {
-              // Lens screen — wire when built
-            }}
-          >
-            <View style={styles.lensLeft}>
-              <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
-              <View style={styles.lensTextWrap}>
-                <Text style={styles.lensName}>{lens.label}</Text>
-                <Text style={styles.lensDesc}>{lens.desc}</Text>
-              </View>
+          <>
+            {/* Taking-root header — counts only, no interpretation */}
+            <View style={styles.fieldHeader}>
+              <Text style={styles.fieldStateLabelFresh}>● TAKING ROOT</Text>
+              <Text style={styles.fieldCount}>
+                {`${notes.length} ${notes.length === 1 ? "note" : "notes"} across ${dayCount} ${dayCount === 1 ? "day" : "days"}.`}
+              </Text>
             </View>
-            <Text style={styles.lensArrow}>→</Text>
-          </Pressable>
-        ))}
 
-        {/* Closing thought — only when field is empty */}
-        {!hasField && (
-          <Text style={styles.closingThought}>
-            {"The Guide grows as you practice.\nReturn here as your field deepens."}
-          </Text>
+            {/* Your words, returning */}
+            {mostRecent && (
+              <View style={styles.returningWrap}>
+                <Text style={styles.returningEyebrow}>YOUR WORDS, RETURNING</Text>
+                <Text style={styles.returningLine}>“{openingLine(mostRecent)}”</Text>
+                <Text style={styles.returningAttribution}>
+                  {`— you, ${
+                    mostRecent.createdAt?.toDate?.()
+                      ? softTimeLabel(mostRecent.createdAt.toDate(), now)
+                      : "just now"
+                  }`}
+                </Text>
+              </View>
+            )}
+
+            {/* Lenses — listening until Milestone D */}
+            <Text style={styles.lensesLabel}>EXPLORE</Text>
+            {LENSES.map((lens) => (
+              <View key={lens.id} style={styles.lensRow}>
+                <View style={styles.lensLeft}>
+                  <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
+                  <View style={styles.lensTextWrap}>
+                    <Text style={styles.lensName}>{lens.label}</Text>
+                    <Text style={styles.lensDesc}>listening.</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+
+            {/* Chronological feed of all field notes */}
+            <Text style={styles.feedLabel}>THE FIELD</Text>
+            {notes.map((note) => (
+              <View key={note.id} style={styles.feedItem}>
+                <Text style={styles.feedLine} numberOfLines={2}>
+                  {openingLine(note)}
+                </Text>
+                <Text style={styles.feedSource}>{sourceLabel(note, now)}</Text>
+              </View>
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Empty only when there are truly zero notes */}
+            <View style={styles.fieldHeader}>
+              <Text style={styles.fieldStateLabelFresh}>● TAKING ROOT</Text>
+            </View>
+
+            <View style={styles.synthesisWrap}>
+              <Text style={styles.synthesisText}>
+                Your field begins with your first reflection. Patterns emerge with time
+                and return.
+              </Text>
+            </View>
+
+            <Text style={styles.lensesLabel}>EXPLORE</Text>
+            {LENSES.map((lens) => (
+              <View key={lens.id} style={styles.lensRow}>
+                <View style={styles.lensLeft}>
+                  <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
+                  <View style={styles.lensTextWrap}>
+                    <Text style={styles.lensName}>{lens.label}</Text>
+                    <Text style={styles.lensDesc}>listening.</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+
+            <Text style={styles.closingThought}>
+              {"The Guide grows as you practice.\nReturn here as your field deepens."}
+            </Text>
+          </>
         )}
       </ScrollView>
     </View>
@@ -135,13 +192,6 @@ const styles = StyleSheet.create({
   fieldHeader: {
     marginBottom: 20,
   },
-  fieldStateLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
-    marginBottom: 6,
-  },
   fieldStateLabelFresh: {
     fontFamily: FontFamily.sans500,
     fontSize: 9,
@@ -154,6 +204,34 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontSize: 13,
     color: "rgba(255,255,255,0.5)",
+  },
+
+  returningWrap: {
+    paddingLeft: 14,
+    borderLeftWidth: 1.5,
+    borderLeftColor: "rgba(255,255,255,0.2)",
+    paddingVertical: 6,
+    marginBottom: 36,
+  },
+  returningEyebrow: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 9,
+    letterSpacing: 2.5,
+    color: "rgba(255,255,255,0.4)",
+    marginBottom: 10,
+  },
+  returningLine: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 16,
+    lineHeight: 24,
+    color: "rgba(255,255,255,0.82)",
+    marginBottom: 8,
+  },
+  returningAttribution: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.4)",
   },
 
   synthesisWrap: {
@@ -212,10 +290,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "rgba(255,255,255,0.42)",
   },
-  lensArrow: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.3)",
-    marginLeft: 8,
+
+  feedLabel: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 9,
+    letterSpacing: 2.5,
+    color: "rgba(255,255,255,0.4)",
+    marginTop: 36,
+    marginBottom: 16,
+  },
+  feedItem: {
+    paddingVertical: 14,
+    borderTopWidth: 0.5,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
+  feedLine: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 15,
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.82)",
+    marginBottom: 8,
+  },
+  feedSource: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 11,
+    letterSpacing: 0.4,
+    color: "rgba(255,255,255,0.4)",
   },
 
   closingThought: {
