@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import React from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { FontFamily } from "@/constants/typography";
@@ -44,6 +44,16 @@ export default function HelloScreen() {
         <Text style={styles.tagline}>a companion for the creative psyche</Text>
       </View>
 
+      {/* C.1 §1h — the way back into an existing field */}
+      <Pressable
+        onPress={() => router.push("/onboarding/signin")}
+        hitSlop={8}
+        style={styles.signInLine}
+        testID="hello-sign-in"
+      >
+        <Text style={styles.signInText}>already keeping a field? sign in</Text>
+      </Pressable>
+
       <OnboardingFooter
         activeIndex={0}
         routes={ONBOARDING_ROUTES}
@@ -66,6 +76,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: height * 0.15,
     paddingBottom: 0,
+  },
+  signInLine: {
+    alignSelf: "center",
+    minHeight: 44,
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  signInText: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    color: "rgba(255,255,255,0.45)",
+    textDecorationLine: "underline",
   },
   tagline: {
     fontFamily: FontFamily.serifItalic,

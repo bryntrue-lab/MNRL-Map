@@ -207,7 +207,7 @@ export default function TodayScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <TabTopBar title="TODAY" />
+        <TabTopBar title="TODAY" rightIcon="⊙" onRightPress={() => router.push("/settings")} />
 
         <View style={styles.spiralWrap}>
           <SpiralIndicator phase={phase} turn={turnWord} size={200} />

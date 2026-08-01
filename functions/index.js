@@ -22,6 +22,8 @@ const {
   onDocumentCreated,
   onDocumentUpdated,
 } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getAuth } = require("firebase-admin/auth");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
@@ -114,6 +116,33 @@ exports.transcribeFieldNote = onDocumentCreated(
       // Graceful degradation — the client's 60s hold fallback covers this.
       await snap.ref.update({ transcriptStatus: "failed" });
     }
+  }
+);
+
+/**
+ * deleteAccount (Task C §3): the caller erases themselves completely.
+ * Cascade order — Storage → Firestore → Auth — so a mid-cascade failure
+ * leaves the auth record intact and the user can simply call again.
+ */
+exports.deleteAccount = onCall(
+  { memory: "512MiB", timeoutSeconds: 300 },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "sign in to release a field.");
+    }
+
+    // 1. Storage — every object under users/{uid}/ (voice captures).
+    await getStorage().bucket().deleteFiles({ prefix: `users/${uid}/` });
+
+    // 2. Firestore — users/{uid} and all subcollections (fieldNotes,
+    //    userEncounters, patterns, ...).
+    await getFirestore().recursiveDelete(getFirestore().doc(`users/${uid}`));
+
+    // 3. Auth — last, so a partial failure above remains recoverable.
+    await getAuth().deleteUser(uid);
+
+    return { ok: true };
   }
 );
 

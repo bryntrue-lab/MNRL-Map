@@ -22,4 +22,5 @@ description: What the FIREBASE_SERVICE_ACCOUNT identity can and cannot deploy fo
 3. First gen2 deploy fails while Google provisions service agents (Eventarc 400 / bucket 409) — wait ~3 min and retry, as the CLI says.
 4. A failed create leaves a FAILED function shell typed as HTTPS; the next deploy errors "Changing from an HTTPS function to a background triggered function is not allowed". DELETE the shells via the v2 API, wait for the list to empty, then deploy.
 5. Run deploys in the FOREGROUND of one shell call — background processes die when the call returns.
+7. firebase.json declares codebase "mineral": single-function deploys need `--only functions:mineral:<fn>` — plain `functions:<fn>` aborts with "No function matches given --only filters".
 6. Speech v2 batchRecognize: per-file "An internal error occurred" = the Speech service agent (`service-<projectNumber>@gcp-sa-speech.iam.gserviceaccount.com`) can't read the bucket. Grant it `roles/storage.objectViewer` via BUCKET-level IAM — Storage Admin on the SA suffices, no Owner needed. Fixed transcription instantly.

@@ -33,6 +33,9 @@ import { CaptureSheet } from "@/components/CaptureSheet";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { QuietToast } from "@/components/OriginSheets";
 import { FontFamily } from "@/constants/typography";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { AccountForm } from "@/components/AccountForm";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -109,6 +112,7 @@ export default function EncounterScreen() {
 
 function EncounterFlow({ session, uid }: { session: EncounterSession; uid: string }) {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { profile } = useUser();
 
   const { encounter, turn, mode, audioUrl } = session;
@@ -178,6 +182,23 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   const [cwShown, setCwShown] = useState(initial.stage === "counterweight");
   const stageRef = useRef(stage);
   stageRef.current = stage;
+
+  // Task C §2 — the "keep this." moment: shown once ever (device-scoped),
+  // on the close screen, only while the session is anonymous.
+  const [keepThisVisible, setKeepThisVisible] = useState(false);
+  const [keepThisOpen, setKeepThisOpen] = useState(false);
+  const [keptForGood, setKeptForGood] = useState(false);
+  useEffect(() => {
+    if (stage !== "close" || !user?.isAnonymous) return;
+    AsyncStorage.getItem("mineral_keep_this_offered")
+      .then((v) => {
+        if (v !== "1") {
+          setKeepThisVisible(true);
+          AsyncStorage.setItem("mineral_keep_this_offered", "1").catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [stage, user]);
 
   // The one capture sheet, parametrized by its trigger: the ambient `+`
   // (source 'encounter') or the counterweight's "keep what comes" (§6).
@@ -877,6 +898,38 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           <Text style={styles.returnLine}>
             you can return to this day from the map, anytime.
           </Text>
+
+          {/* Task C §2 — the "keep this." moment, once, after the first
+              crystallizing capture, only while the session is anonymous. */}
+          {keepThisVisible && (
+            <View style={styles.keepThisWrap} testID="keep-this-offer">
+              {keptForGood ? (
+                <Text style={styles.keepThisLead}>kept. this field is yours, anywhere.</Text>
+              ) : keepThisOpen ? (
+                <>
+                  <Text style={styles.keepThisLead}>
+                    an email and a password, and this field is yours anywhere.
+                  </Text>
+                  <AccountForm mode="link" onDone={() => setKeptForGood(true)} />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.keepThisLead}>
+                    what you kept today lives only on this device.
+                  </Text>
+                  <Pressable
+                    onPress={() => setKeepThisOpen(true)}
+                    style={styles.keepThisAction}
+                    hitSlop={8}
+                    testID="keep-this-open"
+                  >
+                    <Text style={styles.keepThisActionText}>keep this. →</Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+          )}
+
           <Pressable onPress={closeOut} style={styles.advance} testID="close-return">
             <Text style={styles.advanceText}>return to the map →</Text>
           </Pressable>
@@ -1315,6 +1368,31 @@ const styles = StyleSheet.create({
     color: "rgba(200,190,225,0.62)",
   },
 
+  keepThisWrap: {
+    alignSelf: "stretch",
+    maxWidth: 320,
+    marginBottom: 30,
+  },
+  keepThisLead: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 14,
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.72)",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  keepThisAction: {
+    minHeight: 44,
+    justifyContent: "center",
+    alignSelf: "center",
+  },
+  keepThisActionText: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 14,
+    letterSpacing: 0.4,
+    color: "rgba(235,228,255,0.9)",
+  },
   returnLine: {
     fontFamily: FontFamily.sans400,
     fontSize: 12,

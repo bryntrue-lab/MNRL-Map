@@ -33,6 +33,11 @@ function RootLayoutNav() {
         name="encounter"
         options={{ headerShown: false, animation: "fade", gestureEnabled: false }}
       />
+      {/* Task C §2/§3 — account keeping and release. */}
+      <Stack.Screen
+        name="settings"
+        options={{ headerShown: false, animation: "fade" }}
+      />
     </Stack>
   );
 }
