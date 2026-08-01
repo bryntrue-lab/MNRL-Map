@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mineral",
     "slug": "mineral",
-    "version": "0.5.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mineral",
@@ -15,14 +15,18 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mineral.app",
+      "bundleIdentifier": "com.madebymineral.quartz",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
-        "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes."
+        "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes.",
+        "UIBackgroundModes": ["audio"],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.mineral.app",
+      "package": "com.madebymineral.quartz",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0a0510"

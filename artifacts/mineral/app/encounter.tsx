@@ -192,7 +192,10 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   const heldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+    // Slice 3 — audio keeps playing when the app backgrounds (with
+    // UIBackgroundModes: ["audio"] in app.json). expo-audio's name for
+    // expo-av's `staysActiveInBackground`.
+    setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true }).catch(() => {});
   }, []);
 
   // Start once the source is loaded — seek first when resuming (§4).
@@ -315,7 +318,11 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           return;
         }
       }
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+        allowsRecording: true,
+      });
       await recorder.prepareToRecordAsync();
       recorder.record();
       setRecording(true);
@@ -330,7 +337,11 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     setRecording(false);
     try {
       await recorder.stop();
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: true,
+        allowsRecording: false,
+      });
       const uri = recorder.uri;
       // A grazed button is a breath, not a word — discard quietly.
       if (!uri || lastDurationRef.current < 700) return;
