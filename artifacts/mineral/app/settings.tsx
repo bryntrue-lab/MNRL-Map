@@ -13,9 +13,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { AccountForm } from "@/components/AccountForm";
+import { SignInGuard } from "@/components/SignInGuard";
 import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { functions } from "@/lib/firebase";
+import { hasAnyFieldNote } from "@/lib/firestore";
 
 /**
  * Task C §2/§3 + C.1 §1h — Settings: keep this (link), sign in, sign out,
@@ -25,6 +27,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logOut } = useAuth();
   const [form, setForm] = useState<null | "link" | "signin">(null);
+  const [guarding, setGuarding] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -92,12 +95,43 @@ export default function SettingsScreen() {
               </Pressable>
             )}
 
-            {form === "signin" ? (
+            {guarding ? (
+              <View style={styles.formWrap}>
+                <SignInGuard
+                  onKeepFirst={() => {
+                    // Routes to the link flow for THIS anonymous field, then
+                    // stops — no automatic sign-in after.
+                    setGuarding(false);
+                    setForm("link");
+                  }}
+                  onProceed={() => {
+                    setGuarding(false);
+                    setForm("signin");
+                  }}
+                  onCancel={() => setGuarding(false)}
+                />
+              </View>
+            ) : form === "signin" ? (
               <View style={styles.formWrap}>
                 <AccountForm mode="signin" onDone={() => router.replace("/(tabs)")} />
               </View>
             ) : (
-              <Pressable onPress={() => setForm("signin")} style={styles.actionLine} testID="settings-sign-in">
+              <Pressable
+                onPress={async () => {
+                  // C §2 guard — an anonymous field with notes deserves a
+                  // warning before it's left behind. No merge in v1.
+                  const uid = user?.uid;
+                  // Fail safe: if the probe errors, prefer the guard over a
+                  // silent bypass that could orphan notes.
+                  const holdsNotes = uid
+                    ? await hasAnyFieldNote(uid).catch(() => true)
+                    : false;
+                  if (holdsNotes) setGuarding(true);
+                  else setForm("signin");
+                }}
+                style={styles.actionLine}
+                testID="settings-sign-in"
+              >
                 <Text style={styles.quietAction}>already keeping a field? sign in</Text>
               </Pressable>
             )}

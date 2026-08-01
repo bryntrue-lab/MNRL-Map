@@ -55,6 +55,10 @@ export interface UserDoc {
   // Client-writable (not one of the five guarded fields).
   sequenceDay: number;
 
+  // Task C §2 — the "keep this." moment fired once; never re-shown.
+  // Client-writable, additive (absent on older docs).
+  keepThisOffered?: boolean;
+
   // Server-written only — never set or modified by the client.
   // Security rules enforce their initial values on create and immutability on update.
   membershipStatus: MembershipStatus;

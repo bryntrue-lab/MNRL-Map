@@ -7,6 +7,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -270,6 +271,17 @@ export async function syncPracticePosition(
 // Chronological field-notes feed (createdAt DESC)
 // Single-field orderBy is auto-indexed; no composite index needed.
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * Task C §2 guard — does this (anonymous) field hold any notes? Used to
+ * warn before signing in to another field would leave them behind.
+ */
+export async function hasAnyFieldNote(uid: string): Promise<boolean> {
+  const snap = await getDocs(
+    query(collection(db, "users", uid, "fieldNotes"), limit(1))
+  );
+  return !snap.empty;
+}
 
 export function fieldNotesQuery(uid: string) {
   return query(

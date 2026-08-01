@@ -113,7 +113,7 @@ export default function EncounterScreen() {
 function EncounterFlow({ session, uid }: { session: EncounterSession; uid: string }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { profile } = useUser();
+  const { profile, updateProfile } = useUser();
 
   const { encounter, turn, mode, audioUrl } = session;
   const phase = encounter.phase;
@@ -183,22 +183,36 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
-  // Task C §2 — the "keep this." moment: shown once ever (device-scoped),
-  // on the close screen, only while the session is anonymous.
+  // Task C §2 — the "keep this." moment: at most once, EVER. The shown-flag
+  // is persisted both locally and on the user doc, so a dismissal is never
+  // re-triggered by the second close (Settings is the only path back).
+  // "First encounter close while anonymous" is the intended proxy — the
+  // close screen only exists past the ⟡, so no capture counting is needed;
+  // visit-mode closes count too. Notes-only users never see it: accepted,
+  // Settings covers them.
   const [keepThisVisible, setKeepThisVisible] = useState(false);
   const [keepThisOpen, setKeepThisOpen] = useState(false);
   const [keptForGood, setKeptForGood] = useState(false);
+  const keepThisFiredRef = useRef(false);
   useEffect(() => {
-    if (stage !== "close" || !user?.isAnonymous) return;
+    if (stage !== "close" || !user?.isAnonymous || keepThisFiredRef.current) return;
+    // Wait for the profile — deciding before the user doc loads could
+    // re-show the offer on a fresh install of a field that already saw it.
+    // (Effect re-runs when the snapshot arrives.)
+    if (!profile) return;
+    keepThisFiredRef.current = true;
+    if (profile.keepThisOffered) return; // already fired on another device/install
     AsyncStorage.getItem("mineral_keep_this_offered")
       .then((v) => {
         if (v !== "1") {
           setKeepThisVisible(true);
           AsyncStorage.setItem("mineral_keep_this_offered", "1").catch(() => {});
+          updateProfile({ keepThisOffered: true }).catch(() => {});
         }
       })
       .catch(() => {});
-  }, [stage, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, user, profile]);
 
   // The one capture sheet, parametrized by its trigger: the ambient `+`
   // (source 'encounter') or the counterweight's "keep what comes" (§6).
