@@ -237,12 +237,48 @@ interface StationLabelPos {
   anchor: "start" | "middle" | "end";
 }
 
-const STATION_LABEL_POS: Record<Quarter, StationLabelPos> = {
-  north: { x: CX, y: 122, anchor: "middle" },
-  east:  { x: 336, y: 283, anchor: "end" },
-  south: { x: CX, y: 452, anchor: "middle" },
-  west:  { x: 4, y: 283, anchor: "start" },
+// §2.1.1 — east/west x is computed from the screen-edge inset at render
+// time (≥12pt on screen, never clipped); north/south stay fixed.
+const STATION_LABEL_Y: Record<Quarter, number> = {
+  north: 122,
+  east: 283,
+  south: 452,
+  west: 283,
 };
+
+// ── §2.1.1 label collision geometry (viewBox units) ──────────
+// Approximate text extents for sans caps at the sizes used below.
+const STATION_FONT = 14;
+const STATION_LS = 2;
+const STRUCTURE_FONT = 11;
+const STRUCTURE_LS = 1.6;
+const YEAR_FONT = 12;
+
+function textWidth(text: string, fontSize: number, letterSpacing: number): number {
+  return text.length * fontSize * 0.62 + Math.max(0, text.length - 1) * letterSpacing;
+}
+
+interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+function boxesIntersect(a: Box, b: Box): boolean {
+  return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+}
+
+function anchoredBox(
+  x: number,
+  baselineY: number,
+  anchor: "start" | "middle" | "end",
+  w: number,
+  fontSize: number
+): Box {
+  const x0 = anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2;
+  return { x0, y0: baselineY - fontSize, x1: x0 + w, y1: baselineY + 3 };
+}
 
 /** Station a 7-year crossing arrives at (age 7 → east, 14 → south, …). */
 function crossingQuarter(age: number): Quarter {
@@ -258,6 +294,17 @@ interface OriginMapProps {
   visual: OriginMapVisual;
   width: number;
   height: number;
+  /**
+   * §2.1.1 — horizontal inset (viewBox units) that keeps east/west station
+   * labels ≥12pt inside the SCREEN edge. Computed by the owner from the
+   * zone geometry; defaults to a safe in-viewBox margin.
+   */
+  labelInsetVb?: number;
+  /**
+   * §2.1.1 — viewBox y of the wander caption's clearance zone. No label
+   * (year or station) may render at or below this line. Infinity = off.
+   */
+  avoidYVb?: number;
 }
 
 export function OriginMap({
@@ -267,6 +314,8 @@ export function OriginMap({
   visual,
   width,
   height,
+  labelInsetVb = 12,
+  avoidYVb = Infinity,
 }: OriginMapProps) {
   const clampedAge = currentAge == null ? null : Math.min(currentAge, MAX_AGE - 0.05);
 
@@ -283,24 +332,97 @@ export function OriginMap({
     return spiralPath(clampedAge, MAX_AGE);
   }, [clampedAge]);
 
+  // §2.1.1 — east/west station labels hug the screen edge with a real
+  // margin; y positions are fixed. Recomputed when the inset changes.
+  const stationPos = useMemo<Record<Quarter, StationLabelPos>>(
+    () => ({
+      north: { x: CX, y: STATION_LABEL_Y.north, anchor: "middle" },
+      east: { x: MAP_W - labelInsetVb, y: STATION_LABEL_Y.east, anchor: "end" },
+      south: { x: CX, y: STATION_LABEL_Y.south, anchor: "middle" },
+      west: { x: labelInsetVb, y: STATION_LABEL_Y.west, anchor: "start" },
+    }),
+    [labelInsetVb]
+  );
+
+  // Combined bounding box (name + structure subscript) per station label.
+  const stationBoxes = useMemo<Record<Quarter, Box>>(() => {
+    const boxes = {} as Record<Quarter, Box>;
+    for (const q of QUARTERS) {
+      const posn = stationPos[q];
+      const s = STATION[q];
+      const a = anchoredBox(
+        posn.x,
+        posn.y,
+        posn.anchor,
+        textWidth(s.label, STATION_FONT, STATION_LS),
+        STATION_FONT
+      );
+      const b = anchoredBox(
+        posn.x,
+        posn.y + 15,
+        posn.anchor,
+        textWidth(s.structure, STRUCTURE_FONT, STRUCTURE_LS),
+        STRUCTURE_FONT
+      );
+      boxes[q] = {
+        x0: Math.min(a.x0, b.x0),
+        y0: a.y0,
+        x1: Math.max(a.x1, b.x1),
+        y1: b.y1,
+      };
+    }
+    return boxes;
+  }, [stationPos]);
+
   const crossings = useMemo(() => {
     if (clampedAge == null) return [];
-    const list: { age: number; x: number; y: number; lx: number; ly: number; q: Quarter; lived: boolean }[] = [];
+    const list: {
+      age: number;
+      x: number;
+      y: number;
+      lx: number;
+      ly: number;
+      q: Quarter;
+      lived: boolean;
+      labelVisible: boolean;
+    }[] = [];
+    const yearW = birthYear != null ? textWidth(String(birthYear + 7), YEAR_FONT, 0) : 30;
     for (let a = 7; a < MAX_AGE; a += 7) {
       const p = pt(a);
-      const out = p.r + 11;
+      const q = crossingQuarter(a);
+      let lx: number;
+      let ly: number;
+      if (q === "east" || q === "west") {
+        // §2.1.1 — years beside east/west stations sit BELOW their crossing
+        // dots, clear of the station text at current sizes.
+        lx = p.x;
+        ly = p.y + 26; // clears the station text block (baseline 283 + subscript)
+      } else {
+        const out = p.r + 11;
+        lx = CX + out * Math.sin(p.th);
+        ly = CY - out * Math.cos(p.th) + 2;
+      }
+      // Never let a year run off the screen edge either.
+      lx = Math.min(Math.max(lx, labelInsetVb + yearW / 2), MAP_W - labelInsetVb - yearW / 2);
+
+      // §2.1.1 — where a year would still collide with a station label,
+      // the year yields; and nothing renders inside the caption's zone.
+      const yearBox = anchoredBox(lx, ly, "middle", yearW, YEAR_FONT);
+      const hitStation = QUARTERS.some((sq) => boxesIntersect(yearBox, stationBoxes[sq]));
+      const hitCaption = yearBox.y1 > avoidYVb;
       list.push({
         age: a,
         x: p.x,
         y: p.y,
-        lx: CX + out * Math.sin(p.th),
-        ly: CY - out * Math.cos(p.th) + 2,
-        q: crossingQuarter(a),
+        lx,
+        ly,
+        q,
         lived: a <= clampedAge,
+        labelVisible: !hitStation && !hitCaption,
       });
     }
     return list;
-  }, [clampedAge]);
+  }, [clampedAge, birthYear, labelInsetVb, avoidYVb, stationBoxes]);
 
   const now = pt(Math.max(0.2, Math.min(displayAge, MAX_AGE - 0.2)));
   const nowStation = STATION[resolve(displayAge).quarter];
@@ -366,7 +488,7 @@ export function OriginMap({
           <G opacity={visual.yearsOpacity}>
             {birthYear != null &&
               crossings
-                .filter((c) => c.lived)
+                .filter((c) => c.lived && c.labelVisible)
                 .map((c) => (
                   <SvgText
                     key={`y${c.age}`}
@@ -382,10 +504,12 @@ export function OriginMap({
                 ))}
           </G>
 
-          {/* Station labels — name over structure subscript */}
+          {/* Station labels — name over structure subscript.
+              §2.1.1 — a label inside the caption's clearance zone yields. */}
           {QUARTERS.map((q) => {
-            const posn = STATION_LABEL_POS[q];
+            const posn = stationPos[q];
             const s = STATION[q];
+            if (stationBoxes[q].y1 > avoidYVb) return null;
             return (
               <G key={q} opacity={visual.stationOpacity[q]}>
                 <SvgText
