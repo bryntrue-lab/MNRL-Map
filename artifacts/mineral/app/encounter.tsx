@@ -672,6 +672,14 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
               >
                 <Text style={styles.keepText}>keep this →</Text>
               </Pressable>
+              <Pressable
+                onPress={() => setTypeMode(false)}
+                hitSlop={10}
+                style={styles.typeToggle}
+                testID="capture-speak-instead"
+              >
+                <Text style={styles.typeToggleText}>speak instead</Text>
+              </Pressable>
             </View>
           )}
         </KeyboardAwareScrollViewCompat>

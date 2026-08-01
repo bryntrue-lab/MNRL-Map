@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Keyboard,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +13,7 @@ import {
 import { FontFamily } from "@/constants/typography";
 import {
   COUNTERWEIGHT_QUESTION,
+  FUTURE_COUNTERWEIGHT_QUESTION,
   SEASON_MODE,
   companionsFor,
   counterweightDate,
@@ -31,12 +34,38 @@ interface SheetShellProps {
   onClose: () => void;
   bottomPad: number;
   testID: string;
+  /** Adds a grab handle with swipe-down-to-dismiss (§C.1 1e). */
+  swipeToDismiss?: boolean;
   children: React.ReactNode;
 }
 
-export function SheetShell({ open, onClose, bottomPad, testID, children }: SheetShellProps) {
+export function SheetShell({
+  open,
+  onClose,
+  bottomPad,
+  testID,
+  swipeToDismiss,
+  children,
+}: SheetShellProps) {
   const slide = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(open);
+
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const handlePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_e, g) => g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy > 48 || g.vy > 0.8) {
+            Keyboard.dismiss();
+            onCloseRef.current();
+          }
+        },
+      }),
+    []
+  );
 
   useEffect(() => {
     if (open) {
@@ -85,6 +114,11 @@ export function SheetShell({ open, onClose, bottomPad, testID, children }: Sheet
         ]}
         testID={testID}
       >
+        {swipeToDismiss && (
+          <View style={styles.handleZone} {...handlePan.panHandlers} testID={`${testID}-handle`}>
+            <View style={styles.handleBar} />
+          </View>
+        )}
         {children}
       </Animated.View>
     </>
@@ -122,7 +156,20 @@ export function ReadingSheet({
   const season = seasonFor(r);
   const hasCw = displayAge >= 14;
   const cwDate = hasCw ? counterweightDate(birthDate, now, displayAge, currentAge) : null;
-  const cwQuestion = hasCw ? COUNTERWEIGHT_QUESTION[resolve(displayAge - 14).phase] : null;
+  // Tense is set by the counterweight date vs. the device's today —
+  // never by the pendulum position alone (§C.1 1b).
+  const cwFuture = cwDate != null && cwDate.getTime() > now.getTime();
+  const atNow = Math.abs(displayAge - currentAge) < 0.01;
+  const cwQuestion = hasCw
+    ? (cwFuture ? FUTURE_COUNTERWEIGHT_QUESTION : COUNTERWEIGHT_QUESTION)[
+        resolve(displayAge - 14).phase
+      ]
+    : null;
+  const cwEyebrow = cwFuture
+    ? "THE COUNTERWEIGHT, TO COME"
+    : atNow
+      ? "YOUR COUNTERWEIGHT TODAY"
+      : "THE COUNTERWEIGHT";
 
   return (
     <SheetShell open={open} onClose={onClose} bottomPad={bottomPad} testID="reading-sheet">
@@ -146,7 +193,7 @@ export function ReadingSheet({
           onPress={() => onSwingTo(displayAge - 14)}
           testID="counterweight-card"
         >
-          <Text style={styles.cwEyebrow}>THE COUNTERWEIGHT</Text>
+          <Text style={styles.cwEyebrow}>{cwEyebrow}</Text>
           <Text style={styles.cwDate}>{ritualDateLabel(cwDate)}</Text>
           <Text style={styles.cwQuestion}>{cwQuestion}</Text>
         </Pressable>
@@ -262,6 +309,19 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.09)",
     paddingHorizontal: 30,
     paddingTop: 26,
+  },
+
+  handleZone: {
+    alignItems: "center",
+    paddingVertical: 10,
+    marginTop: -16,
+    marginBottom: 2,
+  },
+  handleBar: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
 
   eyebrow: {

@@ -71,6 +71,14 @@ export const COUNTERWEIGHT_QUESTION: Record<PhaseId, string> = {
   voice: "What were you saying then that this season is gathering toward?",
 };
 
+/** Used when the counterweight date is AFTER today (§C.1 1b / §8 — DRAFT). */
+export const FUTURE_COUNTERWEIGHT_QUESTION: Record<PhaseId, string> = {
+  signal: "What will be arriving then that today is already preparing?",
+  field: "What gathers now that you will be speaking then?",
+  friction: "What are you up against now that will have become material by then?",
+  voice: "What are you saying now that then will gather toward?",
+};
+
 export interface Season {
   title: string;
   question: string;

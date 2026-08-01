@@ -374,7 +374,7 @@ export function OriginMap({
                     y={c.ly}
                     textAnchor="middle"
                     fill="rgba(255,255,255,0.38)"
-                    fontSize={6.5}
+                    fontSize={12}
                     fontFamily="sans-serif"
                   >
                     {birthYear + c.age}
@@ -393,7 +393,7 @@ export function OriginMap({
                   y={posn.y}
                   textAnchor={posn.anchor}
                   fill={s.color}
-                  fontSize={8.5}
+                  fontSize={14}
                   letterSpacing={2}
                   fontFamily="sans-serif"
                   opacity={0.8}
@@ -402,10 +402,10 @@ export function OriginMap({
                 </SvgText>
                 <SvgText
                   x={posn.x}
-                  y={posn.y + 11}
+                  y={posn.y + 15}
                   textAnchor={posn.anchor}
                   fill="rgba(255,255,255,0.32)"
-                  fontSize={6.5}
+                  fontSize={11}
                   letterSpacing={1.6}
                   fontFamily="sans-serif"
                 >
@@ -531,7 +531,7 @@ export function TurnWheel({ today, visited, width, height }: TurnWheelProps) {
             textAnchor="middle"
             fill={PHASE_ACCENT[p.phase]}
             opacity={0.55}
-            fontSize={7}
+            fontSize={11}
             letterSpacing={2.4}
             fontFamily="sans-serif"
           >

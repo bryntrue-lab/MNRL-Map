@@ -633,14 +633,25 @@ export default function OriginScreen() {
           return;
         }
         if (st.clampedCurrent == null) return;
-        // A 7-year crossing? The needle swings to it.
-        for (let a = 7; a < MAX_AGE; a += 7) {
+        // A dated dot? The needle swings to it — crossings AND the
+        // counterweight dot alike (§C.1 1a). Nearest one wins.
+        let bestAge: number | null = null;
+        let bestDist = 14;
+        const consider = (a: number) => {
           const p = pt(a);
-          if (Math.hypot(p.x - vb.x, p.y - vb.y) < 14) {
-            act.setWandering(true);
-            act.swingTo(a);
-            return;
+          const d = Math.hypot(p.x - vb.x, p.y - vb.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestAge = a;
           }
+        };
+        for (let a = 7; a < MAX_AGE; a += 7) consider(a);
+        const cwAge = displayAgeRef.current - 14;
+        if (cwAge >= 0.2) consider(cwAge);
+        if (bestAge != null) {
+          act.setWandering(true);
+          act.swingTo(bestAge);
+          return;
         }
         act.openReading();
       });
@@ -729,9 +740,12 @@ export default function OriginScreen() {
                     styles.todayChip,
                     { opacity: wanderFade, pointerEvents: wandering ? "auto" : "none" },
                   ]}
+                  hitSlop={6}
                   testID="today-chip"
                 >
-                  <Text style={styles.todayChipText}>TODAY</Text>
+                  <Text style={styles.todayChipText} numberOfLines={1}>
+                    TODAY
+                  </Text>
                 </Pressable>
               </>
             )}
@@ -972,12 +986,12 @@ const styles = StyleSheet.create({
   hudStation: {
     fontFamily: FontFamily.serifItalic,
     fontStyle: "italic",
-    fontSize: 22,
+    fontSize: 24,
     color: "rgba(240,235,255,0.92)",
   },
   hudStructure: {
     fontFamily: FontFamily.sans400,
-    fontSize: 8.5,
+    fontSize: 12,
     letterSpacing: 3,
     color: "rgba(200,190,225,0.45)",
     marginTop: 3,
@@ -988,7 +1002,7 @@ const styles = StyleSheet.create({
   },
   hudCycle: {
     fontFamily: FontFamily.sans400,
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 1.8,
     textTransform: "uppercase",
     color: "rgba(200,190,225,0.55)",
@@ -1004,10 +1018,14 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     paddingVertical: 6,
     paddingHorizontal: 13,
+    minWidth: 96,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   todayChipText: {
     fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    fontSize: 11,
     letterSpacing: 2.4,
     color: "rgba(235,228,255,0.85)",
   },
@@ -1083,7 +1101,7 @@ const styles = StyleSheet.create({
   },
   captionMeta: {
     fontFamily: FontFamily.sans400,
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 1.6,
     textTransform: "lowercase",
     color: "rgba(200,190,225,0.5)",
@@ -1091,7 +1109,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontFamily: FontFamily.sans400,
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 2,
     textTransform: "uppercase",
     color: "rgba(200,190,225,0.35)",

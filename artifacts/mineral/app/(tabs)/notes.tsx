@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { onSnapshot } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   Platform,
@@ -17,7 +18,8 @@ import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
-import type { FieldNoteType } from "@/types/firestore";
+import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
+import type { FieldNoteDoc, FieldNoteType } from "@/types/firestore";
 
 const { width } = Dimensions.get("window");
 
@@ -36,8 +38,40 @@ const MORE_CHIPS: { id: FieldNoteType; label: string }[] = [
   { id: "other",  label: "OTHER" },
 ];
 
-// Recent feed arrives with the Notes milestone — not part of Task B.
-const RECENT_NOTES: unknown[] = [];
+const RECENT_LIMIT = 30;
+
+const NOTE_TYPE_LABEL: Record<string, string> = {
+  dream: "dream",
+  spark: "spark",
+  resistance: "resistance",
+  symbol: "symbol",
+  synchronicity: "synchronicity",
+  vision: "vision",
+  desire: "desire",
+  fear: "fear",
+  other: "other",
+  reflection: "reflection",
+};
+
+function noteOpeningLine(n: FieldNoteDoc): string {
+  if (n.content) {
+    const line = n.content.split("\n").find((l) => l.trim().length > 0);
+    if (line) return line.trim();
+  }
+  if (n.captureMode === "audio") {
+    return n.transcriptStatus === "pending" ? "spoken — words arriving…" : "spoken.";
+  }
+  return "kept.";
+}
+
+function noteWhenLabel(n: FieldNoteDoc): string {
+  const created = n.createdAt?.toDate?.();
+  if (!created) return "";
+  const days = Math.floor((Date.now() - created.getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
 
 export default function NotesScreen() {
   const insets = useSafeAreaInsets();
@@ -46,6 +80,27 @@ export default function NotesScreen() {
 
   const [captureType, setCaptureType] = useState<FieldNoteType | null>(null);
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
+
+  // Chronological fieldNotes, createdAt DESC — live, so the feed
+  // refreshes itself on capture, sheet close, and tab focus (§C.1 1f).
+  const [recentNotes, setRecentNotes] = useState<FieldNoteWithId[]>([]);
+  useEffect(() => {
+    if (!user) {
+      setRecentNotes([]);
+      return;
+    }
+    const unsub = onSnapshot(
+      fieldNotesQuery(user.uid),
+      (snap) =>
+        setRecentNotes(
+          snap.docs
+            .slice(0, RECENT_LIMIT)
+            .map((d) => ({ id: d.id, ...(d.data() as FieldNoteDoc) }))
+        ),
+      (err) => console.warn("recent notes", err)
+    );
+    return unsub;
+  }, [user]);
 
   const tabBarHeight = Platform.OS === "web" ? 84 : 60 + insets.bottom;
 
@@ -104,22 +159,30 @@ export default function NotesScreen() {
         <View style={styles.recentSection}>
           <View style={styles.recentHeader}>
             <Text style={styles.recentLabel}>RECENT</Text>
-            {RECENT_NOTES.length > 0 && (
+            {recentNotes.length > 0 && (
               <Text style={styles.recentCount}>
-                {RECENT_NOTES.length} in your field
+                {recentNotes.length} in your field
               </Text>
             )}
           </View>
 
-          {RECENT_NOTES.length === 0 ? (
+          {recentNotes.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
                 {"your field is empty.\ntap a chip above to capture what's moving."}
               </Text>
             </View>
           ) : (
-            RECENT_NOTES.map((_, i) => (
-              <View key={i} style={styles.noteItem} />
+            recentNotes.map((n) => (
+              <View key={n.id} style={styles.noteItem} testID={`recent-note-${n.id}`}>
+                <Text style={styles.noteLine} numberOfLines={2}>
+                  {noteOpeningLine(n)}
+                </Text>
+                <Text style={styles.noteMeta}>
+                  {NOTE_TYPE_LABEL[n.type] ?? n.type}
+                  {noteWhenLabel(n) ? ` · ${noteWhenLabel(n)}` : ""}
+                </Text>
+              </View>
             ))
           )}
         </View>
@@ -259,5 +322,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  noteLine: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 14,
+    lineHeight: 20,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 4,
+  },
+  noteMeta: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.4)",
   },
 });

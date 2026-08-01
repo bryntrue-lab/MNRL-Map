@@ -87,12 +87,24 @@ export function CaptureSheet({
   };
 
   return (
-    <SheetShell open={open} onClose={onClose} bottomPad={bottomPad} testID="capture-sheet">
+    <SheetShell
+      open={open}
+      onClose={onClose}
+      bottomPad={bottomPad}
+      swipeToDismiss
+      testID="capture-sheet"
+    >
       <KeyboardAwareScrollViewCompat
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
       >
-        <Text style={styles.eyebrow}>CAPTURE</Text>
+        <View style={styles.headRow}>
+          <Text style={styles.eyebrow}>CAPTURE</Text>
+          <Pressable onPress={onClose} style={styles.closeTarget} hitSlop={4} testID="capture-close">
+            <Text style={styles.closeGlyph}>✕</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.chipRow}>
           {CAPTURE_CHIPS.map((chip) => {
@@ -145,12 +157,28 @@ const styles = StyleSheet.create({
   scroll: {
     maxHeight: 440,
   },
+  headRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   eyebrow: {
     fontFamily: FontFamily.sans500,
     fontSize: 9,
     letterSpacing: 2.5,
     color: "rgba(255,255,255,0.4)",
-    marginBottom: 16,
+  },
+  closeTarget: {
+    width: 44,
+    height: 44,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    marginRight: -8,
+  },
+  closeGlyph: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.45)",
   },
 
   chipRow: {
@@ -194,7 +222,9 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 96,
     maxHeight: 180,
-    padding: 14,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
     backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 0.5,
     borderColor: "rgba(255,255,255,0.1)",
