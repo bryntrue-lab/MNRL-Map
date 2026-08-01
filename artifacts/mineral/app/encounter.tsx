@@ -42,6 +42,7 @@ import {
   consumeEncounterSession,
   crystallizingPrompt,
   postCaptureBlocks,
+  warmUpPrompts,
   wovenLine,
   type EncounterSession,
 } from "@/lib/encounter";
@@ -131,6 +132,9 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     () => postCaptureBlocks(encounter.blocks),
     [encounter.blocks]
   );
+  // §5 — warm-ups live behind the collapsed reveal, never listed openly.
+  const warmUps = useMemo(() => warmUpPrompts(encounter.blocks), [encounter.blocks]);
+  const [wayInOpen, setWayInOpen] = useState(false);
 
   // Counterweight availability — birth date present and old enough that
   // (age − 14) exists on the map (§1e; no birth date → skip the screen).
@@ -176,7 +180,9 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // The one capture sheet, parametrized by its trigger: the ambient `+`
+  // (source 'encounter') or the counterweight's "keep what comes" (§6).
+  const [sheetMode, setSheetMode] = useState<null | "ambient" | "counterweight">(null);
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
 
   // ── Listen (§1b) ──
@@ -503,6 +509,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     const cwAge = currentAge - 14;
     const r = resolve(cwAge);
     const date = counterweightDate(birthDate.toDate(), new Date(), currentAge, currentAge);
+    const isoDate = date.toISOString().slice(0, 10);
     const pNow = pt(currentAge);
     const pCw = pt(cwAge);
     const pad = 34;
@@ -514,6 +521,8 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     const h = Math.max(...ys) + pad - minY;
     return {
       question: COUNTERWEIGHT_QUESTION[r.phase],
+      phase: r.phase,
+      isoDate,
       color: r.station.color,
       dateLabel: ritualDateLabel(date),
       arc: spiralPath(Math.max(0, cwAge - 3), Math.min(MAX_AGE, currentAge + 3)),
@@ -555,7 +564,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       {/* Ambient + — block screens only, never the ⟡ (§1f) */}
       {stage === "block" && (
         <Pressable
-          onPress={() => setSheetOpen(true)}
+          onPress={() => setSheetMode("ambient")}
           hitSlop={14}
           style={[styles.ambientPlus, { top: insets.top + 14 }]}
           testID="encounter-ambient-plus"
@@ -613,6 +622,28 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           <Text style={styles.captureEyebrow}>WHAT TO KEEP</Text>
           <Text style={styles.capturePrompt}>{prompt.text}</Text>
           {prompt.subtext ? <Text style={styles.captureSubtext}>{prompt.subtext}</Text> : null}
+
+          {/* §5 — warm-ups stay collapsed; the ⟡ leads with one prompt, one capture */}
+          {warmUps.length > 0 && (
+            <View style={styles.wayInWrap}>
+              {!wayInOpen ? (
+                <Pressable
+                  onPress={() => setWayInOpen(true)}
+                  hitSlop={10}
+                  style={styles.wayInToggle}
+                  testID="capture-way-in"
+                >
+                  <Text style={styles.wayInToggleText}>NEED A WAY IN? ↓</Text>
+                </Pressable>
+              ) : (
+                warmUps.map((p) => (
+                  <Text key={p.id} style={styles.wayInPrompt}>
+                    {p.text}
+                  </Text>
+                ))
+              )}
+            </View>
+          )}
 
           {!typeMode ? (
             <View style={styles.recordWrap}>
@@ -727,6 +758,16 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           <Text style={styles.cwDate}>{cw.dateLabel}</Text>
           <Text style={styles.cwQuestion}>{cw.question}</Text>
 
+          {/* §6 — one quiet line, never a form */}
+          <Pressable
+            onPress={() => setSheetMode("counterweight")}
+            hitSlop={8}
+            style={styles.keepWhatComes}
+            testID="counterweight-keep"
+          >
+            <Text style={styles.keepWhatComesText}>keep what comes →</Text>
+          </Pressable>
+
           <Pressable
             onPress={() => (postBlocks.length > 0 ? toBlock(1) : toClose())}
             style={styles.advance}
@@ -787,16 +828,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           )}
 
           {block.type === "reflection" && (
-            <>
-              {block.prompts.map((p) => (
-                <Text key={p.id} style={styles.blockInstruction}>
-                  {p.text}
-                </Text>
-              ))}
-              <Pressable onPress={advanceBlock} style={styles.advance} testID="block-advance">
-                <Text style={styles.advanceText}>when you're ready →</Text>
-              </Pressable>
-            </>
+            <ReflectionBlockBody block={block} onAdvance={advanceBlock} />
           )}
         </View>
       )}
@@ -809,6 +841,10 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           {...pan.panHandlers}
         >
           <Text style={styles.epigraph}>{encounter.mapEpigraph ?? encounter.subtitle}</Text>
+          {/* §5 — said once, on the way out */}
+          <Text style={styles.returnLine}>
+            you can return to this day from the map, anytime.
+          </Text>
           <Pressable onPress={closeOut} style={styles.advance} testID="close-return">
             <Text style={styles.advanceText}>return to the map →</Text>
           </Pressable>
@@ -816,13 +852,19 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       )}
 
       <CaptureSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        open={sheetMode != null}
+        onClose={() => setSheetMode(null)}
         uid={uid}
-        source="encounter"
-        encounterRef={instanceId}
+        source={sheetMode === "counterweight" ? "spontaneous" : "encounter"}
+        encounterRef={sheetMode === "counterweight" ? null : instanceId}
         atmosphere={phase}
         bottomPad={insets.bottom + 8}
+        lockedType={sheetMode === "counterweight" ? "reflection" : null}
+        mapRef={
+          sheetMode === "counterweight" && cw
+            ? { date: cw.isoDate, phase: cw.phase }
+            : null
+        }
         onSaved={() => setToast({ key: Date.now(), text: "kept." })}
       />
       <QuietToast
@@ -831,6 +873,40 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         onDone={() => setToast(null)}
       />
     </View>
+  );
+}
+
+/** §5 — extra prompt material is offered ONCE, quietly, after the ⟡ —
+ *  never as a wall of inputs. */
+function ReflectionBlockBody({
+  block,
+  onAdvance,
+}: {
+  block: Extract<EncounterBlock, { type: "reflection" }>;
+  onAdvance: () => void;
+}) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <>
+      {!revealed ? (
+        <Pressable
+          onPress={() => setRevealed(true)}
+          hitSlop={8}
+          testID="block-more-here"
+        >
+          <Text style={styles.deepDiveOffer}>there's more here, if you have time →</Text>
+        </Pressable>
+      ) : (
+        block.prompts.map((p) => (
+          <Text key={p.id} style={styles.blockInstruction}>
+            {p.text}
+          </Text>
+        ))
+      )}
+      <Pressable onPress={onAdvance} style={styles.advance} testID="block-advance">
+        <Text style={styles.advanceText}>when you're ready →</Text>
+      </Pressable>
+    </>
   );
 }
 
@@ -1099,6 +1175,44 @@ const styles = StyleSheet.create({
     maxWidth: 310,
   },
 
+  keepWhatComes: {
+    marginTop: 22,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  keepWhatComesText: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    color: "rgba(255,255,255,0.5)",
+    textDecorationLine: "underline",
+  },
+
+  wayInWrap: {
+    marginTop: 22,
+    alignItems: "center",
+  },
+  wayInToggle: {
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  wayInToggleText: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 10,
+    letterSpacing: 2.2,
+    color: "rgba(255,255,255,0.4)",
+  },
+  wayInPrompt: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 15,
+    lineHeight: 24,
+    color: "rgba(255,255,255,0.6)",
+    textAlign: "center",
+    maxWidth: 300,
+    marginBottom: 12,
+  },
+
   // Blocks
   blockContent: {
     paddingHorizontal: 32,
@@ -1167,6 +1281,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     textTransform: "uppercase",
     color: "rgba(200,190,225,0.62)",
+  },
+
+  returnLine: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    color: "rgba(255,255,255,0.42)",
+    textAlign: "center",
+    marginBottom: 30,
   },
 
   // Close

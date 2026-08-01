@@ -139,6 +139,8 @@ interface ReadingSheetProps {
   onClose: () => void;
   onCompanions: () => void;
   onSwingTo: (age: number) => void;
+  /** §6 — opens the standard capture sheet against this position's mapRef. */
+  onKeepWhatComes?: () => void;
 }
 
 export function ReadingSheet({
@@ -151,6 +153,7 @@ export function ReadingSheet({
   onClose,
   onCompanions,
   onSwingTo,
+  onKeepWhatComes,
 }: ReadingSheetProps) {
   const r = resolve(displayAge);
   const season = seasonFor(r);
@@ -196,11 +199,21 @@ export function ReadingSheet({
           <Text style={styles.cwEyebrow}>{cwEyebrow}</Text>
           <Text style={styles.cwDate}>{ritualDateLabel(cwDate)}</Text>
           <Text style={styles.cwQuestion}>{cwQuestion}</Text>
+          {onKeepWhatComes && (
+            <Pressable
+              onPress={onKeepWhatComes}
+              style={styles.keepWhatComes}
+              hitSlop={6}
+              testID="counterweight-keep"
+            >
+              <Text style={styles.keepWhatComesText}>keep what comes →</Text>
+            </Pressable>
+          )}
         </Pressable>
       )}
 
       <Pressable onPress={onCompanions} style={styles.companionsLink} testID="companions-link">
-        <Text style={styles.companionsLinkText}>four companions on the chord →</Text>
+        <Text style={styles.companionsLinkText}>four companions of this moment →</Text>
       </Pressable>
     </SheetShell>
   );
@@ -232,7 +245,7 @@ export function CompanionsSheet({
 
   return (
     <SheetShell open={open} onClose={onClose} bottomPad={bottomPad} testID="companions-sheet">
-      <Text style={styles.eyebrow}>FOUR COMPANIONS ON THE CHORD</Text>
+      <Text style={styles.eyebrow}>THE CONTINUUM OF THIS MOMENT</Text>
 
       {companions.map((c) => (
         <Pressable
@@ -387,6 +400,20 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 21,
     color: "rgba(235,228,255,0.6)",
+  },
+
+  keepWhatComes: {
+    marginTop: 12,
+    minHeight: 44,
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  keepWhatComesText: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    color: "rgba(235,228,255,0.7)",
+    textDecorationLine: "underline",
   },
 
   companionsLink: {

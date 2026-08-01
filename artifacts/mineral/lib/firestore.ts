@@ -313,6 +313,8 @@ export type CreateFieldNoteInput = {
   /** Voice-path override: when the upload already failed, the note is
    *  created terminally 'failed' — never 'pending' with no audio behind it. */
   transcriptStatus?: "pending" | "failed";
+  /** v1.8 §6 — the map position that provoked a counterweight capture. */
+  mapRef?: { date: string; phase: PhaseId } | null;
 };
 
 /** Pre-generate a note id — the voice path needs it for the Storage path. */
@@ -343,6 +345,7 @@ export async function createFieldNote(
     questionId: input.questionId ?? null,
     atmosphere: input.atmosphere,
     createdAt: serverTimestamp(),
+    mapRef: input.mapRef ?? null,
   };
 
   const colRef = collection(db, "users", uid, "fieldNotes");

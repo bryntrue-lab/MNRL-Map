@@ -64,6 +64,18 @@ export function crystallizingPrompt(
   return null;
 }
 
+/** §5 — the reflection block's other prompts, collapsed behind
+ *  `NEED A WAY IN? ↓` on the ⟡ screen. Never listed openly. */
+export function warmUpPrompts(
+  blocks: EncounterBlock[] | undefined
+): ReflectionPrompt[] {
+  for (const b of blocks ?? []) {
+    if (b.type !== "reflection") continue;
+    return b.prompts.filter((p) => !p.crystallizing);
+  }
+  return [];
+}
+
 /** Blocks rendered after the ⟡ capture — everything past the reflection block. */
 export function postCaptureBlocks(
   blocks: EncounterBlock[] | undefined

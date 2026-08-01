@@ -16,6 +16,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OriginAtmosphere } from "@/components/Atmosphere";
+import { CaptureSheet } from "@/components/CaptureSheet";
 import { CompanionsSheet, QuietToast, ReadingSheet } from "@/components/OriginSheets";
 import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralComponents";
 import { FontFamily } from "@/constants/typography";
@@ -51,6 +52,12 @@ import {
 } from "@/lib/spiral";
 import { setVisitDay } from "@/lib/visitStore";
 import type { PhaseId, UserEncounterDoc } from "@/types/firestore";
+
+// §3 pinch-zoom bounds — magnification only, never the fractal zoom.
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 2.5;
+type ZoomState = { s: number; tx: number; ty: number };
+const ZOOM_HOME: ZoomState = { s: 1, tx: 0, ty: 0 };
 
 const INTRO_KEY = "mineral_origin_intro_played";
 const HINT_KEY = "mineral_origin_hint_done";
@@ -348,6 +355,10 @@ export default function OriginScreen() {
   const [sheet, setSheet] = useState<null | "reading" | "companions">(null);
   const arcsDim = useEasedValue(sheet ? 0.55 : 1, 300);
 
+  // §6 — counterweight capture: the position read when "keep what comes"
+  // was offered. Non-null renders the standard capture sheet.
+  const [cwCapture, setCwCapture] = useState<{ date: string; phase: PhaseId } | null>(null);
+
   const [turnOpen, setTurnOpen] = useState(false);
   const lifeOp = useRef(new Animated.Value(1)).current;
   const turnOp = useRef(new Animated.Value(0)).current;
@@ -447,9 +458,53 @@ export default function OriginScreen() {
   const mapScale = zone.w > 0 ? Math.min(zone.w / MAP_W, zone.h / MAP_H) : 1;
   const mapOffX = (zone.w - MAP_W * mapScale) / 2;
   const mapOffY = (zone.h - MAP_H * mapScale) / 2;
+
+  // ── §3 pinch-zoom + pan (life spiral only, 1×–2.5×) ───────
+  const [zoomState, setZoomState] = useState<ZoomState>(ZOOM_HOME);
+  const zoomRef = useRef<ZoomState>(ZOOM_HOME);
+  const setZoomBoth = useCallback((z: ZoomState) => {
+    zoomRef.current = z;
+    setZoomState(z);
+  }, []);
+  const zoomRaf = useRef<number | null>(null);
+  const animateZoomTo = useCallback(
+    (target: ZoomState) => {
+      if (zoomRaf.current != null) cancelAnimationFrame(zoomRaf.current);
+      const from = { ...zoomRef.current };
+      const start = nowMs();
+      const step = () => {
+        const k = easeInOutQuad(clamp01((nowMs() - start) / 240));
+        setZoomBoth({
+          s: from.s + (target.s - from.s) * k,
+          tx: from.tx + (target.tx - from.tx) * k,
+          ty: from.ty + (target.ty - from.ty) * k,
+        });
+        if (k < 1) zoomRaf.current = requestAnimationFrame(step);
+        else zoomRaf.current = null;
+      };
+      zoomRaf.current = requestAnimationFrame(step);
+    },
+    [setZoomBoth]
+  );
+  useEffect(
+    () => () => {
+      if (zoomRaf.current != null) cancelAnimationFrame(zoomRaf.current);
+    },
+    []
+  );
+
+  // Gesture-space → viewBox, through the inverse of the zoom transform
+  // (scale about the zone center, then translate).
   const toViewBox = useCallback(
-    (x: number, y: number) => ({ x: (x - mapOffX) / mapScale, y: (y - mapOffY) / mapScale }),
-    [mapOffX, mapOffY, mapScale]
+    (x: number, y: number) => {
+      const z = zoomRef.current;
+      const cx = zone.w / 2;
+      const cy = zone.h / 2;
+      const ix = cx + (x - z.tx - cx) / z.s;
+      const iy = cy + (y - z.ty - cy) / z.s;
+      return { x: (ix - mapOffX) / mapScale, y: (iy - mapOffY) / mapScale };
+    },
+    [mapOffX, mapOffY, mapScale, zone.w, zone.h]
   );
 
   // ── Actions ───────────────────────────────────────────────
@@ -495,6 +550,7 @@ export default function OriginScreen() {
     wheelDay,
     ctaState,
     encounterReady: !!encounter,
+    zoneW: zone.w,
     zoneH: zone.h,
   });
   stateRef.current = {
@@ -506,6 +562,7 @@ export default function OriginScreen() {
     wheelDay,
     ctaState,
     encounterReady: !!encounter,
+    zoneW: zone.w,
     zoneH: zone.h,
   };
 
@@ -520,6 +577,8 @@ export default function OriginScreen() {
     swingTo,
     setWandering,
     setDisplayAge,
+    setZoomBoth,
+    animateZoomTo,
   });
   actionsRef.current = {
     toViewBox,
@@ -532,6 +591,8 @@ export default function OriginScreen() {
     swingTo,
     setWandering,
     setDisplayAge,
+    setZoomBoth,
+    animateZoomTo,
   };
 
   const dragRef = useRef({
@@ -542,7 +603,67 @@ export default function OriginScreen() {
     wandered: false,
   });
 
+  const pinchStart = useRef({ s0: 1, tx0: 0, ty0: 0, fx0: 0, fy0: 0 });
+
   const gesture = useMemo(() => {
+    // §3 — bounded magnification with a rubber band; focal-anchored, so
+    // moving both fingers pans the zoomed map. Double-tap resets.
+    const soften = (v: number, lo: number, hi: number) =>
+      v < lo ? lo - (lo - v) * 0.35 : v > hi ? hi + (v - hi) * 0.35 : v;
+
+    const pinch = Gesture.Pinch()
+      .runOnJS(true)
+      .onStart((e) => {
+        const z = zoomRef.current;
+        pinchStart.current = { s0: z.s, tx0: z.tx, ty0: z.ty, fx0: e.focalX, fy0: e.focalY };
+      })
+      .onUpdate((e) => {
+        const st = stateRef.current;
+        const act = actionsRef.current;
+        if (st.introRunning || st.turnOpen || st.sheet) return;
+        const P = pinchStart.current;
+        const cx = st.zoneW / 2;
+        const cy = st.zoneH / 2;
+        let s = soften(P.s0 * e.scale, ZOOM_MIN, ZOOM_MAX);
+        s = Math.max(0.85, Math.min(s, 3));
+        // The map point under the first focal stays under the moving focal.
+        const qx = cx + (P.fx0 - P.tx0 - cx) / P.s0;
+        const qy = cy + (P.fy0 - P.ty0 - cy) / P.s0;
+        act.setZoomBoth({
+          s,
+          tx: e.focalX - cx - (qx - cx) * s,
+          ty: e.focalY - cy - (qy - cy) * s,
+        });
+      })
+      .onEnd(() => {
+        const st = stateRef.current;
+        const act = actionsRef.current;
+        const z = zoomRef.current;
+        let s = Math.max(ZOOM_MIN, Math.min(z.s, ZOOM_MAX));
+        let tx = z.tx;
+        let ty = z.ty;
+        if (s <= 1.001) {
+          act.animateZoomTo(ZOOM_HOME);
+          return;
+        }
+        const maxTx = ((s - 1) * st.zoneW) / 2;
+        const maxTy = ((s - 1) * st.zoneH) / 2;
+        tx = Math.max(-maxTx, Math.min(tx, maxTx));
+        ty = Math.max(-maxTy, Math.min(ty, maxTy));
+        act.animateZoomTo({ s, tx, ty });
+      });
+
+    const doubleTap = Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDelay(250)
+      .runOnJS(true)
+      .onEnd((_e, success) => {
+        if (!success) return;
+        const st = stateRef.current;
+        if (st.introRunning || st.turnOpen || st.sheet) return;
+        if (zoomRef.current.s > 1.001) actionsRef.current.animateZoomTo(ZOOM_HOME);
+      });
+
     const pan = Gesture.Pan()
       .minDistance(8)
       .maxPointers(1)
@@ -656,7 +777,7 @@ export default function OriginScreen() {
         act.openReading();
       });
 
-    return Gesture.Exclusive(pan, tap);
+    return Gesture.Simultaneous(pinch, Gesture.Exclusive(pan, doubleTap, tap));
   }, []);
 
   // ── NOW halo pulse ────────────────────────────────────────
@@ -787,7 +908,18 @@ export default function OriginScreen() {
             {zone.w > 0 && (
               <>
                 <Animated.View
-                  style={[StyleSheet.absoluteFill, { opacity: lifeOp, pointerEvents: "none" }]}
+                  style={[
+                    StyleSheet.absoluteFill,
+                    {
+                      opacity: lifeOp,
+                      pointerEvents: "none",
+                      transform: [
+                        { translateX: zoomState.tx },
+                        { translateY: zoomState.ty },
+                        { scale: zoomState.s },
+                      ],
+                    },
+                  ]}
                 >
                   <OriginMap
                     currentAge={clampedCurrent}
@@ -856,12 +988,13 @@ export default function OriginScreen() {
                 setWandering(false);
                 if (clampedCurrent != null) setDisplayAge(clampedCurrent);
               }
+              setZoomBoth(ZOOM_HOME); // the practice wheel is never magnified (§3)
               setTurnOpen((o) => !o);
             }}
             style={[styles.chip, { opacity: ui.cta }]}
             testID="zoom-chip"
           >
-            <Text style={styles.chipText}>{turnOpen ? "⤢  the life" : "⤢  this turn"}</Text>
+            <Text style={styles.chipText}>{turnOpen ? "⤢  the life" : "⤢  the practice"}</Text>
           </Pressable>
         </View>
 
@@ -947,6 +1080,14 @@ export default function OriginScreen() {
             onClose={() => setSheet(null)}
             onCompanions={() => setSheet("companions")}
             onSwingTo={sheetSwingTo}
+            onKeepWhatComes={() => {
+              // §6 — the position read is the displayed position.
+              setSheet(null);
+              setCwCapture({
+                date: dateAtAge(birthDate, displayAge).toISOString().slice(0, 10),
+                phase: r.phase,
+              });
+            }}
           />
           <CompanionsSheet
             open={sheet === "companions"}
@@ -958,6 +1099,20 @@ export default function OriginScreen() {
           />
         </>
       )}
+
+      {/* §6 — counterweight capture: the standard sheet, type fixed to
+          reflection, mapRef carrying the position that provoked it. */}
+      <CaptureSheet
+        open={cwCapture != null}
+        onClose={() => setCwCapture(null)}
+        uid={user?.uid ?? null}
+        source="spontaneous"
+        atmosphere={cwCapture?.phase ?? r.phase}
+        bottomPad={tabBarHeight}
+        lockedType="reflection"
+        mapRef={cwCapture}
+        onSaved={() => showToast("kept.")}
+      />
 
       <QuietToast toast={toast} bottom={tabBarHeight + 130} onDone={clearToast} />
     </View>

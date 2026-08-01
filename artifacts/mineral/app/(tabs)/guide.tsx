@@ -1,4 +1,5 @@
-import React from "react";
+import { onSnapshot } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -11,49 +12,73 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import TabTopBar from "@/components/TabTopBar";
 import { FontFamily } from "@/constants/typography";
+import { useAuth } from "@/context/AuthContext";
+import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
+import type { FieldNoteDoc } from "@/types/firestore";
+
+// §C.1 7 — interim Guide: chronological feed + taking-root header from the
+// FIRST capture. Lens rows render but read "listening." until Milestone D.
 
 const LENSES = [
-  {
-    id: "resistance",
-    label: "recurring resistance",
-    desc: "patterns of friction across encounters",
-    color: "#e08aaf",
-  },
-  {
-    id: "threads",
-    label: "threads",
-    desc: "phrases that return",
-    color: "#88dcba",
-  },
-  {
-    id: "motifs",
-    label: "mythic motifs",
-    desc: "images and symbols across the field",
-    color: "#e9b76b",
-  },
-  {
-    id: "conditions",
-    label: "conditions noted",
-    desc: "what you name alongside high charge",
-    color: "#9bb6d6",
-  },
-  {
-    id: "consciousness",
-    label: "consciousness map",
-    desc: "where your attention lives across structures",
-    color: "#c4baea",
-  },
+  { id: "resistance",    label: "recurring resistance", color: "#e08aaf" },
+  { id: "threads",       label: "threads",              color: "#88dcba" },
+  { id: "motifs",        label: "mythic motifs",        color: "#e9b76b" },
+  { id: "conditions",    label: "conditions noted",     color: "#9bb6d6" },
+  { id: "consciousness", label: "consciousness map",    color: "#c4baea" },
 ];
 
-// Hardcoded for now — pulls from Firebase later
-const FIELD_STATE = {
-  signalCount: 0,
-  daysIn: 1,
+const SOURCE_LABEL: Record<string, string> = {
+  encounter: "the threshold",
+  spontaneous: "the field",
 };
+
+function openingLine(n: FieldNoteDoc): string {
+  if (n.content) {
+    const line = n.content.split("\n").find((l) => l.trim().length > 0);
+    if (line) return line.trim();
+  }
+  if (n.captureMode === "audio") {
+    return n.transcriptStatus === "pending" ? "spoken — words arriving…" : "spoken.";
+  }
+  return "kept.";
+}
+
+function whenLabel(n: FieldNoteDoc): string {
+  const created = n.createdAt?.toDate?.();
+  if (!created) return "";
+  const days = Math.floor((Date.now() - created.getTime()) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
 
 export default function GuideScreen() {
   const insets = useSafeAreaInsets();
-  const hasField = FIELD_STATE.signalCount > 0;
+  const { user } = useAuth();
+
+  const [notes, setNotes] = useState<FieldNoteWithId[]>([]);
+  useEffect(() => {
+    if (!user) {
+      setNotes([]);
+      return;
+    }
+    const unsub = onSnapshot(
+      fieldNotesQuery(user.uid),
+      (snap) =>
+        setNotes(snap.docs.map((d) => ({ id: d.id, ...(d.data() as FieldNoteDoc) }))),
+      (err) => console.warn("guide notes", err)
+    );
+    return unsub;
+  }, [user]);
+
+  const hasField = notes.length > 0;
+  const dayCount = new Set(
+    notes
+      .map((n) => n.createdAt?.toDate?.())
+      .filter(Boolean)
+      .map((d) => (d as Date).toDateString())
+  ).size;
+  const mostRecent = notes[0] ?? null;
 
   return (
     <View style={styles.container}>
@@ -68,51 +93,77 @@ export default function GuideScreen() {
       >
         <TabTopBar title="FIELD GUIDE" rightIcon="⌕" />
 
-        {/* Field state header */}
+        {/* Taking-root header — counts only, no interpretation (§7) */}
         {hasField ? (
-          <View style={styles.fieldHeader}>
-            <Text style={styles.fieldStateLabel}>YOUR FIELD</Text>
+          <View style={styles.fieldHeader} testID="taking-root-header">
+            <Text style={styles.fieldStateLabelFresh}>● TAKING ROOT</Text>
             <Text style={styles.fieldCount}>
-              {FIELD_STATE.signalCount} signals · {FIELD_STATE.daysIn} days in
+              {notes.length} {notes.length === 1 ? "note" : "notes"} across {dayCount}{" "}
+              {dayCount === 1 ? "day" : "days"}.
             </Text>
           </View>
         ) : (
           <View style={styles.fieldHeader}>
             <Text style={styles.fieldStateLabelFresh}>● TAKING ROOT</Text>
+            <Text style={styles.synthesisText}>
+              Your field begins with your first reflection. Patterns emerge with time
+              and return.
+            </Text>
           </View>
         )}
 
-        {/* Synthesis sentence */}
-        <View style={styles.synthesisWrap}>
-          <Text style={styles.synthesisText}>
-            {hasField
-              ? `Your field is beginning to gather. ${FIELD_STATE.signalCount} signals are taking shape across ${FIELD_STATE.daysIn} days of practice.`
-              : "Your field begins with your first reflection. Patterns emerge with time and return."}
-          </Text>
-        </View>
+        {/* Your words, returning — the most recent capture, verbatim (§7) */}
+        {mostRecent && (
+          <View style={styles.returningWrap} testID="words-returning">
+            <Text style={styles.returningLabel}>YOUR WORDS, RETURNING</Text>
+            <Text style={styles.returningLine}>“{openingLine(mostRecent)}”</Text>
+            <Text style={styles.returningMeta}>
+              {mostRecent.type} · {SOURCE_LABEL[mostRecent.source] ?? mostRecent.source}
+              {whenLabel(mostRecent) ? ` · ${whenLabel(mostRecent)}` : ""}
+            </Text>
+          </View>
+        )}
 
-        {/* Lenses */}
+        {/* Lenses — rendered, listening until Milestone D */}
         <Text style={styles.lensesLabel}>EXPLORE</Text>
         {LENSES.map((lens) => (
           <Pressable
             key={lens.id}
             style={({ pressed }) => [styles.lensRow, { opacity: pressed ? 0.7 : 1 }]}
             onPress={() => {
-              // Lens screen — wire when built
+              // Lens engine — Milestone D.
             }}
           >
             <View style={styles.lensLeft}>
               <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
               <View style={styles.lensTextWrap}>
                 <Text style={styles.lensName}>{lens.label}</Text>
-                <Text style={styles.lensDesc}>{lens.desc}</Text>
+                <Text style={styles.lensDesc}>listening.</Text>
               </View>
             </View>
             <Text style={styles.lensArrow}>→</Text>
           </Pressable>
         ))}
 
-        {/* Closing thought — only when field is empty */}
+        {/* Chronological feed — free-tier canon, newest first (§7) */}
+        {hasField && (
+          <View style={styles.feedSection}>
+            <Text style={styles.lensesLabel}>THE FIELD, IN ORDER</Text>
+            {notes.map((n) => (
+              <View key={n.id} style={styles.noteItem} testID={`guide-note-${n.id}`}>
+                <Text style={styles.noteLine} numberOfLines={2}>
+                  {openingLine(n)}
+                </Text>
+                <Text style={styles.noteMeta}>
+                  {n.type} · {SOURCE_LABEL[n.source] ?? n.source}
+                  {whenLabel(n) ? ` · ${whenLabel(n)}` : ""}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Closing thought — only when the field is empty */}
         {!hasField && (
           <Text style={styles.closingThought}>
             {"The Guide grows as you practice.\nReturn here as your field deepens."}
@@ -133,35 +184,20 @@ const styles = StyleSheet.create({
   },
 
   fieldHeader: {
-    marginBottom: 20,
-  },
-  fieldStateLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
-    marginBottom: 6,
+    marginBottom: 24,
   },
   fieldStateLabelFresh: {
     fontFamily: FontFamily.sans500,
     fontSize: 9,
     letterSpacing: 2.5,
     color: "rgba(196,74,138,0.85)",
-    marginBottom: 6,
+    marginBottom: 8,
   },
   fieldCount: {
     fontFamily: FontFamily.serifItalic,
     fontStyle: "italic",
-    fontSize: 13,
-    color: "rgba(255,255,255,0.5)",
-  },
-
-  synthesisWrap: {
-    paddingLeft: 14,
-    borderLeftWidth: 1.5,
-    borderLeftColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 6,
-    marginBottom: 36,
+    fontSize: 15,
+    color: "rgba(255,255,255,0.75)",
   },
   synthesisText: {
     fontFamily: FontFamily.serifItalic,
@@ -169,6 +205,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: "rgba(255,255,255,0.78)",
+  },
+
+  returningWrap: {
+    paddingLeft: 14,
+    borderLeftWidth: 1.5,
+    borderLeftColor: "rgba(255,255,255,0.2)",
+    paddingVertical: 6,
+    marginBottom: 36,
+  },
+  returningLabel: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 9,
+    letterSpacing: 2.5,
+    color: "rgba(255,255,255,0.4)",
+    marginBottom: 8,
+  },
+  returningLine: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 15,
+    lineHeight: 23,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 6,
+  },
+  returningMeta: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.4)",
   },
 
   lensesLabel: {
@@ -216,6 +281,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "rgba(255,255,255,0.3)",
     marginLeft: 8,
+  },
+
+  feedSection: {
+    marginTop: 36,
+  },
+  noteItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  noteLine: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 14,
+    lineHeight: 20,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 4,
+  },
+  noteMeta: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.4)",
   },
 
   closingThought: {

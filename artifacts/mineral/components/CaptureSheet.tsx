@@ -6,6 +6,7 @@ import { SheetShell } from "@/components/OriginSheets";
 import { FontFamily } from "@/constants/typography";
 import { createFieldNote } from "@/lib/firestore";
 import type { FieldNoteType, NoteSource, PhaseId } from "@/types/firestore";
+import type { CreateFieldNoteInput } from "@/lib/firestore";
 
 // ─────────────────────────────────────────────────────────────
 // The capture sheet — nine chips, one soft field. Shared verbatim
@@ -36,6 +37,10 @@ interface CaptureSheetProps {
   bottomPad: number;
   /** Preselect a chip (Notes tab chips open the sheet already chosen). */
   initialType?: FieldNoteType | null;
+  /** §6 counterweight capture — the type is fixed and the chips stay hidden. */
+  lockedType?: FieldNoteType | null;
+  /** §6 additive v1.8 — which map position provoked this capture. */
+  mapRef?: CreateFieldNoteInput["mapRef"];
   onSaved?: () => void;
 }
 
@@ -48,20 +53,22 @@ export function CaptureSheet({
   atmosphere,
   bottomPad,
   initialType,
+  lockedType,
+  mapRef,
   onSaved,
 }: CaptureSheetProps) {
-  const [type, setType] = useState<FieldNoteType | null>(initialType ?? null);
+  const [type, setType] = useState<FieldNoteType | null>(lockedType ?? initialType ?? null);
   const [text, setText] = useState("");
   const busy = useRef(false);
 
   // Each opening starts fresh at the caller's preselection.
   useEffect(() => {
     if (open) {
-      setType(initialType ?? null);
+      setType(lockedType ?? initialType ?? null);
       setText("");
       busy.current = false;
     }
-  }, [open, initialType]);
+  }, [open, initialType, lockedType]);
 
   const canKeep = type != null && text.trim().length > 0 && uid != null;
 
@@ -77,6 +84,7 @@ export function CaptureSheet({
         encounterRef: encounterRef ?? undefined,
         // questionId stays null — only the ⟡ capture carries one.
         atmosphere,
+        mapRef: mapRef ?? null,
       });
       onSaved?.();
       onClose();
@@ -106,6 +114,7 @@ export function CaptureSheet({
           </Pressable>
         </View>
 
+        {lockedType == null && (
         <View style={styles.chipRow}>
           {CAPTURE_CHIPS.map((chip) => {
             const active = chip.id === type;
@@ -126,6 +135,7 @@ export function CaptureSheet({
             );
           })}
         </View>
+        )}
 
         {type != null && (
           <>

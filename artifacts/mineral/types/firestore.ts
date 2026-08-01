@@ -157,6 +157,10 @@ export interface FieldNoteDoc {
   questionId: string | null;
   atmosphere: PhaseId;
   createdAt: Timestamp;
+
+  // v1.8 additive — set only on counterweight "keep what comes" captures:
+  // which map position provoked this reflection. Null on all other notes.
+  mapRef?: { date: string; phase: PhaseId } | null;
 }
 
 // ─────────────────────────────────────────────────────────────
