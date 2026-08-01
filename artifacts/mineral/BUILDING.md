@@ -31,3 +31,4 @@ eas submit --platform ios --latest               # uploads the latest production
 Notes:
 - Voice reflections need a real device (simulators have no proper mic path); background narration audio (`UIBackgroundModes: audio`) is native-only — verify on device.
 - The Firebase config ships via `EXPO_PUBLIC_FIREBASE_API_KEY` etc.; set the `EXPO_PUBLIC_*` values as EAS secrets (`eas secret:create`) before production builds.
+- App Store privacy label (morning call ships with this build): **Location — coarse, app functionality only, not linked to identity, not used for tracking.** Location is requested only when the user picks "sunrise", stored locally on device, never sent anywhere.

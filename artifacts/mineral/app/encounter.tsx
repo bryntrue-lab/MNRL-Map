@@ -33,6 +33,7 @@ import {
 } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { MorningCallMoment } from "@/components/MorningCall";
 import { QuietToast } from "@/components/OriginSheets";
 import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
@@ -57,6 +58,13 @@ import {
   uploadCaptureAudio,
   userEncounterId,
 } from "@/lib/firestore";
+import {
+  hasPromptBeenShown as morningCallPromptShown,
+  markPromptShown as markMorningCallPromptShown,
+  rescheduleMorningCall,
+  saveChoice as saveMorningCallChoice,
+  type MorningCallChoice,
+} from "@/lib/morningCall";
 import {
   COUNTERWEIGHT_QUESTION,
   CX,
@@ -206,6 +214,13 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   const [accountDismissed, setAccountDismissed] = useState(false);
   const accountBusyRef = useRef(false);
   const accountFlaggedRef = useRef(false);
+
+  // The morning call moment — shown once ever, on the first encounter close
+  // where the account moment is NOT taking the space (account takes the first
+  // close, the morning call the next). Local flag only (AsyncStorage).
+  const [morningCallEligible, setMorningCallEligible] = useState(false);
+  const [morningCallDismissed, setMorningCallDismissed] = useState(false);
+  const morningCallFlaggedRef = useRef(false);
 
   // ── Listen (§1b) ──
   const player = useAudioPlayer({ uri: audioUrl });
@@ -539,12 +554,22 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   // crystallizing capture, and the once-ever flag isn't already set.
   const accountMomentAlreadyShown =
     (profile as { accountMomentShown?: boolean } | null)?.accountMomentShown === true;
+  // Eligibility, independent of the in-session dismissal — this is what
+  // arbitrates the whole close (account moment wins the entire first close).
+  const accountMomentEligible =
+    user.isAnonymous && producedCrystallizing && !accountMomentAlreadyShown;
   const showAccountMoment =
-    stage === "close" &&
-    user.isAnonymous &&
-    producedCrystallizing &&
-    !accountMomentAlreadyShown &&
-    !accountDismissed;
+    stage === "close" && accountMomentEligible && !accountDismissed;
+
+  // Freeze the account-vs-morning-call decision at the moment the close stage
+  // mounts. If the account moment was eligible when the close appeared, the
+  // morning call is suppressed for this entire close — dismissing the account
+  // moment does NOT let the morning call slip in on the same close (§1). The
+  // morning call waits for a later close.
+  const accountClaimedCloseRef = useRef<boolean | null>(null);
+  if (stage === "close" && accountClaimedCloseRef.current === null) {
+    accountClaimedCloseRef.current = accountMomentEligible;
+  }
 
   // Set the flag the moment the screen is shown, regardless of outcome.
   useEffect(() => {
@@ -555,6 +580,42 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
     >[0]).catch((err) => console.warn("account moment flag not written", err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAccountMoment]);
+
+  // Read the local once-ever flag on mount — the morning call moment has
+  // never been shown yet.
+  useEffect(() => {
+    morningCallPromptShown().then((shown) => {
+      if (!shown) setMorningCallEligible(true);
+    });
+  }, []);
+
+  // The morning call moment shows on the close screen only when the account
+  // moment did NOT claim this close (frozen at close entry) — account takes
+  // the first close, the morning call waits for a later one. Once ever.
+  const showMorningCallMoment =
+    stage === "close" &&
+    morningCallEligible &&
+    accountClaimedCloseRef.current === false &&
+    !morningCallDismissed;
+
+  // Mark the local flag the moment the screen is shown, regardless of outcome.
+  useEffect(() => {
+    if (!showMorningCallMoment || morningCallFlaggedRef.current) return;
+    morningCallFlaggedRef.current = true;
+    markMorningCallPromptShown().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMorningCallMoment]);
+
+  const allowMorningCall = (choice: MorningCallChoice) => {
+    setMorningCallDismissed(true);
+    (async () => {
+      await saveMorningCallChoice(choice);
+      await rescheduleMorningCall({
+        sequenceDay: profile?.sequenceDay ?? 1,
+        currentTurn: profile?.currentTurn ?? 1,
+      });
+    })().catch(() => {});
+  };
 
   const linkAccount = async () => {
     const email = accountEmail.trim();
@@ -992,6 +1053,13 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
                 <Text style={styles.accountDismissText}>not now</Text>
               </Pressable>
             </View>
+          ) : showMorningCallMoment ? (
+            <MorningCallMoment
+              onAllow={(choice) => {
+                allowMorningCall(choice);
+              }}
+              onDismiss={() => setMorningCallDismissed(true)}
+            />
           ) : (
             <Pressable onPress={closeOut} style={styles.advance} testID="close-return">
               <Text style={styles.advanceText}>return to the map →</Text>

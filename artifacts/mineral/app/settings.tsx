@@ -6,9 +6,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OriginAtmosphere } from "@/components/Atmosphere";
 import { AuthSheet } from "@/components/AuthSheet";
+import { TimePicker } from "@/components/MorningCall";
 import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
+import { useUser } from "@/context/UserContext";
 import { functions } from "@/lib/firebase";
+import {
+  DEFAULT_HOUR,
+  DEFAULT_MINUTE,
+  loadChoice as loadMorningCallChoice,
+  rescheduleMorningCall,
+  saveChoice as saveMorningCallChoice,
+  type MorningCallChoice,
+} from "@/lib/morningCall";
 
 // ─────────────────────────────────────────────────────────────
 // Settings — quiet, sparse. Three concerns only:
@@ -22,10 +32,50 @@ const HOLD_MS = 2000;
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { profile } = useUser();
   const isAnon = user?.isAnonymous ?? true;
   const email = user?.email ?? null;
 
   const [sheet, setSheet] = useState<null | "link" | "signin">(null);
+
+  // The morning call — the picker opens inline. Choice is local only.
+  const [mcOpen, setMcOpen] = useState(false);
+  const [mcChoice, setMcChoice] = useState<MorningCallChoice>({
+    mode: "hour",
+    hour: DEFAULT_HOUR,
+    minute: DEFAULT_MINUTE,
+  });
+
+  useEffect(() => {
+    loadMorningCallChoice().then((c) => {
+      if (c) setMcChoice(c);
+    });
+  }, []);
+
+  // Open the picker, re-reading the stored choice each time so the wheel
+  // always visually marks the persisted selection (highlighted hour/sunrise).
+  const toggleMorningCall = () => {
+    setMcOpen((open) => {
+      const next = !open;
+      if (next) {
+        loadMorningCallChoice().then((c) => {
+          if (c) setMcChoice(c);
+        });
+      }
+      return next;
+    });
+  };
+
+  const commitMorningCall = (choice: MorningCallChoice) => {
+    setMcChoice(choice);
+    (async () => {
+      await saveMorningCallChoice(choice);
+      await rescheduleMorningCall({
+        sequenceDay: profile?.sequenceDay ?? 1,
+        currentTurn: profile?.currentTurn ?? 1,
+      });
+    })().catch(() => {});
+  };
   const [leaving, setLeaving] = useState<"idle" | "holding" | "working" | "failed">("idle");
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,6 +147,19 @@ export default function SettingsScreen() {
           <View style={styles.row}>
             <Text style={styles.rowQuiet}>kept by {email ?? "your email"}</Text>
           </View>
+        )}
+
+        {/* the morning call */}
+        <Text style={[styles.sectionEyebrow, styles.sectionGap]}>THE MORNING CALL</Text>
+        <Pressable
+          style={styles.row}
+          onPress={toggleMorningCall}
+          testID="settings-morning-call"
+        >
+          <Text style={styles.rowText}>the morning call · set a time</Text>
+        </Pressable>
+        {mcOpen && (
+          <TimePicker value={mcChoice} onChange={commitMorningCall} />
         )}
 
         {/* leaving */}

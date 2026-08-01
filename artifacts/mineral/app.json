@@ -19,6 +19,7 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Mineral records your voice reflections — they stay in your field.",
+        "NSLocationWhenInUseUsageDescription": "Mineral uses your approximate location only to time the morning call to sunrise.",
         "UIBackgroundModes": ["audio"]
       }
     },
@@ -47,6 +48,14 @@
         "expo-audio",
         {
           "microphonePermission": "Mineral records your voice reflections — they stay in your field."
+        }
+      ],
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Mineral uses your approximate location only to time the morning call to sunrise.",
+          "isIosBackgroundLocationEnabled": false
         }
       ]
     ],
