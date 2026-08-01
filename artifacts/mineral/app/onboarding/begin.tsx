@@ -1,140 +1,53 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { Timestamp, doc, setDoc } from "firebase/firestore";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import { Timestamp } from "firebase/firestore";
 
-import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import AuthSheet from "@/components/AuthSheet";
 import BeginButton from "@/components/BeginButton";
-import { FontFamily } from "@/constants/typography";
-import { useAuth } from "@/context/AuthContext";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { useUser } from "@/context/UserContext";
-import { setEncounterSession } from "@/lib/encounter";
-import { db } from "@/lib/firebase";
-import {
-  beginSequenceEncounter,
-  fetchEncounterLibrary,
-  resolveAudioUrl,
-  selectEncounterForDay,
-  type EncounterWithId,
-} from "@/lib/firestore";
 import {
   clearPendingBirthData,
   getPendingBirthData,
 } from "@/hooks/useOnboarding";
-import type { UserEncounterDoc } from "@/types/firestore";
+import { FontFamily } from "@/constants/typography";
 
 const { height } = Dimensions.get("window");
 
-const THRESHOLD_TURN = 1;
-const SAVED_ENCOUNTER_ID = "the-threshold_t1";
-// Kept in step with app/index.tsx — marks the onboarding sequence complete.
-const ONBOARDING_DONE_KEY = "mineral_onboarding_done";
+type PendingAction = "begin" | "later";
 
 export default function BeginScreen() {
-  const { user } = useAuth();
   const { updateProfile } = useUser();
 
-  const busy = useRef(false);
-  const [library, setLibrary] = useState<EncounterWithId[] | null>(null);
+  const [authVisible, setAuthVisible] = useState(false);
+  const pendingAction = useRef<PendingAction>("begin");
 
-  useEffect(() => {
-    let on = true;
-    fetchEncounterLibrary()
-      .then((l) => on && setLibrary(l))
-      .catch((err) => console.warn("onboarding encounter library", err));
-    return () => {
-      on = false;
-    };
-  }, []);
-
-  // Commit any birth data the signature collected, once, before leaving
-  // onboarding. birthLocation is captured as a typed label (lat/lng feed
-  // Human Design later, which is out of scope here).
-  const commitBirthData = async () => {
-    const data = await getPendingBirthData();
-    if (!data) return;
-    try {
-      const birth = data.birthDate ? new Date(data.birthDate) : null;
-      const valid = birth && !Number.isNaN(birth.getTime());
-      await updateProfile({
-        ...(valid ? { birthDate: Timestamp.fromDate(birth as Date) } : {}),
-        ...(data.birthTime ? { birthTime: data.birthTime } : {}),
-        ...(data.birthLocation
-          ? { birthLocation: { lat: 0, lng: 0, label: data.birthLocation } }
-          : {}),
-      });
-    } catch (err) {
-      console.warn("birth data not kept", err);
-    }
-    await clearPendingBirthData();
+  const openAuth = (action: PendingAction) => {
+    pendingAction.current = action;
+    setAuthVisible(true);
   };
 
-  const finishOnboarding = () =>
-    AsyncStorage.setItem(ONBOARDING_DONE_KEY, "1").catch(() => {});
+  const handleAuthSuccess = async () => {
+    setAuthVisible(false);
 
-  const begin = async () => {
-    if (busy.current || !user) return;
-    busy.current = true;
-    await finishOnboarding();
-    await commitBirthData();
-
-    // Enter the encounter flow with the same session shape the Origin CTA
-    // uses: select day one (The Threshold), open the instance, resolve audio.
-    const encounter = library
-      ? selectEncounterForDay(library, 1, THRESHOLD_TURN)
-      : null;
-    if (!encounter) {
-      // Library not ready or missing — land on the map; today's CTA offers it.
-      router.replace("/(tabs)/origin");
-      return;
+    const birthData = await getPendingBirthData();
+    if (birthData) {
+      try {
+        // Convert PendingBirthData (string fields) to the UserDoc schema types.
+        // birthLocation as a plain string doesn't map to { lat, lng, label } yet —
+        // deferred until the signature screen is wired to the structured schema.
+        await updateProfile({
+          ...(birthData.birthDate
+            ? { birthDate: Timestamp.fromDate(new Date(birthData.birthDate)) }
+            : {}),
+          ...(birthData.birthTime ? { birthTime: birthData.birthTime } : {}),
+        });
+      } catch {}
+      await clearPendingBirthData();
     }
-    try {
-      const url = await resolveAudioUrl(encounter.audioPath);
-      const existing = await beginSequenceEncounter(
-        user.uid,
-        encounter.id,
-        THRESHOLD_TURN
-      );
-      const mode = existing?.status === "completed" ? "visit" : "sequence";
-      setEncounterSession({
-        encounter,
-        turn: THRESHOLD_TURN,
-        mode,
-        audioUrl: url,
-        resume: null,
-      });
-      router.replace("/encounter");
-    } catch (err) {
-      console.warn("onboarding begin failed", err);
-      router.replace("/(tabs)/origin");
-    }
-  };
 
-  const saveForLater = async () => {
-    if (busy.current || !user) return;
-    busy.current = true;
-    await finishOnboarding();
-    await commitBirthData();
-
-    // userEncounters/the-threshold_t1 as 'saved' — fire-and-forget (offline-safe).
-    const data: UserEncounterDoc = {
-      encounterId: "the-threshold",
-      turn: THRESHOLD_TURN,
-      status: "saved",
-      startedAt: null,
-      completedAt: null,
-      visitedAt: null,
-      audioPosition: 0,
-      blockIndex: 0,
-    };
-    setDoc(
-      doc(db, "users", user.uid, "userEncounters", SAVED_ENCOUNTER_ID),
-      data,
-      { merge: true }
-    ).catch((err) => console.warn("save for later failed", err));
-
-    router.replace("/(tabs)/origin");
+    router.replace("/(tabs)");
   };
 
   return (
@@ -148,17 +61,23 @@ export default function BeginScreen() {
           something is calling — what comes when you stop naming it?
         </Text>
 
-        <BeginButton onPress={begin} meta="3 MIN" />
+        <BeginButton onPress={() => openAuth("begin")} />
 
+        {/* Save for later — quiet secondary */}
         <Pressable
           style={({ pressed }) => [styles.saveWrap, { opacity: pressed ? 0.5 : 1 }]}
-          onPress={saveForLater}
+          onPress={() => openAuth("later")}
           hitSlop={12}
-          testID="save-for-later"
         >
           <Text style={styles.saveText}>save for later</Text>
         </Pressable>
       </View>
+
+      <AuthSheet
+        visible={authVisible}
+        onDismiss={() => setAuthVisible(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </View>
   );
 }
@@ -171,7 +90,7 @@ const styles = StyleSheet.create({
   contentWrap: {
     flex: 1,
     paddingHorizontal: 36,
-    paddingTop: height * 0.1,
+    paddingTop: height * 0.10,
     paddingBottom: 80,
     alignItems: "center",
     justifyContent: "center",
@@ -205,9 +124,7 @@ const styles = StyleSheet.create({
   },
   saveWrap: {
     marginTop: 24,
-    paddingVertical: 10,
-    minHeight: 44,
-    justifyContent: "center",
+    paddingVertical: 8,
   },
   saveText: {
     fontFamily: FontFamily.sans400,

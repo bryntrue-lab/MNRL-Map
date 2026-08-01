@@ -7,7 +7,15 @@ import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { OnboardingSpiral } from "@/components/SpiralComponents";
 
-const { height } = Dimensions.get("window");
+const ONBOARDING_ROUTES = [
+  "/onboarding",
+  "/onboarding/entry",
+  "/onboarding/signature",
+  "/onboarding/practice",
+  "/onboarding/begin",
+];
+
+const { width, height } = Dimensions.get("window");
 
 export default function EntryScreen() {
   return (
@@ -36,7 +44,11 @@ export default function EntryScreen() {
         </Text>
       </View>
 
-      <OnboardingFooter onContinue={() => router.push("/onboarding/signature")} />
+      <OnboardingFooter
+        activeIndex={1}
+        routes={ONBOARDING_ROUTES}
+        onContinue={() => router.push("/onboarding/signature")}
+      />
     </View>
   );
 }

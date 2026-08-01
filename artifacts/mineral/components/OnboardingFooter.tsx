@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -5,16 +6,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontFamily } from "@/constants/typography";
 
 interface OnboardingFooterProps {
+  activeIndex: number;
+  routes: string[];
   onContinue: () => void;
   continueLabel?: string;
 }
 
-/**
- * The onboarding advance affordance — one quiet button, bottom-right.
- * No progress dots or percentages: onboarding is a threshold sequence,
- * not a process bar (chapel rule — timing, not progress).
- */
 export default function OnboardingFooter({
+  activeIndex,
+  routes,
   onContinue,
   continueLabel = "continue →",
 }: OnboardingFooterProps) {
@@ -22,8 +22,25 @@ export default function OnboardingFooter({
 
   return (
     <View style={[styles.footer, { bottom: Math.max(insets.bottom, 20) + 36 }]}>
+      <View style={styles.dots}>
+        {routes.map((route, i) => {
+          const isActive = i === activeIndex;
+          return (
+            <Pressable
+              key={i}
+              onPress={() => !isActive && router.push(route as any)}
+              hitSlop={10}
+              style={({ pressed }) => ({
+                opacity: pressed && !isActive ? 0.5 : 1,
+              })}
+            >
+              <View style={[styles.dot, isActive && styles.dotActive]} />
+            </Pressable>
+          );
+        })}
+      </View>
       <Pressable
-        style={({ pressed }) => [styles.continueHit, { opacity: pressed ? 0.5 : 1 }]}
+        style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
         onPress={onContinue}
         hitSlop={12}
       >
@@ -39,12 +56,25 @@ const styles = StyleSheet.create({
     left: 36,
     right: 36,
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  continueHit: {
-    minHeight: 44,
-    justifyContent: "center",
+  dots: {
+    flexDirection: "row",
+    gap: 7,
+    alignItems: "center",
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  dotActive: {
+    width: 22,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(255,255,255,1)",
   },
   continueText: {
     fontFamily: FontFamily.sans400,

@@ -2,37 +2,34 @@
   "expo": {
     "name": "Mineral",
     "slug": "mineral",
-    "version": "1.0.0",
+    "version": "0.5.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon-1024.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "mineral",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0A0610"
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0a0510"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.madebymineral.quartz",
-      "buildNumber": "1",
+      "bundleIdentifier": "com.mineral.app",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Mineral records your voice reflections — they stay in your field.",
-        "NSLocationWhenInUseUsageDescription": "Mineral uses your approximate location only to time the morning call to sunrise.",
-        "UIBackgroundModes": ["audio"]
+        "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
+        "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes."
       }
     },
     "android": {
-      "package": "com.madebymineral.quartz",
-      "versionCode": 1,
+      "package": "com.mineral.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
-        "backgroundImage": "./assets/images/adaptive-icon-background.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0a0510"
       }
     },
     "web": {
-      "favicon": "./assets/images/icon-1024.png",
+      "favicon": "./assets/images/icon.png",
       "backgroundColor": "#0a0510"
     },
     "plugins": [
@@ -44,20 +41,7 @@
       ],
       "expo-font",
       "expo-web-browser",
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "Mineral records your voice reflections — they stay in your field."
-        }
-      ],
-      "expo-notifications",
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "Mineral uses your approximate location only to time the morning call to sunrise.",
-          "isIosBackgroundLocationEnabled": false
-        }
-      ]
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

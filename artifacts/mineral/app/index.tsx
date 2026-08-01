@@ -7,26 +7,24 @@ import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 
-// Set once the full onboarding sequence is left (begin OR save for later).
-export const ONBOARDING_DONE_KEY = "mineral_onboarding_done";
+export const BIRTHDATE_PROMPTED_KEY = "mineral_birthdate_prompted";
 
 /**
- * Entry routing (§4): first launch signs in anonymously, then runs the full
- * onboarding sequence (hello → the Signal → signature → the map draws → the
- * practice → begin). Returning launches go straight to the tabs.
+ * Entry routing (§4): first launch signs in anonymously, then the single
+ * birth-date step, then the tabs. Returning launches go straight to the tabs.
  */
 export default function Index() {
   const { user, loading, signInAnon } = useAuth();
   const { profile, loading: profileLoading } = useUser();
   const [authFailed, setAuthFailed] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const [prompted, setPrompted] = useState<boolean | null>(null);
   const attempted = useRef(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_DONE_KEY)
-      .then((v) => setOnboarded(v === "1"))
-      .catch(() => setOnboarded(false));
+    AsyncStorage.getItem(BIRTHDATE_PROMPTED_KEY)
+      .then((v) => setPrompted(v === "1"))
+      .catch(() => setPrompted(false));
   }, []);
 
   // Safety valve: if Firebase auth never resolves (e.g. network offline),
@@ -57,14 +55,12 @@ export default function Index() {
     );
   }
 
-  if (!user || profileLoading || !profile || onboarded === null) {
+  if (!user || profileLoading || !profile || prompted === null) {
     // Dark ground while auth and the profile resolve — no white flash.
     return <View style={styles.ground} />;
   }
 
-  // A returning field (linked email + already onboarded, or onboarding done)
-  // goes straight in; a fresh anonymous launch runs the full sequence.
-  if (!onboarded && !profile.birthDate) return <Redirect href="/onboarding" />;
+  if (!profile.birthDate && !prompted) return <Redirect href="/birthdate" />;
   return <Redirect href="/(tabs)" />;
 }
 

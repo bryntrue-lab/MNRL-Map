@@ -1,16 +1,23 @@
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { ArchaicAtmosphere } from "@/components/Atmosphere";
-import { AuthSheet } from "@/components/AuthSheet";
-import OnboardingFooter from "@/components/OnboardingFooter";
 import { FontFamily } from "@/constants/typography";
+import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import OnboardingFooter from "@/components/OnboardingFooter";
+
+const ONBOARDING_ROUTES = [
+  "/onboarding",
+  "/onboarding/entry",
+  "/onboarding/signature",
+  "/onboarding/practice",
+  "/onboarding/begin",
+];
 
 const { width, height } = Dimensions.get("window");
 
-// The Mineral wordmark — the mark on the hello screen.
+// The Mineral wordmark — Radiometry, white, with triangular A
 function MineralWordmark({ w = 250 }: { w?: number }) {
   const h = w * (52.05 / 259.2);
   return (
@@ -27,43 +34,21 @@ function MineralWordmark({ w = 250 }: { w?: number }) {
 }
 
 export default function HelloScreen() {
-  const [signInOpen, setSignInOpen] = useState(false);
-
   return (
     <View style={styles.container}>
       <ArchaicAtmosphere />
 
-      {/* The mark + tagline */}
+      {/* Wordmark + tagline — vertically centered with footer offset */}
       <View style={styles.centerContent}>
         <MineralWordmark w={width * 0.72} />
         <Text style={styles.tagline}>a companion for the creative psyche</Text>
       </View>
 
-      {/* C.1 §1h — the quiet sign-in path for returning fields */}
-      <Pressable
-        style={styles.signInWrap}
-        onPress={() => setSignInOpen(true)}
-        hitSlop={12}
-        testID="hello-sign-in"
-      >
-        <Text style={styles.signInText}>already keeping a field? sign in</Text>
-      </Pressable>
-
       <OnboardingFooter
+        activeIndex={0}
+        routes={ONBOARDING_ROUTES}
         onContinue={() => router.push("/onboarding/entry")}
         continueLabel="begin →"
-      />
-
-      <AuthSheet
-        open={signInOpen}
-        mode="signin"
-        onClose={() => setSignInOpen(false)}
-        onSuccess={() => {
-          setSignInOpen(false);
-          // Sign-in replaces the anonymous user; land on the map with the
-          // returning field (correct for the hello path only).
-          router.replace("/(tabs)/origin");
-        }}
       />
     </View>
   );
@@ -91,20 +76,5 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.62)",
     textAlign: "center",
     marginTop: 22,
-  },
-  signInWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 108,
-    alignItems: "center",
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  signInText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
-    letterSpacing: 0.8,
-    color: "rgba(255,255,255,0.4)",
   },
 });

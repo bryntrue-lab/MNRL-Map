@@ -11,7 +11,6 @@ import {
   getReactNativePersistence,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
 
@@ -68,7 +67,6 @@ function initAppCheck(): void {
 export const auth = initAuth();
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app, "us-central1");
 
 initAppCheck();
 

@@ -8,9 +8,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { FontFamily } from "@/constants/typography";
 import { useUser } from "@/context/UserContext";
 
-// Kept in step with app/index.tsx — a birth date added here also marks the
-// onboarding sequence complete (this screen is the Origin re-entry path).
-const ONBOARDING_DONE_KEY = "mineral_onboarding_done";
+const PROMPTED_KEY = "mineral_birthdate_prompted";
 
 /** Digits → YYYY-MM-DD as the user types. */
 function formatDigits(raw: string): string {
@@ -52,7 +50,7 @@ export default function BirthDateScreen() {
     setFailed(false);
     try {
       await updateProfile({ birthDate: Timestamp.fromDate(date) });
-      await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "1").catch(() => {});
+      await AsyncStorage.setItem(PROMPTED_KEY, "1").catch(() => {});
       router.replace("/(tabs)/origin");
     } catch {
       setSaving(false);
@@ -61,18 +59,15 @@ export default function BirthDateScreen() {
   };
 
   const later = async () => {
-    await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "1").catch(() => {});
+    await AsyncStorage.setItem(PROMPTED_KEY, "1").catch(() => {});
     router.replace("/(tabs)/origin");
   };
 
   return (
     <View style={styles.ground}>
       <KeyboardAvoidingView behavior="padding" style={styles.center}>
-        <Text style={styles.eyebrow}>YOUR SIGNATURE</Text>
+        <Text style={styles.eyebrow}>M I N E R A L</Text>
         <Text style={styles.question}>when did you arrive?</Text>
-        <Text style={styles.helper}>
-          This anchors your timing map into your design.
-        </Text>
 
         <TextInput
           style={styles.input}
@@ -129,18 +124,8 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontSize: 27,
     color: "rgba(240,235,255,0.92)",
-    marginBottom: 14,
-    textAlign: "center",
-  },
-  helper: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    lineHeight: 21,
-    color: "rgba(200,190,225,0.6)",
-    textAlign: "center",
     marginBottom: 40,
-    maxWidth: 300,
+    textAlign: "center",
   },
   input: {
     width: 210,

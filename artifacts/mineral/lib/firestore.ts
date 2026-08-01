@@ -7,7 +7,6 @@ import {
   getDoc,
   getDocs,
   increment,
-  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -314,8 +313,6 @@ export type CreateFieldNoteInput = {
   /** Voice-path override: when the upload already failed, the note is
    *  created terminally 'failed' — never 'pending' with no audio behind it. */
   transcriptStatus?: "pending" | "failed";
-  /** v1.8 — the map position that provoked this note (counterweight capture). */
-  mapRef?: { date: string; phase: PhaseId } | null;
 };
 
 /** Pre-generate a note id — the voice path needs it for the Storage path. */
@@ -345,7 +342,6 @@ export async function createFieldNote(
     encounterRef: input.encounterRef ?? null,
     questionId: input.questionId ?? null,
     atmosphere: input.atmosphere,
-    mapRef: input.mapRef ?? null,
     createdAt: serverTimestamp(),
   };
 
@@ -433,28 +429,4 @@ export async function deleteFieldNote(
 
   const docRef = doc(db, "users", uid, "fieldNotes", noteId);
   await deleteDoc(docRef);
-}
-
-// ─────────────────────────────────────────────────────────────
-// C.1 §1f / §7 — read helpers for the RECENT feed (Notes) and the
-// chronological Guide feed. Single-field orderBy(createdAt desc) is
-// auto-indexed; no composite index. Append-only additions.
-// ─────────────────────────────────────────────────────────────
-
-/**
- * The user's field notes, newest first. `max` caps the read (RECENT wants a
- * shallow ~30; the Guide reads the whole field). Offline-tolerant: throws to
- * the caller, which is expected to fall back to an empty feed.
- */
-export async function fetchFieldNotes(
-  uid: string,
-  max?: number
-): Promise<FieldNoteWithId[]> {
-  const base = query(
-    collection(db, "users", uid, "fieldNotes"),
-    orderBy("createdAt", "desc")
-  );
-  const q = max != null ? query(base, limit(max)) : base;
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as FieldNoteDoc) }));
 }

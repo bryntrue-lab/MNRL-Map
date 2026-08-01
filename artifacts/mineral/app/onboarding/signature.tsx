@@ -15,6 +15,14 @@ import { savePendingBirthData } from "@/hooks/useOnboarding";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
+const ONBOARDING_ROUTES = [
+  "/onboarding",
+  "/onboarding/entry",
+  "/onboarding/signature",
+  "/onboarding/practice",
+  "/onboarding/begin",
+];
+
 const { height } = Dimensions.get("window");
 
 export default function SignatureScreen() {
@@ -32,8 +40,7 @@ export default function SignatureScreen() {
         birthLocation: birthLocation.trim() || undefined,
       });
     }
-    // The map draws itself next — the payoff of the signature.
-    router.push("/onboarding/map");
+    router.push("/onboarding/practice");
   };
 
   const footerBottom = Math.max(insets.bottom, 20) + 36;
@@ -45,10 +52,8 @@ export default function SignatureScreen() {
       {/* Content cluster — vertically centered */}
       <View style={styles.contentWrap}>
         <Text style={styles.eyebrow}>YOUR SIGNATURE</Text>
-        <Text style={styles.title}>when did you arrive?</Text>
-        <Text style={styles.subtitle}>
-          This anchors your timing map into your design.
-        </Text>
+        <Text style={styles.title}>When were you born?</Text>
+        <Text style={styles.subtitle}>This anchors your spiral life map.</Text>
 
         {/* Unlocks — minimal, no border or enclosing box */}
         <View style={styles.unlocks}>
@@ -79,12 +84,11 @@ export default function SignatureScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="birth location  (optional)"
+            placeholder="birth location"
             placeholderTextColor="rgba(255,255,255,0.3)"
             value={birthLocation}
             onChangeText={setBirthLocation}
             autoCapitalize="words"
-            autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={() => proceed()}
           />
@@ -100,7 +104,11 @@ export default function SignatureScreen() {
         <Text style={styles.skipText}>skip · add later</Text>
       </Pressable>
 
-      <OnboardingFooter onContinue={() => proceed()} />
+      <OnboardingFooter
+        activeIndex={2}
+        routes={ONBOARDING_ROUTES}
+        onContinue={() => proceed()}
+      />
     </View>
   );
 }

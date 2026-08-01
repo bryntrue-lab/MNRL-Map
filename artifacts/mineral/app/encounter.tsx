@@ -8,7 +8,6 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { router } from "expo-router";
-import { EmailAuthProvider, linkWithCredential } from "firebase/auth";
 import { onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -33,7 +32,6 @@ import {
 } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
-import { MorningCallMoment } from "@/components/MorningCall";
 import { QuietToast } from "@/components/OriginSheets";
 import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
@@ -44,7 +42,6 @@ import {
   consumeEncounterSession,
   crystallizingPrompt,
   postCaptureBlocks,
-  warmUpPrompts,
   wovenLine,
   type EncounterSession,
 } from "@/lib/encounter";
@@ -58,13 +55,6 @@ import {
   uploadCaptureAudio,
   userEncounterId,
 } from "@/lib/firestore";
-import {
-  hasPromptBeenShown as morningCallPromptShown,
-  markPromptShown as markMorningCallPromptShown,
-  rescheduleMorningCall,
-  saveChoice as saveMorningCallChoice,
-  type MorningCallChoice,
-} from "@/lib/morningCall";
 import {
   COUNTERWEIGHT_QUESTION,
   CX,
@@ -90,13 +80,6 @@ const ATMOSPHERE: Record<PhaseId, React.ComponentType> = {
 const GLYPH_BLUE = "#9bb2e8";
 const BAR_COUNT = 26;
 
-/** A local date as an ISO YYYY-MM-DD string (mapRef, v1.8). */
-function localISO(d: Date): string {
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
 type Stage = "listen" | "capture" | "hold" | "counterweight" | "block" | "close";
 
 /**
@@ -121,13 +104,12 @@ export default function EncounterScreen() {
   if (!session || !user) {
     return <View style={styles.container} />;
   }
-  return <EncounterFlow session={session} user={user} />;
+  return <EncounterFlow session={session} uid={user.uid} />;
 }
 
-function EncounterFlow({ session, user }: { session: EncounterSession; user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
-  const uid = user.uid;
+function EncounterFlow({ session, uid }: { session: EncounterSession; uid: string }) {
   const insets = useSafeAreaInsets();
-  const { profile, updateProfile } = useUser();
+  const { profile } = useUser();
 
   const { encounter, turn, mode, audioUrl } = session;
   const phase = encounter.phase;
@@ -147,10 +129,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   }, [encounter.blocks]);
   const postBlocks = useMemo(
     () => postCaptureBlocks(encounter.blocks),
-    [encounter.blocks]
-  );
-  const warmUp = useMemo(
-    () => warmUpPrompts(encounter.blocks),
     [encounter.blocks]
   );
 
@@ -199,28 +177,7 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   stageRef.current = stage;
 
   const [sheetOpen, setSheetOpen] = useState(false);
-  // Which affordance opened the shared sheet: the ambient + (spontaneous
-  // reflection) or the counterweight's "keep what comes →" (carries mapRef).
-  const [sheetKind, setSheetKind] = useState<"ambient" | "counterweight">("ambient");
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
-
-  // The account moment (Task C §2) — this encounter produced a crystallizing
-  // capture. Shown once ever on the close screen; the once-ever flag lives on
-  // the user doc (additive boolean, cache-safe).
-  const [producedCrystallizing, setProducedCrystallizing] = useState(false);
-  const [accountEmail, setAccountEmail] = useState("");
-  const [accountPassword, setAccountPassword] = useState("");
-  const [accountError, setAccountError] = useState<string | null>(null);
-  const [accountDismissed, setAccountDismissed] = useState(false);
-  const accountBusyRef = useRef(false);
-  const accountFlaggedRef = useRef(false);
-
-  // The morning call moment — shown once ever, on the first encounter close
-  // where the account moment is NOT taking the space (account takes the first
-  // close, the morning call the next). Local flag only (AsyncStorage).
-  const [morningCallEligible, setMorningCallEligible] = useState(false);
-  const [morningCallDismissed, setMorningCallDismissed] = useState(false);
-  const morningCallFlaggedRef = useRef(false);
 
   // ── Listen (§1b) ──
   const player = useAudioPlayer({ uri: audioUrl });
@@ -229,12 +186,7 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   const heldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Narration continues while the phone locks (UIBackgroundModes is
-    // configured in app.json). staysActiveInBackground is unsupported on web.
-    setAudioModeAsync({
-      playsInSilentMode: true,
-      ...(Platform.OS === "web" ? {} : { staysActiveInBackground: true }),
-    }).catch(() => {});
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
 
   // Start once the source is loaded — seek first when resuming (§4).
@@ -327,8 +279,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   const recState = useAudioRecorderState(recorder, 80);
   const [typeMode, setTypeMode] = useState(false);
   const [typed, setTyped] = useState("");
-  // Warm-up reveal (C.1 §5) — collapsed by default, always.
-  const [warmUpOpen, setWarmUpOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [bars, setBars] = useState<number[]>(() => Array(BAR_COUNT).fill(0.06));
   const permRef = useRef(false);
@@ -387,7 +337,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
   const keepVoice = (uri: string) => {
     if (savingRef.current || !prompt) return;
     savingRef.current = true;
-    setProducedCrystallizing(true);
     const noteId = newFieldNoteId(uid);
     const contentType = Platform.OS === "web" ? "audio/webm" : "audio/m4a";
     const questionId = prompt.id;
@@ -426,7 +375,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
     const content = typed.trim();
     if (!content || savingRef.current || !prompt) return;
     savingRef.current = true;
-    setProducedCrystallizing(true);
     createFieldNote(uid, {
       type: "reflection",
       captureMode: "text",
@@ -549,103 +497,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
     router.replace("/(tabs)/origin");
   };
 
-  // ── The account moment (Task C §2) ──
-  // Show only when: the user is still anonymous, this encounter produced a
-  // crystallizing capture, and the once-ever flag isn't already set.
-  const accountMomentAlreadyShown =
-    (profile as { accountMomentShown?: boolean } | null)?.accountMomentShown === true;
-  // Eligibility, independent of the in-session dismissal — this is what
-  // arbitrates the whole close (account moment wins the entire first close).
-  const accountMomentEligible =
-    user.isAnonymous && producedCrystallizing && !accountMomentAlreadyShown;
-  const showAccountMoment =
-    stage === "close" && accountMomentEligible && !accountDismissed;
-
-  // Freeze the account-vs-morning-call decision at the moment the close stage
-  // mounts. If the account moment was eligible when the close appeared, the
-  // morning call is suppressed for this entire close — dismissing the account
-  // moment does NOT let the morning call slip in on the same close (§1). The
-  // morning call waits for a later close.
-  const accountClaimedCloseRef = useRef<boolean | null>(null);
-  if (stage === "close" && accountClaimedCloseRef.current === null) {
-    accountClaimedCloseRef.current = accountMomentEligible;
-  }
-
-  // Set the flag the moment the screen is shown, regardless of outcome.
-  useEffect(() => {
-    if (!showAccountMoment || accountFlaggedRef.current) return;
-    accountFlaggedRef.current = true;
-    updateProfile({ accountMomentShown: true } as unknown as Parameters<
-      typeof updateProfile
-    >[0]).catch((err) => console.warn("account moment flag not written", err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAccountMoment]);
-
-  // Read the local once-ever flag on mount — the morning call moment has
-  // never been shown yet.
-  useEffect(() => {
-    morningCallPromptShown().then((shown) => {
-      if (!shown) setMorningCallEligible(true);
-    });
-  }, []);
-
-  // The morning call moment shows on the close screen only when the account
-  // moment did NOT claim this close (frozen at close entry) — account takes
-  // the first close, the morning call waits for a later one. Once ever.
-  const showMorningCallMoment =
-    stage === "close" &&
-    morningCallEligible &&
-    accountClaimedCloseRef.current === false &&
-    !morningCallDismissed;
-
-  // Mark the local flag the moment the screen is shown, regardless of outcome.
-  useEffect(() => {
-    if (!showMorningCallMoment || morningCallFlaggedRef.current) return;
-    morningCallFlaggedRef.current = true;
-    markMorningCallPromptShown().catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showMorningCallMoment]);
-
-  const allowMorningCall = (choice: MorningCallChoice) => {
-    setMorningCallDismissed(true);
-    (async () => {
-      await saveMorningCallChoice(choice);
-      await rescheduleMorningCall({
-        sequenceDay: profile?.sequenceDay ?? 1,
-        currentTurn: profile?.currentTurn ?? 1,
-      });
-    })().catch(() => {});
-  };
-
-  const linkAccount = async () => {
-    const email = accountEmail.trim();
-    if (!email || !accountPassword || accountBusyRef.current) return;
-    accountBusyRef.current = true;
-    setAccountError(null);
-    try {
-      const credential = EmailAuthProvider.credential(email, accountPassword);
-      await linkWithCredential(user, credential);
-      // uid and all data preserved — record the email on the user doc.
-      updateProfile({ email }).catch((err) =>
-        console.warn("account email not written", err)
-      );
-      setAccountDismissed(true);
-    } catch (err) {
-      const code = (err as { code?: string })?.code ?? "";
-      if (
-        code === "auth/email-already-in-use" ||
-        code === "auth/credential-already-in-use"
-      ) {
-        setAccountError(
-          "that address already keeps a field. try another, or come back later."
-        );
-      } else {
-        setAccountError("that didn't hold. try again.");
-      }
-      accountBusyRef.current = false;
-    }
-  };
-
   // ── Counterweight geometry (§1e) — Task A spiral math at small scale ──
   const cw = useMemo(() => {
     if (!cwAvailable || currentAge == null || !birthDate) return null;
@@ -664,9 +515,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
     return {
       question: COUNTERWEIGHT_QUESTION[r.phase],
       color: r.station.color,
-      // The position being read — for the counterweight capture's mapRef (§6).
-      phase: r.phase,
-      dateISO: localISO(date),
       dateLabel: ritualDateLabel(date),
       arc: spiralPath(Math.max(0, cwAge - 3), Math.min(MAX_AGE, currentAge + 3)),
       pNow,
@@ -707,10 +555,7 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
       {/* Ambient + — block screens only, never the ⟡ (§1f) */}
       {stage === "block" && (
         <Pressable
-          onPress={() => {
-            setSheetKind("ambient");
-            setSheetOpen(true);
-          }}
+          onPress={() => setSheetOpen(true)}
           hitSlop={14}
           style={[styles.ambientPlus, { top: insets.top + 14 }]}
           testID="encounter-ambient-plus"
@@ -827,37 +672,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
               >
                 <Text style={styles.keepText}>keep this →</Text>
               </Pressable>
-              <Pressable
-                onPress={() => setTypeMode(false)}
-                hitSlop={10}
-                style={styles.typeToggle}
-                testID="capture-speak-instead"
-              >
-                <Text style={styles.typeToggleText}>speak instead</Text>
-              </Pressable>
-            </View>
-          )}
-
-          {warmUp.length > 0 && (
-            <View style={styles.wayInWrap}>
-              {!warmUpOpen ? (
-                <Pressable
-                  onPress={() => setWarmUpOpen(true)}
-                  hitSlop={10}
-                  style={styles.wayInToggle}
-                  testID="capture-way-in"
-                >
-                  <Text style={styles.wayInLabel}>NEED A WAY IN? ↓</Text>
-                </Pressable>
-              ) : (
-                <View testID="capture-way-in-open">
-                  {warmUp.map((p) => (
-                    <Text key={p.id} style={styles.wayInPrompt}>
-                      {p.text}
-                    </Text>
-                  ))}
-                </View>
-              )}
             </View>
           )}
         </KeyboardAwareScrollViewCompat>
@@ -904,18 +718,6 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
           <Text style={styles.cwEyebrow}>YOUR COUNTERWEIGHT TODAY</Text>
           <Text style={styles.cwDate}>{cw.dateLabel}</Text>
           <Text style={styles.cwQuestion}>{cw.question}</Text>
-
-          <Pressable
-            onPress={() => {
-              setSheetKind("counterweight");
-              setSheetOpen(true);
-            }}
-            hitSlop={10}
-            style={styles.cwKeep}
-            testID="counterweight-keep"
-          >
-            <Text style={styles.cwKeepText}>keep what comes →</Text>
-          </Pressable>
 
           <Pressable
             onPress={() => (postBlocks.length > 0 ? toBlock(1) : toClose())}
@@ -999,72 +801,9 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
           {...pan.panHandlers}
         >
           <Text style={styles.epigraph}>{encounter.mapEpigraph ?? encounter.subtitle}</Text>
-          <Text style={styles.closeReturnLine}>
-            you can return to this day from the map, anytime.
-          </Text>
-
-          {showAccountMoment ? (
-            <View style={styles.accountMoment} testID="account-moment">
-              <Text style={styles.accountHeadline}>keep this.</Text>
-              <Text style={styles.accountSubline}>
-                and everything else that finds you.
-              </Text>
-              <TextInput
-                style={styles.accountInput}
-                value={accountEmail}
-                onChangeText={setAccountEmail}
-                placeholder="email"
-                placeholderTextColor="rgba(255,255,255,0.28)"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                testID="account-email"
-              />
-              <TextInput
-                style={styles.accountInput}
-                value={accountPassword}
-                onChangeText={setAccountPassword}
-                placeholder="password"
-                placeholderTextColor="rgba(255,255,255,0.28)"
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry
-                testID="account-password"
-              />
-              {accountError ? (
-                <Text style={styles.accountError}>{accountError}</Text>
-              ) : null}
-              <Pressable
-                onPress={linkAccount}
-                style={[
-                  styles.accountKeep,
-                  { opacity: accountEmail.trim() && accountPassword ? 1 : 0.35 },
-                ]}
-                testID="account-keep"
-              >
-                <Text style={styles.keepText}>keep it →</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setAccountDismissed(true)}
-                hitSlop={10}
-                style={styles.accountDismiss}
-                testID="account-dismiss"
-              >
-                <Text style={styles.accountDismissText}>not now</Text>
-              </Pressable>
-            </View>
-          ) : showMorningCallMoment ? (
-            <MorningCallMoment
-              onAllow={(choice) => {
-                allowMorningCall(choice);
-              }}
-              onDismiss={() => setMorningCallDismissed(true)}
-            />
-          ) : (
-            <Pressable onPress={closeOut} style={styles.advance} testID="close-return">
-              <Text style={styles.advanceText}>return to the map →</Text>
-            </Pressable>
-          )}
+          <Pressable onPress={closeOut} style={styles.advance} testID="close-return">
+            <Text style={styles.advanceText}>return to the map →</Text>
+          </Pressable>
         </View>
       )}
 
@@ -1072,18 +811,10 @@ function EncounterFlow({ session, user }: { session: EncounterSession; user: Non
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         uid={uid}
-        // Counterweight capture (§6): a spontaneous reflection the map
-        // provoked — no encounterRef. The ambient + stays 'encounter'.
-        source={sheetKind === "counterweight" ? "spontaneous" : "encounter"}
-        encounterRef={sheetKind === "counterweight" ? undefined : instanceId}
+        source="encounter"
+        encounterRef={instanceId}
         atmosphere={phase}
         bottomPad={insets.bottom + 8}
-        initialType={sheetKind === "counterweight" ? "reflection" : undefined}
-        mapRef={
-          sheetKind === "counterweight" && cw
-            ? { date: cw.dateISO, phase: cw.phase }
-            : null
-        }
         onSaved={() => setToast({ key: Date.now(), text: "kept." })}
       />
       <QuietToast
@@ -1359,18 +1090,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 310,
   },
-  cwKeep: {
-    marginTop: 22,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  cwKeepText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
-    textDecorationLine: "underline",
-  },
 
   // Blocks
   blockContent: {
@@ -1456,111 +1175,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.93)",
     textAlign: "center",
     maxWidth: 320,
-    marginBottom: 20,
-  },
-  closeReturnLine: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
-    lineHeight: 19,
-    letterSpacing: 0.3,
-    color: "rgba(255,255,255,0.4)",
-    textAlign: "center",
-    maxWidth: 300,
-    marginBottom: 40,
-  },
-
-  // Warm-up reveal (NEED A WAY IN?)
-  wayInWrap: {
-    marginTop: 34,
-    width: "100%",
-    alignItems: "center",
-  },
-  wayInToggle: {
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  wayInLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.38)",
-  },
-  wayInPrompt: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 24,
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    maxWidth: 320,
-    marginBottom: 16,
-  },
-
-  // The account moment
-  accountMoment: {
-    width: "100%",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  accountHeadline: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 26,
-    lineHeight: 34,
-    color: "rgba(255,255,255,0.95)",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  accountSubline: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 23,
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    marginBottom: 26,
-  },
-  accountInput: {
-    width: "100%",
-    minHeight: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12,
-    fontFamily: FontFamily.sans400,
-    fontSize: 15,
-    color: "rgba(255,255,255,0.92)",
-    marginBottom: 12,
-  },
-  accountError: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
-    lineHeight: 19,
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    maxWidth: 300,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  accountKeep: {
-    alignSelf: "flex-end",
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    minHeight: 44,
-    justifyContent: "center",
-    marginTop: 6,
-  },
-  accountDismiss: {
-    minHeight: 44,
-    justifyContent: "center",
-    marginTop: 8,
-  },
-  accountDismissText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.4)",
+    marginBottom: 48,
   },
 });

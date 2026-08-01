@@ -55,10 +55,6 @@ export interface UserDoc {
   // Client-writable (not one of the five guarded fields).
   sequenceDay: number;
 
-  // v1.8 (Task C §2) — set true the one time the account moment is shown.
-  // Client-writable, additive; absent on older docs.
-  accountMomentShown?: boolean;
-
   // Server-written only — never set or modified by the client.
   // Security rules enforce their initial values on create and immutability on update.
   membershipStatus: MembershipStatus;
@@ -161,11 +157,6 @@ export interface FieldNoteDoc {
   questionId: string | null;
   atmosphere: PhaseId;
   createdAt: Timestamp;
-
-  // v1.8 additive — set only on notes the map itself provoked (the
-  // counterweight capture): the position read when the question was asked.
-  // null on all other notes. No rules/index changes; clients may write it.
-  mapRef: { date: string; phase: PhaseId } | null;
 }
 
 // ─────────────────────────────────────────────────────────────
