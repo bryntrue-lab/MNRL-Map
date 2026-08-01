@@ -12,7 +12,6 @@ import { onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  AppState,
   PanResponder,
   Platform,
   Pressable,
@@ -221,19 +220,35 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     }
   };
 
-  // Background → pause and persist; return resumes from position, paused.
+  // Slice 3.1 — backgrounded narration keeps playing (supersedes Task B §1b's
+  // background→pause for the listen stage). Interruptions (phone call, another
+  // app's audio) pause the player at the OS level; we detect the involuntary
+  // stop and persist audioPosition so resume-in-place still works.
+  const userPausedRef = useRef(false);
+  const wasPlayingRef = useRef(false);
   useEffect(() => {
-    const sub = AppState.addEventListener("change", (s) => {
-      if (s !== "active" && stageRef.current === "listen") {
-        try {
-          player.pause();
-        } catch {}
-        persistPosition();
-      }
-    });
-    return () => sub.remove();
+    const was = wasPlayingRef.current;
+    wasPlayingRef.current = status.playing;
+    if (
+      was &&
+      !status.playing &&
+      stageRef.current === "listen" &&
+      !status.didJustFinish &&
+      !userPausedRef.current
+    ) {
+      persistPosition();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [status.playing, status.didJustFinish]);
+
+  // Slice 3.1 — persist audioPosition every ~5s during playback, however
+  // playback later ends (lock, interruption, force-quit).
+  useEffect(() => {
+    if (stage !== "listen" || !status.playing) return;
+    const iv = setInterval(persistPosition, 5000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, status.playing]);
 
   // Leaving the screen mid-audio also persists (§4).
   useEffect(
@@ -603,7 +618,13 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           <View style={[styles.listenControls, { paddingBottom: insets.bottom + 34 }]}>
             <View style={styles.listenSide} />
             <Pressable
-              onPress={() => (status.playing ? player.pause() : player.play())}
+              onPress={() => {
+                // Explicit user pause — unchanged behavior (Slice 3.1 only
+                // marks it so it isn't mistaken for an interruption).
+                userPausedRef.current = status.playing;
+                if (status.playing) player.pause();
+                else player.play();
+              }}
               style={styles.playPause}
               hitSlop={8}
               testID="listen-toggle"

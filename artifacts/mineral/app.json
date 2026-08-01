@@ -9,8 +9,8 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0a0510"
     },
     "ios": {
@@ -28,8 +28,8 @@
       "package": "com.madebymineral.quartz",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#0a0510"
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "backgroundImage": "./assets/images/adaptive-icon-background.png"
       }
     },
     "web": {
