@@ -928,6 +928,7 @@ export default function OriginScreen() {
                     visual={visual}
                     width={zone.w}
                     height={zone.h}
+                    screenInsetX={26}
                   />
                   {/* NOW halo — breathes in the approached station's color */}
                   {hasBirth && visual.nowOn > 0.01 && (
@@ -1211,6 +1212,9 @@ const styles = StyleSheet.create({
   spiralZone: {
     flex: 1,
     marginHorizontal: -26, // let the map breathe to the screen edges
+    // Slice 2.1 — the wander caption below owns its bounds: no map element
+    // (zoomed or not) may spill out of the spiral zone into it.
+    overflow: "hidden",
   },
 
   halo: {
