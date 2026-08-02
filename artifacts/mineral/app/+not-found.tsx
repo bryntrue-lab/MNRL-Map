@@ -1,6 +1,7 @@
-import { Link, Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
+import { LinkPrimary } from "@/components/Links";
 import { TypeScale } from "@/constants/typography";
 import { useColors } from "@/hooks/useColors";
 
@@ -15,11 +16,13 @@ export default function NotFoundScreen() {
           This screen doesn&apos;t exist.
         </Text>
 
-        <Link href="/" style={styles.link}>
-          <Text style={[styles.linkText, { color: colors.primary }]}>
-            Go to home screen!
-          </Text>
-        </Link>
+        <LinkPrimary
+          label="Go to home screen!"
+          onPress={() => router.replace("/")}
+          noArrow
+          color={colors.primary}
+          style={styles.link}
+        />
       </View>
     </>
   );
@@ -37,9 +40,6 @@ const styles = StyleSheet.create({
   },
   link: {
     marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
-    ...TypeScale.body,
+    alignSelf: "center",
   },
 });

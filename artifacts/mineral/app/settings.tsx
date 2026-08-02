@@ -13,8 +13,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { AccountForm } from "@/components/AccountForm";
+import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import { SignInGuard } from "@/components/SignInGuard";
-import { FontFamily, TypeScale } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { functions } from "@/lib/firebase";
 import { hasAnyFieldNote } from "@/lib/firestore";
@@ -90,9 +91,12 @@ export default function SettingsScreen() {
                 />
               </View>
             ) : (
-              <Pressable onPress={() => setForm("link")} style={styles.actionLine} testID="settings-keep-this">
-                <Text style={styles.actionText}>keep this. →</Text>
-              </Pressable>
+              <LinkPrimary
+                label="keep this. →"
+                onPress={() => setForm("link")}
+                style={styles.actionLine}
+                testID="settings-keep-this"
+              />
             )}
 
             {guarding ? (
@@ -116,7 +120,8 @@ export default function SettingsScreen() {
                 <AccountForm mode="signin" onDone={() => router.replace("/(tabs)")} />
               </View>
             ) : (
-              <Pressable
+              <LinkSecondary
+                label="already keeping a field? sign in"
                 onPress={async () => {
                   // C §2 guard — an anonymous field with notes deserves a
                   // warning before it's left behind. No merge in v1.
@@ -131,9 +136,7 @@ export default function SettingsScreen() {
                 }}
                 style={styles.actionLine}
                 testID="settings-sign-in"
-              >
-                <Text style={styles.quietAction}>already keeping a field? sign in</Text>
-              </Pressable>
+              />
             )}
           </>
         ) : (
@@ -141,9 +144,12 @@ export default function SettingsScreen() {
             <Text style={styles.bodyLine}>
               {linked ? "kept. this field is yours, anywhere." : `keeping as ${user?.email ?? "—"}`}
             </Text>
-            <Pressable onPress={signOutNow} style={styles.actionLine} testID="settings-sign-out">
-              <Text style={styles.actionText}>sign out →</Text>
-            </Pressable>
+            <LinkSecondary
+              label="sign out →"
+              onPress={signOutNow}
+              style={styles.actionLine}
+              testID="settings-sign-out"
+            />
           </>
         )}
 
@@ -154,26 +160,34 @@ export default function SettingsScreen() {
           recording, every trace. this cannot be undone.
         </Text>
         {!confirmingDelete ? (
-          <Pressable
+          <LinkSecondary
+            label="release this field →"
             onPress={() => setConfirmingDelete(true)}
             style={styles.actionLine}
             testID="settings-delete"
-          >
-            <Text style={styles.dangerText}>release this field →</Text>
-          </Pressable>
+          />
         ) : (
           <View style={styles.confirmRow}>
-            <Pressable onPress={releaseField} style={styles.actionLine} disabled={deleting} testID="settings-delete-confirm">
-              {deleting ? (
+            {deleting ? (
+              <Pressable style={styles.actionLine} disabled testID="settings-delete-confirm">
                 <ActivityIndicator size="small" color="rgba(224,138,175,0.9)" />
-              ) : (
-                <Text style={styles.dangerText}>yes — release everything</Text>
-              )}
-            </Pressable>
-            {!deleting && (
-              <Pressable onPress={() => setConfirmingDelete(false)} style={styles.actionLine} testID="settings-delete-cancel">
-                <Text style={styles.quietAction}>keep it</Text>
               </Pressable>
+            ) : (
+              <LinkSecondary
+                label="yes — release everything"
+                onPress={releaseField}
+                disabled={deleting}
+                style={styles.actionLine}
+                testID="settings-delete-confirm"
+              />
+            )}
+            {!deleting && (
+              <LinkSecondary
+                label="keep it"
+                onPress={() => setConfirmingDelete(false)}
+                style={styles.actionLine}
+                testID="settings-delete-cancel"
+              />
             )}
           </View>
         )}
@@ -234,25 +248,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: "center",
     alignSelf: "flex-start",
-  },
-  actionText: {
-    ...TypeScale.body,
-    fontFamily: FontFamily.sans500,
-    letterSpacing: 0.4,
-    color: "rgba(235,228,255,0.9)",
-  },
-  quietAction: {
-    ...TypeScale.label,
-    fontFamily: FontFamily.sans400,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
-    textDecorationLine: "underline",
-  },
-  dangerText: {
-    ...TypeScale.body,
-    fontFamily: FontFamily.sans500,
-    letterSpacing: 0.4,
-    color: "#E08AAF",
   },
   confirmRow: {
     flexDirection: "row",

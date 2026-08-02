@@ -36,6 +36,7 @@ import { FontFamily, TypeScale } from "@/constants/typography";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { AccountForm } from "@/components/AccountForm";
+import { LinkPrimary, LinkWhisper, LinkSecondary } from "@/components/Links";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -667,9 +668,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
               <Text style={styles.playPauseText}>{status.playing ? "pause" : "play"}</Text>
             </Pressable>
             <View style={styles.listenSide}>
-              <Pressable onPress={toCapture} hitSlop={12} style={styles.skip} testID="listen-skip">
-                <Text style={styles.skipText}>skip →</Text>
-              </Pressable>
+              <LinkWhisper label="skip →" onPress={toCapture} testID="listen-skip" />
             </View>
           </View>
         </View>
@@ -694,14 +693,13 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           {warmUps.length > 0 && (
             <View style={styles.wayInWrap}>
               {!wayInOpen ? (
-                <Pressable
+                <LinkSecondary
+                  label="NEED A WAY IN? ↓"
+                  preserveCase
                   onPress={() => setWayInOpen(true)}
-                  hitSlop={10}
-                  style={styles.wayInToggle}
+                  style={{ alignSelf: "center" }}
                   testID="capture-way-in"
-                >
-                  <Text style={styles.wayInToggleText}>NEED A WAY IN? ↓</Text>
-                </Pressable>
+                />
               ) : (
                 warmUps.map((p) => (
                   <Text key={p.id} style={styles.wayInPrompt}>
@@ -742,14 +740,12 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
               <Text style={styles.recordHint}>
                 {recording ? "listening" : "hold to speak"}
               </Text>
-              <Pressable
+              <LinkSecondary
+                label="type instead"
                 onPress={() => setTypeMode(true)}
-                hitSlop={10}
-                style={styles.typeToggle}
+                style={{ marginTop: 26, alignSelf: "center" }}
                 testID="capture-type-instead"
-              >
-                <Text style={styles.typeToggleText}>type instead</Text>
-              </Pressable>
+              />
             </View>
           ) : (
             <View style={styles.typeWrap}>
@@ -763,21 +759,18 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
                 autoFocus
                 testID="capture-text-input"
               />
-              <Pressable
+              <LinkPrimary
+                label="keep this →"
                 onPress={keepTyped}
-                style={[styles.keep, { opacity: typed.trim() ? 1 : 0.35 }]}
+                style={{ alignSelf: "flex-end", opacity: typed.trim() ? 1 : 0.35 }}
                 testID="capture-keep"
-              >
-                <Text style={styles.keepText}>keep this →</Text>
-              </Pressable>
-              <Pressable
+              />
+              <LinkSecondary
+                label="speak instead"
                 onPress={() => setTypeMode(false)}
-                hitSlop={10}
-                style={styles.typeToggle}
+                style={{ marginTop: 26 }}
                 testID="capture-speak-instead"
-              >
-                <Text style={styles.typeToggleText}>speak instead</Text>
-              </Pressable>
+              />
             </View>
           )}
         </KeyboardAwareScrollViewCompat>
@@ -826,22 +819,19 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           <Text style={styles.cwQuestion}>{cw.question}</Text>
 
           {/* §6 — one quiet line, never a form */}
-          <Pressable
+          <LinkWhisper
+            label="keep what comes →"
             onPress={() => setSheetMode("counterweight")}
-            hitSlop={8}
-            style={styles.keepWhatComes}
+            style={{ marginTop: 22, alignSelf: "center" }}
             testID="counterweight-keep"
-          >
-            <Text style={styles.keepWhatComesText}>keep what comes →</Text>
-          </Pressable>
+          />
 
-          <Pressable
+          <LinkPrimary
+            label="continue →"
             onPress={() => (postBlocks.length > 0 ? toBlock(1) : toClose())}
             style={styles.advance}
             testID="counterweight-continue"
-          >
-            <Text style={styles.advanceText}>continue →</Text>
-          </Pressable>
+          />
         </View>
       )}
 
@@ -874,20 +864,22 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
               {typeof encounter.deepDive === "string" && encounter.deepDive ? (
                 <View style={styles.deepDiveWrap}>
                   {!deepDiveOpen ? (
-                    <Pressable onPress={() => setDeepDiveOpen(true)} hitSlop={8}>
-                      <Text style={styles.deepDiveOffer}>
-                        there's more here, if you have time →
-                      </Text>
-                    </Pressable>
+                    <LinkWhisper
+                      label="there's more here, if you have time →"
+                      onPress={() => setDeepDiveOpen(true)}
+                    />
                   ) : (
                     <Text style={styles.blockInstruction}>{encounter.deepDive}</Text>
                   )}
                 </View>
               ) : null}
 
-              <Pressable onPress={advanceBlock} style={styles.advance} testID="block-advance">
-                <Text style={styles.advanceText}>when you're ready →</Text>
-              </Pressable>
+              <LinkPrimary
+                label="when you're ready →"
+                onPress={advanceBlock}
+                style={styles.advance}
+                testID="block-advance"
+              />
             </>
           )}
 
@@ -895,9 +887,12 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             <>
               {block.intro ? <Text style={styles.carryIntro}>{block.intro}</Text> : null}
               <Text style={styles.carryClosing}>{block.closing}</Text>
-              <Pressable onPress={advanceBlock} style={styles.advance} testID="block-advance">
-                <Text style={styles.advanceText}>return to the map →</Text>
-              </Pressable>
+              <LinkPrimary
+                label="return to the map →"
+                onPress={advanceBlock}
+                style={styles.advance}
+                testID="block-advance"
+              />
             </>
           )}
 
@@ -938,22 +933,23 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
                   <Text style={styles.keepThisLead}>
                     what you kept today lives only on this device.
                   </Text>
-                  <Pressable
+                  <LinkPrimary
+                    label="keep this. →"
                     onPress={() => setKeepThisOpen(true)}
-                    style={styles.keepThisAction}
-                    hitSlop={8}
+                    style={{ alignSelf: "center" }}
                     testID="keep-this-open"
-                  >
-                    <Text style={styles.keepThisActionText}>keep this. →</Text>
-                  </Pressable>
+                  />
                 </>
               )}
             </View>
           )}
 
-          <Pressable onPress={closeOut} style={styles.advance} testID="close-return">
-            <Text style={styles.advanceText}>return to the map →</Text>
-          </Pressable>
+          <LinkPrimary
+            label="return to the map →"
+            onPress={closeOut}
+            style={styles.advance}
+            testID="close-return"
+          />
         </View>
       )}
 
@@ -995,13 +991,11 @@ function ReflectionBlockBody({
   return (
     <>
       {!revealed ? (
-        <Pressable
+        <LinkWhisper
+          label="there's more here, if you have time →"
           onPress={() => setRevealed(true)}
-          hitSlop={8}
           testID="block-more-here"
-        >
-          <Text style={styles.deepDiveOffer}>there's more here, if you have time →</Text>
-        </Pressable>
+        />
       ) : (
         block.prompts.map((p) => (
           <Text key={p.id} style={styles.blockInstruction}>
@@ -1009,9 +1003,12 @@ function ReflectionBlockBody({
           </Text>
         ))
       )}
-      <Pressable onPress={onAdvance} style={styles.advance} testID="block-advance">
-        <Text style={styles.advanceText}>when you're ready →</Text>
-      </Pressable>
+      <LinkPrimary
+        label="when you're ready →"
+        onPress={onAdvance}
+        style={styles.advance}
+        testID="block-advance"
+      />
     </>
   );
 }
@@ -1087,16 +1084,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: "rgba(255,255,255,0.72)",
   },
-  skip: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  skipText: {
-    ...TypeScale.metadata,
-    letterSpacing: 1.2,
-    color: "rgba(255,255,255,0.5)",
-  },
 
   // ⟡ Capture
   captureContent: {
@@ -1163,19 +1150,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     color: "rgba(255,255,255,0.5)",
   },
-  typeToggle: {
-    marginTop: 26,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  typeToggleText: {
-    ...TypeScale.label,
-    fontFamily: FontFamily.sans400,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
-    textDecorationLine: "underline",
-  },
-
   typeWrap: {
     width: "100%",
     marginTop: 36,
@@ -1192,20 +1166,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.92)",
     textAlignVertical: "top",
   },
-  keep: {
-    alignSelf: "flex-end",
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  keepText: {
-    ...TypeScale.body,
-    fontFamily: FontFamily.sans500,
-    letterSpacing: 0.3,
-    color: "rgba(255,255,255,0.85)",
-  },
-
   // Hold
   holdCenter: {
     alignItems: "center",
@@ -1257,31 +1217,9 @@ const styles = StyleSheet.create({
     maxWidth: 310,
   },
 
-  keepWhatComes: {
-    marginTop: 22,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  keepWhatComesText: {
-    ...TypeScale.label,
-    fontFamily: FontFamily.sans400,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
-    textDecorationLine: "underline",
-  },
-
   wayInWrap: {
     marginTop: 22,
     alignItems: "center",
-  },
-  wayInToggle: {
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  wayInToggleText: {
-    ...TypeScale.eyebrow,
-    letterSpacing: 2.2,
-    color: "rgba(255,255,255,0.5)",
   },
   wayInPrompt: {
     ...TypeScale.serifSmall,
@@ -1319,14 +1257,6 @@ const styles = StyleSheet.create({
   deepDiveWrap: {
     marginBottom: 8,
   },
-  deepDiveOffer: {
-    ...TypeScale.label,
-    fontFamily: FontFamily.sans400,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
-    textDecorationLine: "underline",
-    marginBottom: 22,
-  },
   carryIntro: {
     ...TypeScale.body,
     color: "rgba(255,255,255,0.5)",
@@ -1346,13 +1276,6 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     marginTop: "auto",
   },
-  advanceText: {
-    ...TypeScale.label,
-    fontFamily: FontFamily.sans400,
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    color: "rgba(200,190,225,0.58)",
-  },
 
   keepThisWrap: {
     alignSelf: "stretch",
@@ -1364,17 +1287,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.72)",
     textAlign: "center",
     marginBottom: 10,
-  },
-  keepThisAction: {
-    minHeight: 44,
-    justifyContent: "center",
-    alignSelf: "center",
-  },
-  keepThisActionText: {
-    ...TypeScale.body,
-    fontFamily: FontFamily.sans500,
-    letterSpacing: 0.4,
-    color: "rgba(235,228,255,0.9)",
   },
   returnLine: {
     ...TypeScale.label,

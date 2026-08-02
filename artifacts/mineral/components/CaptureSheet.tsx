@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { LinkPrimary } from "@/components/Links";
 import { SheetShell } from "@/components/OriginSheets";
 import { TypeScale } from "@/constants/typography";
 import { createFieldNote } from "@/lib/firestore";
@@ -159,13 +160,12 @@ export function CaptureSheet({
               multiline
               testID="capture-input"
             />
-            <Pressable
+            <LinkPrimary
+              label="keep this →"
               onPress={keep}
               style={[styles.keep, { opacity: canKeep ? 1 : 0.35 }]}
               testID="capture-keep"
-            >
-              <Text style={styles.keepText}>keep this →</Text>
-            </Pressable>
+            />
           </>
         )}
       </KeyboardAwareScrollViewCompat>
@@ -258,10 +258,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     minHeight: 44,
     justifyContent: "center",
-  },
-  keepText: {
-    ...TypeScale.body,
-    letterSpacing: 0.3,
-    color: "rgba(255,255,255,0.85)",
   },
 });

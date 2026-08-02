@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TypeScale } from "@/constants/typography";
+import { LinkPrimary } from "@/components/Links";
 
 interface OnboardingFooterProps {
   activeIndex: number;
@@ -39,13 +39,7 @@ export default function OnboardingFooter({
           );
         })}
       </View>
-      <Pressable
-        style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-        onPress={onContinue}
-        hitSlop={12}
-      >
-        <Text style={styles.continueText}>{continueLabel}</Text>
-      </Pressable>
+      <LinkPrimary label={continueLabel} onPress={onContinue} />
     </View>
   );
 }
@@ -75,10 +69,5 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     backgroundColor: "rgba(255,255,255,1)",
-  },
-  continueText: {
-    ...TypeScale.body,
-    color: "rgba(255,255,255,0.88)",
-    letterSpacing: 0.4,
   },
 });

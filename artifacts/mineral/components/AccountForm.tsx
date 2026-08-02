@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 
@@ -100,23 +101,31 @@ export function AccountForm({
       {error && <Text style={styles.error}>{error}</Text>}
       {resetSent && <Text style={styles.quietLine}>a reset link is on its way.</Text>}
 
-      <Pressable
-        onPress={submit}
-        style={[styles.submit, { opacity: email.trim() && password ? 1 : 0.4 }]}
-        disabled={busy}
-        testID="account-submit"
-      >
-        {busy ? (
+      {busy ? (
+        <Pressable
+          style={[styles.submit, { opacity: email.trim() && password ? 1 : 0.4 }]}
+          disabled
+          testID="account-submit"
+        >
           <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
-        ) : (
-          <Text style={styles.submitText}>{mode === "link" ? "keep this. →" : "sign in →"}</Text>
-        )}
-      </Pressable>
+        </Pressable>
+      ) : (
+        <LinkPrimary
+          label={mode === "link" ? "keep this. →" : "sign in →"}
+          onPress={submit}
+          disabled={busy}
+          style={[styles.submit, { opacity: email.trim() && password ? 1 : 0.4 }]}
+          testID="account-submit"
+        />
+      )}
 
       {mode === "signin" && !resetSent && (
-        <Pressable onPress={sendReset} hitSlop={8} style={styles.resetLink} testID="account-reset">
-          <Text style={styles.quietLine}>send a reset link</Text>
-        </Pressable>
+        <LinkSecondary
+          label="send a reset link"
+          onPress={sendReset}
+          style={styles.resetLink}
+          testID="account-reset"
+        />
       )}
     </View>
   );
@@ -146,11 +155,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "flex-start",
     marginTop: 4,
-  },
-  submitText: {
-    ...TypeScale.body,
-    letterSpacing: 0.4,
-    color: "rgba(235,228,255,0.9)",
   },
   resetLink: {
     marginTop: 16,

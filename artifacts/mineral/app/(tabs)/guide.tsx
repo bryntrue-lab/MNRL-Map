@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { LinkWhisper } from "@/components/Links";
 import TabTopBar from "@/components/TabTopBar";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
@@ -168,14 +169,11 @@ export default function GuideScreen() {
                 </Text>
               </View>
             ))}
-            <Pressable
+            <LinkWhisper
+              label="the whole field lives in notes →"
               onPress={() => router.push("/notes")}
-              style={styles.wholeFieldLink}
-              hitSlop={8}
               testID="guide-whole-field-link"
-            >
-              <Text style={styles.wholeFieldText}>the whole field lives in notes →</Text>
-            </Pressable>
+            />
           </View>
         )}
 
@@ -317,17 +315,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: "rgba(255,255,255,0.5)",
   },
-  wholeFieldLink: {
-    alignSelf: "flex-start",
-    paddingVertical: 12,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  wholeFieldText: {
-    ...TypeScale.serifSmall,
-    color: "rgba(255,255,255,0.5)",
-  },
-
   closingThought: {
     ...TypeScale.serifSmall,
     lineHeight: 22,

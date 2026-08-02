@@ -1,6 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import { TypeScale } from "@/constants/typography";
 
 /**
@@ -26,15 +27,9 @@ export function SignInGuard({
         to bring them along.
       </Text>
 
-      <Pressable onPress={onKeepFirst} style={styles.action} hitSlop={4} testID="guard-keep-first">
-        <Text style={styles.primaryText}>keep them first →</Text>
-      </Pressable>
-      <Pressable onPress={onProceed} style={styles.action} hitSlop={4} testID="guard-sign-in-anyway">
-        <Text style={styles.quietText}>sign in anyway</Text>
-      </Pressable>
-      <Pressable onPress={onCancel} style={styles.action} hitSlop={4} testID="guard-cancel">
-        <Text style={styles.quietText}>cancel</Text>
-      </Pressable>
+      <LinkPrimary label="keep them first →" onPress={onKeepFirst} testID="guard-keep-first" />
+      <LinkSecondary label="sign in anyway" onPress={onProceed} testID="guard-sign-in-anyway" />
+      <LinkSecondary label="cancel" onPress={onCancel} testID="guard-cancel" />
     </View>
   );
 }
@@ -49,20 +44,5 @@ const styles = StyleSheet.create({
     ...TypeScale.body,
     color: "rgba(255,255,255,0.58)",
     marginBottom: 20,
-  },
-  action: {
-    minHeight: 44,
-    justifyContent: "center",
-    alignSelf: "flex-start",
-  },
-  primaryText: {
-    ...TypeScale.body,
-    letterSpacing: 0.4,
-    color: "rgba(235,228,255,0.9)",
-  },
-  quietText: {
-    ...TypeScale.label,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
   },
 });

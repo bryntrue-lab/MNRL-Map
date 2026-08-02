@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -10,6 +10,7 @@ import {
   MythicalAtmosphere,
 } from "@/components/Atmosphere";
 import BeginButton from "@/components/BeginButton";
+import { LinkWhisper } from "@/components/Links";
 import { SpiralIndicator } from "@/components/SpiralComponents";
 import TabTopBar from "@/components/TabTopBar";
 import { TypeScale } from "@/constants/typography";
@@ -230,13 +231,12 @@ export default function TodayScreen() {
         ) : missing ? (
           <View style={styles.encounterCard}>
             <Text style={styles.notReadyStatic}>This encounter isn't ready yet.</Text>
-            <Pressable
+            <LinkWhisper
+              label="back to the map →"
               onPress={() => router.navigate("/(tabs)/origin")}
               style={styles.returnWrap}
               testID="return-to-map"
-            >
-              <Text style={styles.returnText}>back to the map →</Text>
-            </Pressable>
+            />
           </View>
         ) : null}
       </ScrollView>
@@ -299,13 +299,6 @@ const styles = StyleSheet.create({
   },
   returnWrap: {
     marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  returnText: {
-    ...TypeScale.metadata,
-    letterSpacing: 1.8,
-    textTransform: "uppercase",
-    color: "rgba(200,190,225,0.5)",
+    alignSelf: "center",
   },
 });

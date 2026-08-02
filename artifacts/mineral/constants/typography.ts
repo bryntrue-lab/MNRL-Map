@@ -119,3 +119,47 @@ export const TypeScale = {
     lineHeight: 21,
   },
 } as const;
+
+/**
+ * Interactive text — Slice T §6 (values final; consumed ONLY by
+ * components/Links.tsx and components/Cta.tsx — never spread inline).
+ */
+export const LinkType = {
+  primary: {
+    fontFamily: FontFamily.sans600,
+    fontSize: 12,
+    letterSpacing: 1.8,
+    textTransform: "uppercase" as const,
+    lineHeight: 16,
+  },
+  whisper: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    textTransform: "lowercase" as const,
+    lineHeight: 16,
+  },
+  secondary: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 13,
+    textTransform: "lowercase" as const,
+    lineHeight: 18,
+  },
+  ctaEyebrow: {
+    fontFamily: FontFamily.sans600,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    textTransform: "uppercase" as const,
+    lineHeight: 15,
+  },
+  ctaTitle: {
+    fontFamily: FontFamily.serifItalicMedium,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  ctaArrow: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+} as const;

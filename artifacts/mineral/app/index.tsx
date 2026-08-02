@@ -1,8 +1,8 @@
 import { Redirect } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
-import { TypeScale } from "@/constants/typography";
+import { LinkPrimary } from "@/components/Links";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 
@@ -42,7 +42,12 @@ export default function Index() {
   if (!user && (authFailed || timedOut)) {
     return (
       <Pressable style={styles.ground} onPress={retry}>
-        <Text style={styles.quiet}>no connection — tap to try again</Text>
+        <LinkPrimary
+          label="no connection — tap to try again"
+          onPress={retry}
+          noArrow
+          style={{ alignSelf: "center" }}
+        />
       </Pressable>
     );
   }
@@ -62,11 +67,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#05030a",
     alignItems: "center",
     justifyContent: "center",
-  },
-  quiet: {
-    ...TypeScale.metadata,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    color: "rgba(200,190,225,0.5)",
   },
 });

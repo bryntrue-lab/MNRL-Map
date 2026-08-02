@@ -3,7 +3,6 @@ import { Timestamp } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   Dimensions,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { useUser } from "@/context/UserContext";
 
@@ -161,30 +161,29 @@ export default function SignatureScreen() {
 
       {/* Skip — quiet, centered, sits above the footer */}
       {!fromOrigin && (
-        <Pressable
-          style={[styles.skipWrap, { bottom: footerBottom + 44 }]}
-          onPress={() => proceed(true)}
-          hitSlop={12}
-          testID="signature-skip"
-        >
-          <Text style={styles.skipText}>skip · add later</Text>
-        </Pressable>
+        <View style={[styles.skipWrap, { bottom: footerBottom + 44 }]}>
+          <LinkSecondary
+            label="skip · add later"
+            onPress={() => proceed(true)}
+            testID="signature-skip"
+          />
+        </View>
       )}
 
       {fromOrigin ? (
         <View style={[styles.originFooter, { bottom: footerBottom }]}>
-          <Pressable onPress={() => router.back()} hitSlop={12} testID="signature-cancel">
-            <Text style={styles.skipText}>not now</Text>
-          </Pressable>
-          <Pressable
+          <LinkSecondary
+            label="not now"
+            onPress={() => router.back()}
+            testID="signature-cancel"
+          />
+          <LinkPrimary
+            label="save →"
             onPress={() => proceed()}
             disabled={!parsed || saving}
-            hitSlop={12}
             style={{ opacity: parsed && !saving ? 1 : 0.35 }}
             testID="signature-save"
-          >
-            <Text style={styles.saveText}>save →</Text>
-          </Pressable>
+          />
         </View>
       ) : (
         <OnboardingFooter
@@ -263,11 +262,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: "center",
   },
-  skipText: {
-    ...TypeScale.label,
-    letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.5)",
-  },
   originFooter: {
     position: "absolute",
     left: 36,
@@ -275,10 +269,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  saveText: {
-    ...TypeScale.body,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.92)",
   },
 });

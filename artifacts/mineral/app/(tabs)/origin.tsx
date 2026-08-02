@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { OriginAtmosphere } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
+import Cta from "@/components/Cta";
+import { LinkWhisper } from "@/components/Links";
 import { CompanionsSheet, QuietToast, ReadingSheet } from "@/components/OriginSheets";
 import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralComponents";
 import { TypeScale } from "@/constants/typography";
@@ -893,16 +895,16 @@ export default function OriginScreen() {
                 </Text>
               ) : null
             ) : (
-              <Pressable
+              <LinkWhisper
                 // Slice 5 — one birth-date form in the whole app: the
                 // onboarding signature screen, reached with from=origin.
+                label="add your birth date to see your spiral →"
                 onPress={() =>
                   router.push({ pathname: "/onboarding/signature", params: { from: "origin" } })
                 }
+                style={{ alignSelf: "flex-end" }}
                 testID="add-birthdate-link"
-              >
-                <Text style={styles.epigraphLink}>add your birth date to see your spiral →</Text>
-              </Pressable>
+              />
             )}
           </Animated.View>
         </View>
@@ -1040,41 +1042,15 @@ export default function OriginScreen() {
         {/* CTA — the door to today (§6) */}
         <View style={styles.ctaZone}>
           {encounter && (
-            <Pressable
-              onPress={ctaState === "complete" ? undefined : goThreshold}
+            <Cta
+              eyebrow={ctaLabel}
+              title={encounter.title}
+              onPress={goThreshold}
+              complete={ctaState === "complete"}
               disabled={introRunning}
-              style={[
-                ctaState === "complete" ? styles.ctaPillQuiet : styles.ctaPill,
-                { opacity: ui.cta },
-              ]}
+              style={{ opacity: ui.cta, maxWidth: 360 }}
               testID="origin-cta"
-            >
-              <Text
-                style={[
-                  styles.ctaDay,
-                  ctaState === "complete" && { color: "rgba(235,228,255,0.5)" },
-                ]}
-              >
-                {ctaLabel}
-              </Text>
-              <Text
-                style={[
-                  styles.ctaTitle,
-                  ctaState === "complete" && { color: "rgba(235,228,255,0.75)" },
-                ]}
-                numberOfLines={1}
-              >
-                {encounter.title}
-              </Text>
-              <Text
-                style={[
-                  styles.ctaArrow,
-                  ctaState === "complete" && { color: "rgba(235,228,255,0.5)" },
-                ]}
-              >
-                →
-              </Text>
-            </Pressable>
+            />
           )}
         </View>
       </View>
@@ -1205,11 +1181,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     maxWidth: 250,
   },
-  epigraphLink: {
-    ...TypeScale.serifSmall,
-    color: "rgba(200,190,225,0.58)",
-    textAlign: "right",
-  },
 
   spiralZone: {
     flex: 1,
@@ -1272,43 +1243,8 @@ const styles = StyleSheet.create({
   },
 
   ctaZone: {
-    height: 66,
+    height: 70,
     alignItems: "center",
     justifyContent: "center",
-  },
-  ctaPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(244,240,255,0.96)",
-    borderRadius: 100,
-    paddingVertical: 13,
-    paddingHorizontal: 22,
-    maxWidth: 320,
-  },
-  ctaPillQuiet: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.16)",
-    borderRadius: 100,
-    paddingVertical: 13,
-    paddingHorizontal: 22,
-    maxWidth: 320,
-  },
-  ctaDay: {
-    ...TypeScale.micro,
-    letterSpacing: 2.2,
-    color: "rgba(90,70,120,0.85)",
-  },
-  ctaTitle: {
-    ...TypeScale.body,
-    color: "#16101f",
-    flexShrink: 1,
-  },
-  ctaArrow: {
-    ...TypeScale.body,
-    color: "#16101f",
   },
 });

@@ -1,10 +1,11 @@
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { AccountForm } from "@/components/AccountForm";
+import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import { SignInGuard } from "@/components/SignInGuard";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
@@ -67,14 +68,12 @@ export default function SignInScreen() {
         {mode === "kept" && (
           <>
             <Text style={styles.lead}>kept. this field is yours, anywhere.</Text>
-            <Pressable
+            <LinkPrimary
+              label="return →"
               onPress={() => router.replace("/(tabs)")}
               style={styles.backLink}
-              hitSlop={8}
               testID="signin-kept-return"
-            >
-              <Text style={styles.backText}>return →</Text>
-            </Pressable>
+            />
           </>
         )}
 
@@ -87,14 +86,12 @@ export default function SignInScreen() {
         )}
 
         {mode !== "kept" && mode !== "guard" && (
-          <Pressable
+          <LinkSecondary
+            label="← back"
             onPress={() => router.back()}
-            hitSlop={8}
             style={styles.backLink}
             testID="signin-back"
-          >
-            <Text style={styles.backText}>← back</Text>
-          </Pressable>
+          />
         )}
       </View>
     </View>
@@ -123,13 +120,5 @@ const styles = StyleSheet.create({
   },
   backLink: {
     marginTop: 32,
-    minHeight: 44,
-    justifyContent: "center",
-    alignSelf: "flex-start",
-  },
-  backText: {
-    ...TypeScale.label,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
   },
 });

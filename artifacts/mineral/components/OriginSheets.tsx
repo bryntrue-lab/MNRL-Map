@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 
+import { LinkWhisper } from "@/components/Links";
 import { TypeScale } from "@/constants/typography";
 import {
   COUNTERWEIGHT_QUESTION,
@@ -235,21 +236,22 @@ export function ReadingSheet({
           <Text style={styles.cwDate}>{ritualDateLabel(cwDate)}</Text>
           <Text style={styles.cwQuestion}>{cwQuestion}</Text>
           {onKeepWhatComes && (
-            <Pressable
+            <LinkWhisper
+              label="keep what comes →"
               onPress={onKeepWhatComes}
               style={styles.keepWhatComes}
-              hitSlop={6}
               testID="counterweight-keep"
-            >
-              <Text style={styles.keepWhatComesText}>keep what comes →</Text>
-            </Pressable>
+            />
           )}
         </Pressable>
       )}
 
-      <Pressable onPress={onCompanions} style={styles.companionsLink} testID="companions-link">
-        <Text style={styles.companionsLinkText}>four companions of this moment →</Text>
-      </Pressable>
+      <LinkWhisper
+        label="four companions of this moment →"
+        onPress={onCompanions}
+        style={styles.companionsLink}
+        testID="companions-link"
+      />
     </SheetShell>
   );
 }
@@ -430,20 +432,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "flex-start",
   },
-  keepWhatComesText: {
-    ...TypeScale.label,
-    letterSpacing: 0.4,
-    color: "rgba(235,228,255,0.7)",
-    textDecorationLine: "underline",
-  },
 
   companionsLink: {
     paddingVertical: 6,
-  },
-  companionsLinkText: {
-    ...TypeScale.metadata,
-    letterSpacing: 1.5,
-    color: "rgba(200,190,225,0.58)",
   },
 
   companionRow: {

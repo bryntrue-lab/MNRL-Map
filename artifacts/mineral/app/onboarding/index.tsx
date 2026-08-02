@@ -1,10 +1,11 @@
 import { router } from "expo-router";
 import React from "react";
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { LinkSecondary } from "@/components/Links";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { useAuth } from "@/context/AuthContext";
 
@@ -62,14 +63,12 @@ export default function HelloScreen() {
       </View>
 
       {/* C.1 §1h — the way back into an existing field */}
-      <Pressable
+      <LinkSecondary
+        label="already keeping a field? sign in"
         onPress={() => router.push("/onboarding/signin")}
-        hitSlop={8}
         style={styles.signInLine}
         testID="hello-sign-in"
-      >
-        <Text style={styles.signInText}>already keeping a field? sign in</Text>
-      </Pressable>
+      />
 
       <OnboardingFooter
         activeIndex={0}
@@ -96,15 +95,7 @@ const styles = StyleSheet.create({
   },
   signInLine: {
     alignSelf: "center",
-    minHeight: 44,
-    justifyContent: "center",
     marginBottom: 4,
-  },
-  signInText: {
-    ...TypeScale.label,
-    letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.5)",
-    textDecorationLine: "underline",
   },
   tagline: {
     ...TypeScale.serifSmall,

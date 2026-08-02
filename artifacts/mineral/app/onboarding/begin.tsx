@@ -1,9 +1,10 @@
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
-import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 
 import BeginButton from "@/components/BeginButton";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { LinkSecondary, LinkWhisper } from "@/components/Links";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import { setEncounterSession } from "@/lib/encounter";
@@ -91,22 +92,21 @@ export default function BeginScreen() {
         <BeginButton onPress={begin} />
 
         {notReady ? (
-          <Pressable onPress={later} hitSlop={8}>
-            <Text style={styles.notReady}>
-              the threshold isn’t ready — the map is. go there →
-            </Text>
-          </Pressable>
+          <LinkWhisper
+            label="the threshold isn’t ready — the map is. go there →"
+            onPress={later}
+            style={styles.notReady}
+            textStyle={{ textAlign: "center" }}
+          />
         ) : null}
 
         {/* Save for later — quiet secondary */}
-        <Pressable
-          style={({ pressed }) => [styles.saveWrap, { opacity: pressed ? 0.5 : 1 }]}
+        <LinkSecondary
+          label="save for later"
           onPress={later}
-          hitSlop={12}
+          style={styles.saveWrap}
           testID="onboarding-save-later"
-        >
-          <Text style={styles.saveText}>save for later</Text>
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -148,17 +148,10 @@ const styles = StyleSheet.create({
   },
   notReady: {
     marginTop: 20,
-    ...TypeScale.serifSmall,
-    color: "rgba(255,255,255,0.58)",
-    textAlign: "center",
+    alignSelf: "center",
   },
   saveWrap: {
     marginTop: 24,
-    paddingVertical: 8,
-  },
-  saveText: {
-    ...TypeScale.label,
-    letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.5)",
+    alignSelf: "center",
   },
 });
