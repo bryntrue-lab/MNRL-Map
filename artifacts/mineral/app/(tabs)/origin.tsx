@@ -495,25 +495,6 @@ export default function OriginScreen() {
 
   // Gesture-space → viewBox, through the inverse of the zoom transform
   // (scale about the zone center, then translate).
-  // ── §2.1.1 label safety geometry ──────────────────────────
-  // East/west station labels: ≥12pt inside the SCREEN edge. The spiral
-  // zone bleeds to the screen edges (marginHorizontal -26), so zone x=0
-  // IS the screen edge; convert 12pt into viewBox units past mapOffX.
-  const labelInsetVb =
-    mapScale > 0 ? Math.max(12, (12 - mapOffX) / mapScale) : 12;
-
-  // The wander caption block (below the map, under the chip row) owns a
-  // clearance zone: no map label may render inside it. Mapped through the
-  // inverse of the current zoom so it holds while zoomed/panned too.
-  // ~22px covers the chip row between the spiral zone and the word zone.
-  const avoidYVb = useMemo(() => {
-    if (zone.h <= 0 || mapScale <= 0) return Infinity;
-    const capTopPx = zone.h + 22;
-    const cy = zone.h / 2;
-    const iy = cy + (capTopPx - zoomState.ty - cy) / zoomState.s;
-    return (iy - mapOffY) / mapScale;
-  }, [zone.h, mapScale, mapOffY, zoomState]);
-
   const toViewBox = useCallback(
     (x: number, y: number) => {
       const z = zoomRef.current;
@@ -947,8 +928,6 @@ export default function OriginScreen() {
                     visual={visual}
                     width={zone.w}
                     height={zone.h}
-                    labelInsetVb={labelInsetVb}
-                    avoidYVb={avoidYVb}
                   />
                   {/* NOW halo — breathes in the approached station's color */}
                   {hasBirth && visual.nowOn > 0.01 && (
