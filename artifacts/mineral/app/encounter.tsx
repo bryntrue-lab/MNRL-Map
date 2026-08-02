@@ -858,6 +858,13 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         >
           {block.type === "integration" && (
             <>
+              {/* 2.1.3 — the day's ⟡ prompt stays present above the title,
+                  so integration reads as a continuation, not a new screen. */}
+              {prompt ? (
+                <Text style={styles.blockDayPrompt} testID="integration-day-prompt">
+                  ⟡ {prompt.text}
+                </Text>
+              ) : null}
               <Text style={styles.blockTitle}>{block.title}</Text>
               {block.durationLabel ? (
                 <Text style={styles.blockDuration}>{block.durationLabel}</Text>
@@ -1315,6 +1322,14 @@ const styles = StyleSheet.create({
   // Blocks
   blockContent: {
     paddingHorizontal: 32,
+  },
+  blockDayPrompt: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 13,
+    lineHeight: 20,
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 16,
   },
   blockTitle: {
     fontFamily: FontFamily.sans500,
