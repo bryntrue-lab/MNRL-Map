@@ -60,6 +60,7 @@ export function CaptureSheet({
   const [type, setType] = useState<FieldNoteType | null>(lockedType ?? initialType ?? null);
   const [text, setText] = useState("");
   const busy = useRef(false);
+  const inputRef = useRef<TextInput>(null);
 
   // Each opening starts fresh at the caller's preselection.
   useEffect(() => {
@@ -69,6 +70,15 @@ export function CaptureSheet({
       busy.current = false;
     }
   }, [open, initialType, lockedType]);
+
+  // 2.1.2 — focus only after the slide-in settles (420ms). Focusing
+  // mid-entrance made the scroll-into-view fight the animation, leaving
+  // the field clipped at the sheet's top edge.
+  useEffect(() => {
+    if (!open || type == null) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 460);
+    return () => clearTimeout(t);
+  }, [open, type]);
 
   const canKeep = type != null && text.trim().length > 0 && uid != null;
 
@@ -140,13 +150,13 @@ export function CaptureSheet({
         {type != null && (
           <>
             <TextInput
+              ref={inputRef}
               style={styles.input}
               value={text}
               onChangeText={setText}
               placeholder="when you're ready"
               placeholderTextColor="rgba(255,255,255,0.28)"
               multiline
-              autoFocus
               testID="capture-input"
             />
             <Pressable

@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { onSnapshot } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
@@ -19,12 +20,13 @@ import type { FieldNoteDoc } from "@/types/firestore";
 // §C.1 7 — interim Guide: chronological feed + taking-root header from the
 // FIRST capture. Lens rows render but read "listening." until Milestone D.
 
+// 2.1.4b — each lens declares its promise beneath "listening." (verbatim).
 const LENSES = [
-  { id: "resistance",    label: "recurring resistance", color: "#e08aaf" },
-  { id: "threads",       label: "threads",              color: "#88dcba" },
-  { id: "motifs",        label: "mythic motifs",        color: "#e9b76b" },
-  { id: "conditions",    label: "conditions noted",     color: "#9bb6d6" },
-  { id: "consciousness", label: "consciousness map",    color: "#c4baea" },
+  { id: "resistance",    label: "recurring resistance", color: "#e08aaf", promise: "when the same wall is named three times, it appears here." },
+  { id: "threads",       label: "threads",              color: "#88dcba", promise: "phrases you repeat without noticing, heard at three notes." },
+  { id: "motifs",        label: "mythic motifs",        color: "#e9b76b", promise: "images that return across your field, counted." },
+  { id: "conditions",    label: "conditions noted",     color: "#9bb6d6", promise: "what you name alongside the charged days." },
+  { id: "consciousness", label: "consciousness map",    color: "#c4baea", promise: "the structures moving through your words." },
 ];
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -101,6 +103,10 @@ export default function GuideScreen() {
               {notes.length} {notes.length === 1 ? "note" : "notes"} across {dayCount}{" "}
               {dayCount === 1 ? "day" : "days"}.
             </Text>
+            {/* 2.1.4a — the Guide declares its job (verbatim) */}
+            <Text style={styles.guideJobLine} testID="guide-job-line">
+              patterns arrive with repetition. the guide is listening.
+            </Text>
           </View>
         ) : (
           <View style={styles.fieldHeader}>
@@ -139,17 +145,19 @@ export default function GuideScreen() {
               <View style={styles.lensTextWrap}>
                 <Text style={styles.lensName}>{lens.label}</Text>
                 <Text style={styles.lensDesc}>listening.</Text>
+                <Text style={styles.lensPromise}>{lens.promise}</Text>
               </View>
             </View>
             <Text style={styles.lensArrow}>→</Text>
           </Pressable>
         ))}
 
-        {/* Chronological feed — free-tier canon, newest first (§7) */}
+        {/* 2.1.4c — the Notes tab owns the archive; the Guide owns the
+            mirror. Three freshest notes only, then a quiet link out. */}
         {hasField && (
           <View style={styles.feedSection}>
-            <Text style={styles.lensesLabel}>THE FIELD, IN ORDER</Text>
-            {notes.map((n) => (
+            <Text style={styles.lensesLabel}>FRESH</Text>
+            {notes.slice(0, 3).map((n) => (
               <View key={n.id} style={styles.noteItem} testID={`guide-note-${n.id}`}>
                 <Text style={styles.noteLine} numberOfLines={2}>
                   {openingLine(n)}
@@ -160,6 +168,14 @@ export default function GuideScreen() {
                 </Text>
               </View>
             ))}
+            <Pressable
+              onPress={() => router.push("/notes")}
+              style={styles.wholeFieldLink}
+              hitSlop={8}
+              testID="guide-whole-field-link"
+            >
+              <Text style={styles.wholeFieldText}>the whole field lives in notes →</Text>
+            </Pressable>
           </View>
         )}
 
@@ -198,6 +214,14 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     fontSize: 15,
     color: "rgba(255,255,255,0.75)",
+  },
+  guideJobLine: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 12,
+    lineHeight: 18,
+    color: "rgba(255,255,255,0.38)",
+    marginTop: 6,
   },
   synthesisText: {
     fontFamily: FontFamily.serifItalic,
@@ -277,6 +301,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "rgba(255,255,255,0.42)",
   },
+  lensPromise: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 11,
+    lineHeight: 16,
+    color: "rgba(255,255,255,0.3)",
+    marginTop: 3,
+  },
   lensArrow: {
     fontSize: 13,
     color: "rgba(255,255,255,0.3)",
@@ -304,6 +336,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.2,
     color: "rgba(255,255,255,0.4)",
+  },
+  wholeFieldLink: {
+    alignSelf: "flex-start",
+    paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  wholeFieldText: {
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.5)",
   },
 
   closingThought: {

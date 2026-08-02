@@ -4,6 +4,7 @@ import {
   Easing,
   Keyboard,
   PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -50,6 +51,33 @@ export function SheetShell({
   const slide = useRef(new Animated.Value(0)).current;
   const [mounted, setMounted] = useState(open);
 
+  // §C.1 1e / 2.1.2 — the sheet rises with the keyboard so the field is
+  // never clipped at the sheet's top edge. A transform (not a wrapper
+  // layer) so the backdrop stays tappable. iOS only: Android's window
+  // resizes (softwareKeyboardLayoutMode default), web needs nothing.
+  const kbRise = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    const show = Keyboard.addListener("keyboardWillShow", (e) =>
+      Animated.timing(kbRise, {
+        toValue: -e.endCoordinates.height,
+        duration: e.duration || 250,
+        useNativeDriver: true,
+      }).start()
+    );
+    const hide = Keyboard.addListener("keyboardWillHide", (e) =>
+      Animated.timing(kbRise, {
+        toValue: 0,
+        duration: e.duration || 250,
+        useNativeDriver: true,
+      }).start()
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [kbRise]);
+
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const handlePan = useMemo(
@@ -94,7 +122,11 @@ export function SheetShell({
     <>
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPress={onClose}
+        onPress={() => {
+          // §C.1 1e — tap outside: the keyboard leaves first, then the sheet.
+          Keyboard.dismiss();
+          onClose();
+        }}
         testID={`${testID}-backdrop`}
       />
       <Animated.View
@@ -104,10 +136,13 @@ export function SheetShell({
             paddingBottom: bottomPad + 18,
             transform: [
               {
-                translateY: slide.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [460, 0],
-                }),
+                translateY: Animated.add(
+                  slide.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [460, 0],
+                  }),
+                  kbRise
+                ),
               },
             ],
           },

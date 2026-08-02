@@ -14,3 +14,5 @@ description: Container shell behaviors that have burned a session before.
 **Rule:** Backgrounded processes (`nohup ... &`) are killed when their ShellExec call returns — a long deploy started in the background and "polled" from later calls will silently die mid-flight (observed 2026-07-27: firebase deploy died after its parent call ended, leaving half-created FAILED cloud functions).
 
 **How to apply:** Run long jobs in the foreground of a single call sized to the 300s cap. If a job can exceed that, prefer operations that continue server-side (cloud LROs) and poll their status via API from fresh calls — never rely on a surviving local process.
+
+- A checkpoint/rollback can silently revert file edits made just before a tool error (seen with a durable-runtime replay error). After any tool-level error mid-edit-sequence, re-grep the file for your changes before trusting they exist — a later reviewer caught KAV code that "successful" edits had supposedly removed.
