@@ -10,7 +10,7 @@ import {
   introVisual,
 } from "@/app/(tabs)/origin";
 import { OriginMap, type OriginMapVisual } from "@/components/SpiralComponents";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useUser } from "@/context/UserContext";
 import { QUARTERS, ageAt, type Quarter } from "@/lib/spiral";
 
@@ -137,19 +137,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   stillLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 16,
-    color: "rgba(255,255,255,0.75)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.72)",
   },
   hint: {
     position: "absolute",
     left: 0,
     right: 0,
     textAlign: "center",
-    fontFamily: FontFamily.sans400,
-    fontSize: 10,
+    ...TypeScale.metadata,
     letterSpacing: 2,
-    color: "rgba(255,255,255,0.3)",
+    color: "rgba(255,255,255,0.5)",
   },
 });

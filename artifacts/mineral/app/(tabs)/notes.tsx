@@ -15,7 +15,7 @@ import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { QuietToast } from "@/components/OriginSheets";
 import TabTopBar from "@/components/TabTopBar";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
@@ -221,16 +221,12 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   title: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 26,
-    letterSpacing: -0.3,
+    ...TypeScale.display,
     color: "rgba(255,255,255,0.95)",
     marginBottom: 6,
   },
   subtitle: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
+    ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.5)",
   },
 
@@ -251,16 +247,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   glyph: {
-    fontSize: 18,
+    ...TypeScale.sectionTitle,
     color: "rgba(255,255,255,0.75)",
     marginBottom: 8,
-    lineHeight: 22,
   },
   chipLabel: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     color: "rgba(255,255,255,0.85)",
-    letterSpacing: 0.2,
   },
 
   moreRow: {
@@ -271,16 +264,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   moreLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2,
-    color: "rgba(255,255,255,0.35)",
+    color: "rgba(255,255,255,0.5)",
   },
   moreChip: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2,
-    color: "rgba(255,255,255,0.6)",
+    color: "rgba(255,255,255,0.58)",
   },
 
   recentSection: {
@@ -293,16 +284,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   recentLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
   recentCount: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 11,
-    color: "rgba(255,255,255,0.4)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.5)",
   },
 
   emptyState: {
@@ -310,11 +298,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
+    ...TypeScale.serifSmall,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     textAlign: "center",
   },
 
@@ -324,17 +310,14 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
   noteLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
+    ...TypeScale.serifSmall,
     lineHeight: 20,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 4,
   },
   noteMeta: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 10,
+    ...TypeScale.metadata,
     letterSpacing: 1.2,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
 });

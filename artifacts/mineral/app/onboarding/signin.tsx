@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { AccountForm } from "@/components/AccountForm";
 import { SignInGuard } from "@/components/SignInGuard";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { hasAnyFieldNote } from "@/lib/firestore";
 
@@ -111,16 +111,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   eyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 10,
   },
   lead: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 18,
+    ...TypeScale.serifBody,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 36,
   },
@@ -131,9 +128,8 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   backText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
   },
 });

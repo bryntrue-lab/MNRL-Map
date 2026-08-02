@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 
 function PlayIcon() {
   return (
@@ -63,15 +63,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   label: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 15,
+    ...TypeScale.body,
     color: "#050208",
     letterSpacing: 0.1,
     lineHeight: 18,
   },
   meta: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 9,
+    ...TypeScale.metadata,
     letterSpacing: 1.8,
     color: "rgba(5,2,8,0.55)",
     marginTop: 1,

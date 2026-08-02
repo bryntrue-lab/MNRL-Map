@@ -29,7 +29,6 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           ...TypeScale.metadata,
-          fontSize: 10,
           marginBottom: isIOS ? 0 : 4,
         },
         tabBarStyle: {

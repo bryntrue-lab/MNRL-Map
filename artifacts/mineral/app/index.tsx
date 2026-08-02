@@ -2,7 +2,7 @@ import { Redirect } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 
@@ -64,10 +64,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   quiet: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 2,
     textTransform: "uppercase",
-    color: "rgba(200,190,225,0.4)",
+    color: "rgba(200,190,225,0.5)",
   },
 });

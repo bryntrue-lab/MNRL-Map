@@ -5,6 +5,11 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import {
+  CormorantGaramond_400Regular_Italic,
+  CormorantGaramond_500Medium_Italic,
+  CormorantGaramond_600SemiBold_Italic,
+} from "@expo-google-fonts/cormorant-garamond";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -47,6 +52,9 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    CormorantGaramond_400Regular_Italic,
+    CormorantGaramond_500Medium_Italic,
+    CormorantGaramond_600SemiBold_Italic,
   });
 
   useEffect(() => {

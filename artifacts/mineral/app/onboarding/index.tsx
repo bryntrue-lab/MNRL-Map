@@ -3,7 +3,7 @@ import React from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { useAuth } from "@/context/AuthContext";
@@ -101,19 +101,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   signInText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
     textDecorationLine: "underline",
   },
   tagline: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 16,
-    lineHeight: 24,
+    ...TypeScale.serifSmall,
     letterSpacing: 0.2,
-    color: "rgba(255,255,255,0.62)",
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
     marginTop: 22,
   },

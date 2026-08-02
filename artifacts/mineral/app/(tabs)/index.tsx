@@ -12,7 +12,7 @@ import {
 import BeginButton from "@/components/BeginButton";
 import { SpiralIndicator } from "@/components/SpiralComponents";
 import TabTopBar from "@/components/TabTopBar";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -264,27 +264,22 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   encounterEyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
     textAlign: "center",
     marginBottom: 12,
   },
   encounterTitle: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 28,
-    letterSpacing: -0.3,
+    ...TypeScale.display,
     color: "rgba(255,255,255,0.98)",
     textAlign: "center",
     marginBottom: 12,
   },
   encounterSubtitle: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
+    ...TypeScale.serifSmall,
     lineHeight: 23,
     letterSpacing: 0.1,
-    color: "rgba(255,255,255,0.62)",
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
     maxWidth: 280,
     marginBottom: 36,
@@ -292,17 +287,13 @@ const styles = StyleSheet.create({
 
   notReady: {
     marginTop: 22,
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    color: "rgba(255,255,255,0.55)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
   },
   notReadyStatic: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    color: "rgba(255,255,255,0.55)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
     marginTop: 24,
   },
@@ -312,8 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   returnText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 1.8,
     textTransform: "uppercase",
     color: "rgba(200,190,225,0.5)",

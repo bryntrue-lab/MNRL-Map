@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 
 /**
@@ -75,7 +75,7 @@ export function AccountForm({
         value={email}
         onChangeText={setEmail}
         placeholder="email"
-        placeholderTextColor="rgba(255,255,255,0.3)"
+        placeholderTextColor="rgba(255,255,255,0.5)"
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
@@ -89,7 +89,7 @@ export function AccountForm({
         value={password}
         onChangeText={setPassword}
         placeholder="password"
-        placeholderTextColor="rgba(255,255,255,0.3)"
+        placeholderTextColor="rgba(255,255,255,0.5)"
         secureTextEntry
         autoCapitalize="none"
         returnKeyType="done"
@@ -124,8 +124,7 @@ export function AccountForm({
 
 const styles = StyleSheet.create({
   input: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 15,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.15)",
@@ -133,17 +132,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   error: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
-    color: "rgba(224,138,175,0.9)",
+    ...TypeScale.serifSmall,
+    color: "#E08AAF",
     marginBottom: 14,
   },
   quietLine: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
   },
   submit: {
     minHeight: 44,
@@ -152,8 +148,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   submitText: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 14,
+    ...TypeScale.body,
     letterSpacing: 0.4,
     color: "rgba(235,228,255,0.9)",
   },

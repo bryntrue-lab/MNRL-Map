@@ -3,7 +3,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 
 interface OnboardingFooterProps {
   activeIndex: number;
@@ -77,9 +77,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,1)",
   },
   continueText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 14,
-    fontWeight: "400",
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.88)",
     letterSpacing: 0.4,
   },

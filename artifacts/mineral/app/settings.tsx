@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { AccountForm } from "@/components/AccountForm";
 import { SignInGuard } from "@/components/SignInGuard";
-import { FontFamily } from "@/constants/typography";
+import { FontFamily, TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { functions } from "@/lib/firebase";
 import { hasAnyFieldNote } from "@/lib/firestore";
@@ -198,10 +198,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   title: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 3,
-    color: "rgba(255,255,255,0.6)",
+    color: "rgba(255,255,255,0.58)",
   },
   closeTarget: {
     minWidth: 44,
@@ -210,24 +209,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeText: {
-    fontSize: 16,
+    ...TypeScale.sectionTitle,
     color: "rgba(255,255,255,0.5)",
   },
   sectionLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 14,
   },
   releaseLabel: {
     marginTop: 56,
   },
   bodyLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 23,
+    ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.8)",
     marginBottom: 10,
   },
@@ -241,23 +236,23 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   actionText: {
+    ...TypeScale.body,
     fontFamily: FontFamily.sans500,
-    fontSize: 14,
     letterSpacing: 0.4,
     color: "rgba(235,228,255,0.9)",
   },
   quietAction: {
+    ...TypeScale.label,
     fontFamily: FontFamily.sans400,
-    fontSize: 12,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
     textDecorationLine: "underline",
   },
   dangerText: {
+    ...TypeScale.body,
     fontFamily: FontFamily.sans500,
-    fontSize: 13,
     letterSpacing: 0.4,
-    color: "rgba(224,138,175,0.9)",
+    color: "#E08AAF",
   },
   confirmRow: {
     flexDirection: "row",
@@ -265,10 +260,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
-    color: "rgba(224,138,175,0.9)",
+    ...TypeScale.serifSmall,
+    color: "#E08AAF",
     marginTop: 8,
   },
 });

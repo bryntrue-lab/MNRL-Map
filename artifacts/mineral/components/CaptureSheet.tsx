@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { SheetShell } from "@/components/OriginSheets";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { createFieldNote } from "@/lib/firestore";
 import type { FieldNoteType, NoteSource, PhaseId } from "@/types/firestore";
 import type { CreateFieldNoteInput } from "@/lib/firestore";
@@ -155,7 +155,7 @@ export function CaptureSheet({
               value={text}
               onChangeText={setText}
               placeholder="when you're ready"
-              placeholderTextColor="rgba(255,255,255,0.28)"
+              placeholderTextColor="rgba(255,255,255,0.5)"
               multiline
               testID="capture-input"
             />
@@ -184,10 +184,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   eyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.metadata,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
   closeTarget: {
     width: 44,
@@ -197,8 +196,8 @@ const styles = StyleSheet.create({
     marginRight: -8,
   },
   closeGlyph: {
-    fontSize: 15,
-    color: "rgba(255,255,255,0.45)",
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.5)",
   },
 
   chipRow: {
@@ -223,15 +222,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.28)",
   },
   chipGlyph: {
-    fontSize: 12,
+    ...TypeScale.label,
     color: "rgba(255,255,255,0.6)",
   },
   chipGlyphActive: {
     color: "rgba(255,255,255,0.9)",
   },
   chipLabel: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 0.2,
     color: "rgba(255,255,255,0.7)",
   },
@@ -249,9 +247,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
-    fontFamily: FontFamily.sans400,
-    fontSize: 14,
-    lineHeight: 21,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
     textAlignVertical: "top",
   },
@@ -264,8 +260,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   keepText: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 13,
+    ...TypeScale.body,
     letterSpacing: 0.3,
     color: "rgba(255,255,255,0.85)",
   },

@@ -44,11 +44,20 @@ const colors = {
     border: "rgba(255,255,255,0.08)",
     input: "rgba(255,255,255,0.08)",
 
-    // Text hierarchy
+    // Text hierarchy — Slice T (AA ruling): 0.5 alpha is the FLOOR;
+    // nothing dimmer renders text.
     textPrimary: "#FFFFFF",
-    textSecondary: "rgba(255,255,255,0.6)",
-    textTertiary: "rgba(255,255,255,0.45)",
-    textMuted: "rgba(255,255,255,0.3)",
+    textSecondary: "rgba(255,255,255,0.72)",
+    textTertiary: "rgba(255,255,255,0.58)",
+    textMuted: "rgba(255,255,255,0.5)",
+
+    // Accent text-tints — accents-as-text, always alpha 1.0.
+    // (#C44A8A is 4.50:1 on the ground — never text below 18px.)
+    signalText: "#E08AAF",
+    fieldText: "#88DCBA",
+    frictionText: "#E9B76B",
+    voiceText: "#9BB6D6",
+    integralText: "#C4BAEA",
 
     // Phase accents (all four phases, use Signal for v0.5)
     signal: "#C44A8A",

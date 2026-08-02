@@ -13,7 +13,7 @@ import {
   resolveAudioUrl,
   selectEncounterForDay,
 } from "@/lib/firestore";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 
 const { height } = Dimensions.get("window");
 
@@ -126,38 +126,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   eyebrow: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.5,
-    color: "rgba(196,74,138,0.85)",
+    color: "#E08AAF",
     textAlign: "center",
     marginBottom: 16,
   },
   title: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 30,
-    letterSpacing: -0.4,
+    ...TypeScale.display,
     color: "rgba(255,255,255,0.98)",
     textAlign: "center",
     marginBottom: 14,
   },
   subtitle: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 23,
+    ...TypeScale.serifSmall,
     letterSpacing: 0.1,
-    color: "rgba(255,255,255,0.62)",
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
     maxWidth: 280,
     marginBottom: 48,
   },
   notReady: {
     marginTop: 20,
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
-    color: "rgba(255,255,255,0.55)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
   },
   saveWrap: {
@@ -165,9 +157,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   saveText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
 });

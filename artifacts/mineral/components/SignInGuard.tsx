@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 
 /**
  * Task C §2 guard — shown only when the current ANONYMOUS session holds
@@ -41,18 +41,13 @@ export function SignInGuard({
 
 const styles = StyleSheet.create({
   headline: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 16,
-    lineHeight: 24,
+    ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.88)",
     marginBottom: 10,
   },
   body: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 13,
-    lineHeight: 20,
-    color: "rgba(255,255,255,0.6)",
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.58)",
     marginBottom: 20,
   },
   action: {
@@ -61,15 +56,13 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   primaryText: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 14,
+    ...TypeScale.body,
     letterSpacing: 0.4,
     color: "rgba(235,228,255,0.9)",
   },
   quietText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
   },
 });

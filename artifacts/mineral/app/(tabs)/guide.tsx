@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import TabTopBar from "@/components/TabTopBar";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
 import type { FieldNoteDoc } from "@/types/firestore";
@@ -203,32 +203,25 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   fieldStateLabelFresh: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(196,74,138,0.85)",
+    color: "#E08AAF",
     marginBottom: 8,
   },
   fieldCount: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    color: "rgba(255,255,255,0.75)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.72)",
   },
   guideJobLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 12,
+    ...TypeScale.serifSmall,
     lineHeight: 18,
-    color: "rgba(255,255,255,0.38)",
+    color: "rgba(255,255,255,0.5)",
     marginTop: 6,
   },
   synthesisText: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
+    ...TypeScale.serifSmall,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.78)",
+    color: "rgba(255,255,255,0.72)",
   },
 
   returningWrap: {
@@ -239,32 +232,27 @@ const styles = StyleSheet.create({
     marginBottom: 36,
   },
   returningLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 8,
   },
   returningLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
+    ...TypeScale.serifSmall,
     lineHeight: 23,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 6,
   },
   returningMeta: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 10,
+    ...TypeScale.metadata,
     letterSpacing: 1.2,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
 
   lensesLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 16,
   },
   lensRow: {
@@ -290,28 +278,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   lensName: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 14,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
     marginBottom: 3,
   },
   lensDesc: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 11,
-    color: "rgba(255,255,255,0.42)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.5)",
   },
   lensPromise: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 11,
+    ...TypeScale.serifSmall,
     lineHeight: 16,
-    color: "rgba(255,255,255,0.3)",
+    color: "rgba(255,255,255,0.5)",
     marginTop: 3,
   },
   lensArrow: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.3)",
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.5)",
     marginLeft: 8,
   },
 
@@ -324,18 +307,15 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
   noteLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
+    ...TypeScale.serifSmall,
     lineHeight: 20,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 4,
   },
   noteMeta: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 10,
+    ...TypeScale.metadata,
     letterSpacing: 1.2,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
   wholeFieldLink: {
     alignSelf: "flex-start",
@@ -344,18 +324,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   wholeFieldText: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
+    ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.5)",
   },
 
   closingThought: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
+    ...TypeScale.serifSmall,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     textAlign: "center",
     marginTop: 40,
     paddingHorizontal: 24,

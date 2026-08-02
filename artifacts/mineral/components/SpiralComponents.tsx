@@ -12,7 +12,7 @@ import Svg, {
   Text as SvgText,
 } from "react-native-svg";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import {
   CX,
   CY,
@@ -135,17 +135,13 @@ const spiralStyles = StyleSheet.create({
   container: { alignItems: "center", marginBottom: 22 },
   label: { alignItems: "center", marginTop: 12 },
   phaseName: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 13,
+    ...TypeScale.body,
     letterSpacing: -0.3,
     marginBottom: 3,
   },
   turnLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    color: "rgba(255,255,255,0.35)",
+    ...TypeScale.micro,
+    color: "rgba(255,255,255,0.5)",
   },
 });
 
@@ -459,7 +455,7 @@ export function OriginMap({
                     x={c.lx}
                     y={c.ly}
                     textAnchor="middle"
-                    fill="rgba(255,255,255,0.38)"
+                    fill="rgba(255,255,255,0.5)"
                     fontSize={12}
                     fontFamily="sans-serif"
                   >
@@ -490,7 +486,7 @@ export function OriginMap({
                   x={posn.x}
                   y={posn.y + 15}
                   textAnchor={posn.anchor}
-                  fill="rgba(255,255,255,0.32)"
+                  fill="rgba(255,255,255,0.5)"
                   fontSize={11}
                   letterSpacing={1.6}
                   fontFamily="sans-serif"

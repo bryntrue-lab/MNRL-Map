@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { useUser } from "@/context/UserContext";
@@ -125,7 +125,7 @@ export default function SignatureScreen() {
           <TextInput
             style={styles.input}
             placeholder="birth date  (YYYY-MM-DD)"
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
             value={birthDate}
             onChangeText={(t) => setBirthDate(formatDigits(t))}
             keyboardType="number-pad"
@@ -136,7 +136,7 @@ export default function SignatureScreen() {
           <TextInput
             style={styles.input}
             placeholder="birth time  (optional)"
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
             value={birthTime}
             onChangeText={setBirthTime}
             keyboardType="numbers-and-punctuation"
@@ -145,7 +145,7 @@ export default function SignatureScreen() {
           <TextInput
             style={styles.input}
             placeholder="birth location"
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
             value={birthLocation}
             onChangeText={setBirthLocation}
             autoCapitalize="words"
@@ -210,43 +210,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   eyebrow: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.5,
-    color: "rgba(196,74,138,0.85)",
+    color: "#E08AAF",
     marginBottom: 14,
   },
   title: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 26,
-    letterSpacing: -0.3,
+    ...TypeScale.display,
     color: "rgba(255,255,255,0.96)",
     marginBottom: 10,
   },
   subtitle: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    lineHeight: 21,
-    color: "rgba(255,255,255,0.6)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
     marginBottom: 28,
   },
   unlocks: {
     marginBottom: 28,
   },
   unlocksLabel: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.35)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 10,
   },
   unlockItem: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
-    lineHeight: 22,
-    color: "rgba(255,255,255,0.65)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.72)",
   },
   fields: {
     gap: 12,
@@ -258,16 +248,14 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(255,255,255,0.12)",
     borderRadius: 10,
-    fontFamily: FontFamily.sans400,
-    fontSize: 14,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
   },
   failed: {
     marginTop: 12,
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 1,
-    color: "rgba(224,138,175,0.8)",
+    color: "#E08AAF",
   },
   skipWrap: {
     position: "absolute",
@@ -276,10 +264,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   skipText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
   originFooter: {
     position: "absolute",
@@ -290,8 +277,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveText: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 14,
+    ...TypeScale.body,
     letterSpacing: 0.4,
     color: "rgba(255,255,255,0.92)",
   },

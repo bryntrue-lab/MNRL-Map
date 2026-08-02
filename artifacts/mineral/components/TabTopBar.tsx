@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 
 interface TabTopBarProps {
   title: string;
@@ -56,13 +56,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconText: {
-    fontSize: 22,
+    ...TypeScale.screenTitle,
     color: "rgba(255,255,255,0.6)",
   },
   eyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.metadata,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
 });

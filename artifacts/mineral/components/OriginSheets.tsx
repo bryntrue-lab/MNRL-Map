@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import {
   COUNTERWEIGHT_QUESTION,
   FUTURE_COUNTERWEIGHT_QUESTION,
@@ -373,26 +373,21 @@ const styles = StyleSheet.create({
   },
 
   eyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 8.5,
+    ...TypeScale.metadata,
     letterSpacing: 2.6,
     color: "rgba(200,190,225,0.5)",
     marginBottom: 16,
   },
 
   seasonTitle: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 27,
+    ...TypeScale.serifDisplay,
     color: "rgba(240,235,255,0.95)",
     marginBottom: 8,
   },
   seasonMode: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 9.5,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.2,
-    textTransform: "uppercase",
-    color: "rgba(200,190,225,0.45)",
+    color: "rgba(200,190,225,0.5)",
     marginBottom: 14,
   },
   divider: {
@@ -401,10 +396,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   seasonQuestion: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 19,
-    lineHeight: 27,
+    ...TypeScale.serifMedium,
     color: "rgba(235,228,255,0.8)",
     marginBottom: 20,
   },
@@ -416,25 +408,20 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   cwEyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 8,
+    ...TypeScale.metadata,
     letterSpacing: 2.4,
-    color: "rgba(200,190,225,0.45)",
+    color: "rgba(200,190,225,0.5)",
     marginBottom: 8,
   },
   cwDate: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 13,
+    ...TypeScale.body,
     letterSpacing: 0.3,
     color: "rgba(235,228,255,0.85)",
     marginBottom: 6,
   },
   cwQuestion: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14.5,
-    lineHeight: 21,
-    color: "rgba(235,228,255,0.6)",
+    ...TypeScale.serifSmall,
+    color: "rgba(235,228,255,0.58)",
   },
 
   keepWhatComes: {
@@ -444,8 +431,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   keepWhatComesText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 0.4,
     color: "rgba(235,228,255,0.7)",
     textDecorationLine: "underline",
@@ -455,10 +441,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   companionsLinkText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 1.5,
-    color: "rgba(200,190,225,0.55)",
+    color: "rgba(200,190,225,0.58)",
   },
 
   companionRow: {
@@ -474,30 +459,25 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   companionName: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 2,
     color: "rgba(235,228,255,0.8)",
     marginBottom: 3,
   },
   companionDesc: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13.5,
+    ...TypeScale.serifSmall,
     color: "rgba(235,228,255,0.5)",
   },
   companionRight: {
     alignItems: "flex-end",
   },
   companionYear: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 15,
+    ...TypeScale.body,
     color: "rgba(235,228,255,0.9)",
   },
   companionAge: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
-    color: "rgba(235,228,255,0.4)",
+    ...TypeScale.metadata,
+    color: "rgba(235,228,255,0.5)",
     marginTop: 2,
   },
 
@@ -508,10 +488,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   toastText: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    color: "rgba(235,228,255,0.65)",
+    ...TypeScale.serifSmall,
+    color: "rgba(235,228,255,0.58)",
     backgroundColor: "rgba(14,10,24,0.92)",
     paddingHorizontal: 18,
     paddingVertical: 9,

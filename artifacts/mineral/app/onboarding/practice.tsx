@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import React from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 
@@ -83,10 +83,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   eyebrow: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 16,
   },
   steps: {
@@ -95,32 +94,24 @@ const styles = StyleSheet.create({
   },
   step: {},
   stepNum: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 8,
   },
   stepName: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 22,
+    ...TypeScale.screenTitle,
     letterSpacing: -0.2,
     color: "rgba(255,255,255,0.95)",
     marginBottom: 6,
   },
   stepDesc: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    lineHeight: 21,
-    color: "rgba(255,255,255,0.6)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
   },
   closing: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    lineHeight: 24,
-    color: "rgba(255,255,255,0.55)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
     letterSpacing: 0.1,
     paddingHorizontal: 16,

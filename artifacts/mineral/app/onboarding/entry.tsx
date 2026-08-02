@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import React from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { OnboardingSpiral } from "@/components/SpiralComponents";
@@ -68,10 +68,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   eyebrow: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
     textAlign: "center",
     marginBottom: 32,
   },
@@ -84,31 +83,24 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   phaseName: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 17,
-    color: "rgba(196,74,138,0.88)",
+    ...TypeScale.serifBody,
+    color: "#E08AAF",
     letterSpacing: 0.2,
     marginBottom: 8,
   },
   turnLabel: {
-    fontFamily: FontFamily.sans600,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.42)",
+    color: "rgba(255,255,255,0.5)",
   },
   body: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 16,
-    lineHeight: 25,
+    ...TypeScale.serifSmall,
     letterSpacing: 0.2,
-    color: "rgba(255,255,255,0.78)",
+    color: "rgba(255,255,255,0.72)",
     textAlign: "center",
     maxWidth: 320,
   },
   bodyAccent: {
-    color: "rgba(196,74,138,0.88)",
-    fontStyle: "italic",
+    color: "#E08AAF",
   },
 });

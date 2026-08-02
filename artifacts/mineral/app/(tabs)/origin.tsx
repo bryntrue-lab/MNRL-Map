@@ -19,7 +19,7 @@ import { OriginAtmosphere } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { CompanionsSheet, QuietToast, ReadingSheet } from "@/components/OriginSheets";
 import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralComponents";
-import { FontFamily } from "@/constants/typography";
+import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -1069,7 +1069,7 @@ export default function OriginScreen() {
               <Text
                 style={[
                   styles.ctaArrow,
-                  ctaState === "complete" && { color: "rgba(235,228,255,0.25)" },
+                  ctaState === "complete" && { color: "rgba(235,228,255,0.5)" },
                 ]}
               >
                 →
@@ -1151,16 +1151,13 @@ const styles = StyleSheet.create({
   },
   hudLeft: {},
   hudStation: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 24,
+    ...TypeScale.serifTitle,
     color: "rgba(240,235,255,0.92)",
   },
   hudStructure: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 3,
-    color: "rgba(200,190,225,0.45)",
+    color: "rgba(200,190,225,0.5)",
     marginTop: 3,
   },
   hudRight: {
@@ -1168,11 +1165,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   hudCycle: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 12,
+    ...TypeScale.label,
     letterSpacing: 1.8,
     textTransform: "uppercase",
-    color: "rgba(200,190,225,0.55)",
+    color: "rgba(200,190,225,0.58)",
     textAlign: "right",
     lineHeight: 16,
   },
@@ -1191,8 +1187,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   todayChipText: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 2.4,
     color: "rgba(235,228,255,0.85)",
   },
@@ -1204,19 +1199,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   epigraph: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15.5,
+    ...TypeScale.serifSmall,
     lineHeight: 22,
-    color: "rgba(235,228,255,0.65)",
+    color: "rgba(235,228,255,0.72)",
     textAlign: "right",
     maxWidth: 250,
   },
   epigraphLink: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14.5,
-    color: "rgba(200,190,225,0.55)",
+    ...TypeScale.serifSmall,
+    color: "rgba(200,190,225,0.58)",
     textAlign: "right",
   },
 
@@ -1248,10 +1239,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
   },
   chipText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 9,
+    ...TypeScale.metadata,
     letterSpacing: 1.5,
-    color: "rgba(200,190,225,0.6)",
+    color: "rgba(200,190,225,0.58)",
   },
 
   wordZone: {
@@ -1264,25 +1254,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   captionStation: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 17,
+    ...TypeScale.serifBody,
     color: "rgba(240,235,255,0.9)",
   },
   captionMeta: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 1.6,
     textTransform: "lowercase",
     color: "rgba(200,190,225,0.5)",
     marginTop: 4,
   },
   hint: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 2,
     textTransform: "uppercase",
-    color: "rgba(200,190,225,0.35)",
+    color: "rgba(200,190,225,0.5)",
   },
 
   ctaZone: {
@@ -1312,19 +1298,17 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   ctaDay: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 8.5,
+    ...TypeScale.micro,
     letterSpacing: 2.2,
     color: "rgba(90,70,120,0.85)",
   },
   ctaTitle: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 14,
+    ...TypeScale.body,
     color: "#16101f",
     flexShrink: 1,
   },
   ctaArrow: {
-    fontSize: 14,
+    ...TypeScale.body,
     color: "#16101f",
   },
 });

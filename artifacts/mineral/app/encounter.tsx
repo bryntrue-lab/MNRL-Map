@@ -32,7 +32,7 @@ import {
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { QuietToast } from "@/components/OriginSheets";
-import { FontFamily } from "@/constants/typography";
+import { FontFamily, TypeScale } from "@/constants/typography";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { AccountForm } from "@/components/AccountForm";
@@ -758,7 +758,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
                 value={typed}
                 onChangeText={setTyped}
                 placeholder="when you're ready"
-                placeholderTextColor="rgba(255,255,255,0.28)"
+                placeholderTextColor="rgba(255,255,255,0.5)"
                 multiline
                 autoFocus
                 testID="capture-text-input"
@@ -1039,9 +1039,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backChevronText: {
-    fontSize: 26,
-    lineHeight: 30,
-    color: "rgba(255,255,255,0.35)",
+    ...TypeScale.display,
+    color: "rgba(255,255,255,0.5)",
   },
   ambientPlus: {
     position: "absolute",
@@ -1053,9 +1052,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ambientPlusText: {
-    fontSize: 24,
-    lineHeight: 28,
-    color: "rgba(255,255,255,0.4)",
+    ...TypeScale.screenTitle,
+    color: "rgba(255,255,255,0.5)",
   },
 
   // Listen
@@ -1085,10 +1083,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   playPauseText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 13,
+    ...TypeScale.body,
     letterSpacing: 1.2,
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.72)",
   },
   skip: {
     minHeight: 44,
@@ -1096,10 +1093,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   skipText: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 1.2,
-    color: "rgba(255,255,255,0.35)",
+    color: "rgba(255,255,255,0.5)",
   },
 
   // ⟡ Capture
@@ -1108,33 +1104,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   glyph: {
-    fontSize: 22,
+    ...TypeScale.screenTitle,
     color: GLYPH_BLUE,
     marginBottom: 18,
   },
   captureEyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 26,
   },
   capturePrompt: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 24,
-    lineHeight: 36,
+    ...TypeScale.serifTitle,
     color: "rgba(255,255,255,0.95)",
     textAlign: "center",
     maxWidth: 320,
     marginBottom: 14,
   },
   captureSubtext: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    lineHeight: 22,
-    color: "rgba(255,255,255,0.45)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.5)",
     textAlign: "center",
     maxWidth: 300,
   },
@@ -1170,10 +1159,9 @@ const styles = StyleSheet.create({
   },
   recordHint: {
     marginTop: 16,
-    fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    ...TypeScale.metadata,
     letterSpacing: 1.4,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
   typeToggle: {
     marginTop: 26,
@@ -1181,10 +1169,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   typeToggleText: {
+    ...TypeScale.label,
     fontFamily: FontFamily.sans400,
-    fontSize: 12,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
     textDecorationLine: "underline",
   },
 
@@ -1200,9 +1188,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
-    fontFamily: FontFamily.sans400,
-    fontSize: 15,
-    lineHeight: 23,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
     textAlignVertical: "top",
   },
@@ -1214,8 +1200,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   keepText: {
+    ...TypeScale.body,
     fontFamily: FontFamily.sans500,
-    fontSize: 13,
     letterSpacing: 0.3,
     color: "rgba(255,255,255,0.85)",
   },
@@ -1226,15 +1212,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   holdLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 19,
+    ...TypeScale.serifLarge,
     color: "rgba(255,255,255,0.85)",
     textAlign: "center",
   },
   holdGlyph: {
     marginTop: 22,
-    fontSize: 18,
+    ...TypeScale.sectionTitle,
     color: GLYPH_BLUE,
     opacity: 0.8,
   },
@@ -1245,10 +1229,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   wovenLine: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 19,
-    lineHeight: 29,
+    ...TypeScale.serifMedium,
     color: "rgba(255,255,255,0.92)",
     textAlign: "center",
     maxWidth: 320,
@@ -1258,24 +1239,19 @@ const styles = StyleSheet.create({
     marginBottom: 26,
   },
   cwEyebrow: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.42)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 10,
   },
   cwDate: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 13,
+    ...TypeScale.body,
     letterSpacing: 0.6,
-    color: "rgba(255,255,255,0.75)",
+    color: "rgba(255,255,255,0.72)",
     marginBottom: 18,
   },
   cwQuestion: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 18,
-    lineHeight: 28,
+    ...TypeScale.serifBody,
     color: "rgba(255,255,255,0.88)",
     textAlign: "center",
     maxWidth: 310,
@@ -1287,8 +1263,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   keepWhatComesText: {
+    ...TypeScale.label,
     fontFamily: FontFamily.sans400,
-    fontSize: 12,
     letterSpacing: 0.4,
     color: "rgba(255,255,255,0.5)",
     textDecorationLine: "underline",
@@ -1303,17 +1279,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   wayInToggleText: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 10,
+    ...TypeScale.eyebrow,
     letterSpacing: 2.2,
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.5)",
   },
   wayInPrompt: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 24,
-    color: "rgba(255,255,255,0.6)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
     textAlign: "center",
     maxWidth: 300,
     marginBottom: 12,
@@ -1324,33 +1296,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   blockDayPrompt: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 13,
-    lineHeight: 20,
-    color: "rgba(255,255,255,0.45)",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 16,
   },
   blockTitle: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 21,
-    letterSpacing: -0.2,
+    ...TypeScale.screenTitle,
     color: "rgba(255,255,255,0.95)",
     marginBottom: 8,
   },
   blockDuration: {
-    fontFamily: FontFamily.sans500,
-    fontSize: 9,
+    ...TypeScale.micro,
     letterSpacing: 2,
-    textTransform: "uppercase",
-    color: "rgba(255,255,255,0.38)",
+    color: "rgba(255,255,255,0.5)",
     marginBottom: 22,
   },
   blockInstruction: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 17,
-    lineHeight: 28,
+    ...TypeScale.serifBody,
     color: "rgba(255,255,255,0.82)",
     marginBottom: 22,
   },
@@ -1358,25 +1320,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   deepDiveOffer: {
+    ...TypeScale.label,
     fontFamily: FontFamily.sans400,
-    fontSize: 12,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.5)",
     textDecorationLine: "underline",
     marginBottom: 22,
   },
   carryIntro: {
-    fontFamily: FontFamily.sans400,
-    fontSize: 13,
-    lineHeight: 21,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.5)",
     marginBottom: 18,
   },
   carryClosing: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 21,
-    lineHeight: 33,
+    ...TypeScale.serifMedium,
     color: "rgba(255,255,255,0.92)",
     marginBottom: 26,
   },
@@ -1390,11 +1347,11 @@ const styles = StyleSheet.create({
     marginTop: "auto",
   },
   advanceText: {
+    ...TypeScale.label,
     fontFamily: FontFamily.sans400,
-    fontSize: 12,
     letterSpacing: 1.6,
     textTransform: "uppercase",
-    color: "rgba(200,190,225,0.62)",
+    color: "rgba(200,190,225,0.58)",
   },
 
   keepThisWrap: {
@@ -1403,10 +1360,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   keepThisLead: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 14,
-    lineHeight: 22,
+    ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.72)",
     textAlign: "center",
     marginBottom: 10,
@@ -1417,16 +1371,16 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   keepThisActionText: {
+    ...TypeScale.body,
     fontFamily: FontFamily.sans500,
-    fontSize: 14,
     letterSpacing: 0.4,
     color: "rgba(235,228,255,0.9)",
   },
   returnLine: {
+    ...TypeScale.label,
     fontFamily: FontFamily.sans400,
-    fontSize: 12,
     letterSpacing: 0.4,
-    color: "rgba(255,255,255,0.42)",
+    color: "rgba(255,255,255,0.5)",
     textAlign: "center",
     marginBottom: 30,
   },
@@ -1438,10 +1392,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
   },
   epigraph: {
-    fontFamily: FontFamily.serifItalic,
-    fontStyle: "italic",
-    fontSize: 22,
-    lineHeight: 34,
+    ...TypeScale.serifLarge,
     color: "rgba(255,255,255,0.93)",
     textAlign: "center",
     maxWidth: 320,
