@@ -58,6 +58,8 @@ export interface UserDoc {
   // Task C §2 — the "keep this." moment fired once; never re-shown.
   // Client-writable, additive (absent on older docs).
   keepThisOffered?: boolean;
+  /** Slice 5 — set at onboarding's terminal step (begin / save for later). */
+  onboarded?: boolean;
 
   // Server-written only — never set or modified by the client.
   // Security rules enforce their initial values on create and immutability on update.

@@ -11,6 +11,7 @@ const ONBOARDING_ROUTES = [
   "/onboarding",
   "/onboarding/entry",
   "/onboarding/signature",
+  "/onboarding/map",
   "/onboarding/practice",
   "/onboarding/begin",
 ];

@@ -118,9 +118,13 @@ function useEasedValue(target: number, duration: number): number {
 // words (HUD, epigraph, CTA, hint) → labels withdraw.
 // ─────────────────────────────────────────────────────────────
 
+// Slice 5 — the choreography is also played as onboarding step 4
+// (app/onboarding/map.tsx); these exports let it reuse the exact §8
+// sequence without duplicating it. The map's rendering is untouched.
+export const INTRO_KEY_EXPORT = INTRO_KEY;
 const INTRO_T0 = 2100;
 const INTRO_D = 5600;
-const INTRO_TOTAL = INTRO_T0 + INTRO_D + 6000;
+export const INTRO_TOTAL = INTRO_T0 + INTRO_D + 6000;
 
 interface UiOpacity {
   hud: number;
@@ -143,7 +147,7 @@ function introUi(t: number): UiOpacity {
 
 const STATION_REVEAL_AGE: Record<Quarter, number> = { north: 0, east: 7, south: 14, west: 21 };
 
-function introVisual(t: number, currentAge: number): OriginMapVisual {
+export function introVisual(t: number, currentAge: number): OriginMapVisual {
   const base = INTRO_T0 + INTRO_D;
   const withdraw = clamp01((t - (base + 4700)) / 1200);
   const lived = easeInOutCubic(clamp01((t - INTRO_T0) / INTRO_D));
@@ -889,7 +893,14 @@ export default function OriginScreen() {
                 </Text>
               ) : null
             ) : (
-              <Pressable onPress={() => router.push("/birthdate")} testID="add-birthdate-link">
+              <Pressable
+                // Slice 5 — one birth-date form in the whole app: the
+                // onboarding signature screen, reached with from=origin.
+                onPress={() =>
+                  router.push({ pathname: "/onboarding/signature", params: { from: "origin" } })
+                }
+                testID="add-birthdate-link"
+              >
                 <Text style={styles.epigraphLink}>add your birth date to see your spiral →</Text>
               </Pressable>
             )}

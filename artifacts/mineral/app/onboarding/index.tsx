@@ -6,11 +6,13 @@ import Svg, { Path } from "react-native-svg";
 import { FontFamily } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
+import { useAuth } from "@/context/AuthContext";
 
 const ONBOARDING_ROUTES = [
   "/onboarding",
   "/onboarding/entry",
   "/onboarding/signature",
+  "/onboarding/map",
   "/onboarding/practice",
   "/onboarding/begin",
 ];
@@ -34,6 +36,21 @@ function MineralWordmark({ w = 250 }: { w?: number }) {
 }
 
 export default function HelloScreen() {
+  const { user, signInAnon } = useAuth();
+
+  // Amendment B — after an explicit sign-out, begin starts a fresh
+  // anonymous session before the six steps.
+  const begin = async () => {
+    if (!user) {
+      try {
+        await signInAnon();
+      } catch {
+        return; // stay on hello — tapping begin retries
+      }
+    }
+    router.push("/onboarding/entry");
+  };
+
   return (
     <View style={styles.container}>
       <ArchaicAtmosphere />
@@ -57,7 +74,7 @@ export default function HelloScreen() {
       <OnboardingFooter
         activeIndex={0}
         routes={ONBOARDING_ROUTES}
-        onContinue={() => router.push("/onboarding/entry")}
+        onContinue={begin}
         continueLabel="begin →"
       />
     </View>

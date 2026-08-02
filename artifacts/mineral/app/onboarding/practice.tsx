@@ -10,6 +10,7 @@ const ONBOARDING_ROUTES = [
   "/onboarding",
   "/onboarding/entry",
   "/onboarding/signature",
+  "/onboarding/map",
   "/onboarding/practice",
   "/onboarding/begin",
 ];
@@ -61,7 +62,7 @@ export default function PracticeScreen() {
       </View>
 
       <OnboardingFooter
-        activeIndex={3}
+        activeIndex={4}
         routes={ONBOARDING_ROUTES}
         onContinue={() => router.push("/onboarding/begin")}
       />

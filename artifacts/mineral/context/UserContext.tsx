@@ -74,9 +74,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // A new uid (sign-out → fresh anonymous session, account switch) must
+    // never route off the previous user's profile: reset to loading and
+    // key the local cache per uid so hydration can't cross users.
+    setProfile(null);
+    setLoading(true);
+    const cacheKey = `${PROFILE_CACHE_KEY}_${user.uid}`;
+    let live = false;
+
     // Cache-first: show locally persisted profile instantly on cold start.
-    AsyncStorage.getItem(PROFILE_CACHE_KEY).then((cached) => {
-      if (cached) {
+    AsyncStorage.getItem(cacheKey).then((cached) => {
+      if (cached && !live) {
         try {
           setProfile(reviveProfile(JSON.parse(cached)));
         } catch {}
@@ -85,10 +93,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const ref = doc(db, "users", user.uid);
     const unsubscribe = onSnapshot(ref, (snap) => {
+      live = true;
       if (snap.exists()) {
         const data = snap.data() as UserProfile;
         setProfile(data);
-        AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(data));
+        AsyncStorage.setItem(cacheKey, JSON.stringify(data));
       } else {
         // First sign-in — create the user doc with all required defaults.
         // Security rules require the five server-controlled fields to be at

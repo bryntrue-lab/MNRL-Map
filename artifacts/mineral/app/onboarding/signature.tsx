@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { Timestamp } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   Dimensions,
@@ -11,36 +12,92 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FontFamily } from "@/constants/typography";
-import { savePendingBirthData } from "@/hooks/useOnboarding";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
+import { useUser } from "@/context/UserContext";
 
 const ONBOARDING_ROUTES = [
   "/onboarding",
   "/onboarding/entry",
   "/onboarding/signature",
+  "/onboarding/map",
   "/onboarding/practice",
   "/onboarding/begin",
 ];
 
 const { height } = Dimensions.get("window");
 
+/** Digits → YYYY-MM-DD as the user types. */
+function formatDigits(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
+function parseBirthDate(value: string): Date | null {
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = +m[1];
+  const mo = +m[2];
+  const d = +m[3];
+  if (y < 1900 || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  // Noon local time — keeps the calendar day stable across time zones.
+  const date = new Date(y, mo - 1, d, 12);
+  if (date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
+  if (date.getTime() > Date.now()) return null;
+  return date;
+}
+
+/**
+ * Slice 5 — the app's ONLY birth-date form, ever. Writes
+ * users/{uid}.birthDate (+ optional time) directly: one source of truth.
+ * Reached from onboarding step 3, and from the Origin tab's empty state
+ * (from=origin), which returns there after saving.
+ */
 export default function SignatureScreen() {
   const insets = useSafeAreaInsets();
+  const { updateProfile } = useUser();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const fromOrigin = from === "origin";
 
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthLocation, setBirthLocation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const parsed = parseBirthDate(birthDate);
+
+  const leave = () => {
+    if (fromOrigin) {
+      // Back to the map — with a birth date, the choreography now plays there.
+      router.back();
+    } else {
+      router.push("/onboarding/map");
+    }
+  };
 
   const proceed = async (skip = false) => {
-    if (!skip && birthDate.trim()) {
-      await savePendingBirthData({
-        birthDate: birthDate.trim(),
-        birthTime: birthTime.trim() || undefined,
-        birthLocation: birthLocation.trim() || undefined,
-      });
+    if (saving) return;
+    if (skip || !parsed) {
+      leave();
+      return;
     }
-    router.push("/onboarding/practice");
+    setSaving(true);
+    setFailed(false);
+    try {
+      await updateProfile({
+        birthDate: Timestamp.fromDate(parsed),
+        ...(birthTime.trim() ? { birthTime: birthTime.trim() } : {}),
+        // birthLocation stays local-only until the structured schema
+        // ({ lat, lng, label }) is wired — a plain string doesn't map.
+      });
+      leave();
+    } catch {
+      setSaving(false);
+      setFailed(true);
+    }
   };
 
   const footerBottom = Math.max(insets.bottom, 20) + 36;
@@ -67,11 +124,14 @@ export default function SignatureScreen() {
         <View style={styles.fields}>
           <TextInput
             style={styles.input}
-            placeholder="birth date"
+            placeholder="birth date  (YYYY-MM-DD)"
             placeholderTextColor="rgba(255,255,255,0.3)"
             value={birthDate}
-            onChangeText={setBirthDate}
+            onChangeText={(t) => setBirthDate(formatDigits(t))}
+            keyboardType="number-pad"
+            maxLength={10}
             returnKeyType="next"
+            testID="signature-birthdate"
           />
           <TextInput
             style={styles.input}
@@ -93,22 +153,46 @@ export default function SignatureScreen() {
             onSubmitEditing={() => proceed()}
           />
         </View>
+
+        {failed ? (
+          <Text style={styles.failed}>not kept — try again</Text>
+        ) : null}
       </View>
 
       {/* Skip — quiet, centered, sits above the footer */}
-      <Pressable
-        style={[styles.skipWrap, { bottom: footerBottom + 44 }]}
-        onPress={() => proceed(true)}
-        hitSlop={12}
-      >
-        <Text style={styles.skipText}>skip · add later</Text>
-      </Pressable>
+      {!fromOrigin && (
+        <Pressable
+          style={[styles.skipWrap, { bottom: footerBottom + 44 }]}
+          onPress={() => proceed(true)}
+          hitSlop={12}
+          testID="signature-skip"
+        >
+          <Text style={styles.skipText}>skip · add later</Text>
+        </Pressable>
+      )}
 
-      <OnboardingFooter
-        activeIndex={2}
-        routes={ONBOARDING_ROUTES}
-        onContinue={() => proceed()}
-      />
+      {fromOrigin ? (
+        <View style={[styles.originFooter, { bottom: footerBottom }]}>
+          <Pressable onPress={() => router.back()} hitSlop={12} testID="signature-cancel">
+            <Text style={styles.skipText}>not now</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => proceed()}
+            disabled={!parsed || saving}
+            hitSlop={12}
+            style={{ opacity: parsed && !saving ? 1 : 0.35 }}
+            testID="signature-save"
+          >
+            <Text style={styles.saveText}>save →</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <OnboardingFooter
+          activeIndex={2}
+          routes={ONBOARDING_ROUTES}
+          onContinue={() => proceed()}
+        />
+      )}
     </View>
   );
 }
@@ -129,53 +213,61 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.sans600,
     fontSize: 10,
     letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.45)",
-    marginBottom: 12,
+    color: "rgba(196,74,138,0.85)",
+    marginBottom: 14,
   },
   title: {
     fontFamily: FontFamily.sans500,
     fontSize: 26,
     letterSpacing: -0.3,
-    color: "rgba(255,255,255,0.95)",
+    color: "rgba(255,255,255,0.96)",
     marginBottom: 10,
   },
   subtitle: {
     fontFamily: FontFamily.serifItalic,
     fontStyle: "italic",
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
     color: "rgba(255,255,255,0.6)",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   unlocks: {
-    marginBottom: 32,
+    marginBottom: 28,
   },
   unlocksLabel: {
-    fontFamily: FontFamily.sans600,
+    fontFamily: FontFamily.sans500,
     fontSize: 9,
     letterSpacing: 2.5,
-    color: "rgba(168,156,220,0.7)",
+    color: "rgba(255,255,255,0.35)",
     marginBottom: 10,
   },
   unlockItem: {
-    fontFamily: FontFamily.sans400,
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
     fontSize: 13,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.65)",
   },
   fields: {
-    gap: 10,
+    gap: 12,
   },
   input: {
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    height: 46,
+    paddingHorizontal: 14,
+    backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     borderRadius: 10,
-    fontSize: 14,
-    color: "rgba(255,255,255,0.95)",
     fontFamily: FontFamily.sans400,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.92)",
+  },
+  failed: {
+    marginTop: 12,
+    fontFamily: FontFamily.sans400,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: "rgba(224,138,175,0.8)",
   },
   skipWrap: {
     position: "absolute",
@@ -185,8 +277,22 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontFamily: FontFamily.sans400,
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.35)",
+    color: "rgba(255,255,255,0.4)",
+  },
+  originFooter: {
+    position: "absolute",
+    left: 36,
+    right: 36,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  saveText: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 14,
+    letterSpacing: 0.4,
+    color: "rgba(255,255,255,0.92)",
   },
 });

@@ -1,53 +1,80 @@
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
-import { Timestamp } from "firebase/firestore";
 
-import AuthSheet from "@/components/AuthSheet";
 import BeginButton from "@/components/BeginButton";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
+import { setEncounterSession } from "@/lib/encounter";
 import {
-  clearPendingBirthData,
-  getPendingBirthData,
-} from "@/hooks/useOnboarding";
+  beginSequenceEncounter,
+  fetchEncounterLibrary,
+  resolveAudioUrl,
+  selectEncounterForDay,
+} from "@/lib/firestore";
 import { FontFamily } from "@/constants/typography";
 
 const { height } = Dimensions.get("window");
 
-type PendingAction = "begin" | "later";
-
+/**
+ * Slice 5, step 6 — the terminal step. No account wall, ever: auth is
+ * anonymous already, and account creation lives only in the keep-this
+ * moment and Settings (auth-after-desire).
+ *   begin → the Day-1 encounter flow (the same session contract the
+ *   Today threshold uses — the encounter's internals are untouched).
+ *   save for later → the Origin tab, map present.
+ */
 export default function BeginScreen() {
+  const { user } = useAuth();
   const { updateProfile } = useUser();
+  const [notReady, setNotReady] = useState(false);
+  const busy = useRef(false);
 
-  const [authVisible, setAuthVisible] = useState(false);
-  const pendingAction = useRef<PendingAction>("begin");
-
-  const openAuth = (action: PendingAction) => {
-    pendingAction.current = action;
-    setAuthVisible(true);
+  const markOnboarded = async () => {
+    try {
+      await updateProfile({ onboarded: true });
+    } catch (err) {
+      // Never a dead end: navigation proceeds. Worst case (skipped
+      // signature + failed write) the six steps replay on next launch.
+      console.warn("onboarded flag not kept", err);
+    }
   };
 
-  const handleAuthSuccess = async () => {
-    setAuthVisible(false);
-
-    const birthData = await getPendingBirthData();
-    if (birthData) {
-      try {
-        // Convert PendingBirthData (string fields) to the UserDoc schema types.
-        // birthLocation as a plain string doesn't map to { lat, lng, label } yet —
-        // deferred until the signature screen is wired to the structured schema.
-        await updateProfile({
-          ...(birthData.birthDate
-            ? { birthDate: Timestamp.fromDate(new Date(birthData.birthDate)) }
-            : {}),
-          ...(birthData.birthTime ? { birthTime: birthData.birthTime } : {}),
-        });
-      } catch {}
-      await clearPendingBirthData();
+  const begin = async () => {
+    if (busy.current || !user) return;
+    busy.current = true;
+    setNotReady(false);
+    try {
+      const library = await fetchEncounterLibrary();
+      const encounter = selectEncounterForDay(library, 1, 1);
+      if (!encounter) throw new Error("no encounter for day 1");
+      const url = await resolveAudioUrl(encounter.audioPath);
+      await beginSequenceEncounter(user.uid, encounter.id, 1);
+      await markOnboarded();
+      setEncounterSession({
+        encounter,
+        turn: 1,
+        mode: "sequence",
+        audioUrl: url,
+        resume: null,
+      });
+      router.replace("/encounter");
+    } catch (err) {
+      console.warn("first threshold not ready", err);
+      busy.current = false;
+      // The soft refusal — never a dead end: the map is always there.
+      setNotReady(true);
     }
+  };
 
-    router.replace("/(tabs)");
+  const later = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    await markOnboarded();
+    // Explicitly the Origin tab — deep-linking "/(tabs)" can resolve to
+    // the index (Today) route instead of the declared initial tab.
+    router.replace("/(tabs)/origin");
   };
 
   return (
@@ -61,23 +88,26 @@ export default function BeginScreen() {
           something is calling — what comes when you stop naming it?
         </Text>
 
-        <BeginButton onPress={() => openAuth("begin")} />
+        <BeginButton onPress={begin} />
+
+        {notReady ? (
+          <Pressable onPress={later} hitSlop={8}>
+            <Text style={styles.notReady}>
+              the threshold isn’t ready — the map is. go there →
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* Save for later — quiet secondary */}
         <Pressable
           style={({ pressed }) => [styles.saveWrap, { opacity: pressed ? 0.5 : 1 }]}
-          onPress={() => openAuth("later")}
+          onPress={later}
           hitSlop={12}
+          testID="onboarding-save-later"
         >
           <Text style={styles.saveText}>save for later</Text>
         </Pressable>
       </View>
-
-      <AuthSheet
-        visible={authVisible}
-        onDismiss={() => setAuthVisible(false)}
-        onSuccess={handleAuthSuccess}
-      />
     </View>
   );
 }
@@ -121,6 +151,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 280,
     marginBottom: 48,
+  },
+  notReady: {
+    marginTop: 20,
+    fontFamily: FontFamily.serifItalic,
+    fontStyle: "italic",
+    fontSize: 13,
+    color: "rgba(255,255,255,0.55)",
+    textAlign: "center",
   },
   saveWrap: {
     marginTop: 24,

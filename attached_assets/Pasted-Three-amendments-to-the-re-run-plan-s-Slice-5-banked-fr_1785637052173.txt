@@ -1,0 +1,15 @@
+Three amendments to the re-run plan's Slice 5, banked from QA. They extend the slice; its integration contract and gates still apply. C.1 amends C where they overlap; this document amends both.
+
+A. Delete the legacy onboarding — this is now a REPLACE, not an ADD
+
+QA found the original scaffolded onboarding/auth flow (account creation before the first encounter) still in the codebase, reachable in the signed-out state. Slice 5 must:
+
+Delete the legacy onboarding and auth-gate screens entirely — the old flow that asks for account creation before The Threshold, and any routes pointing at it. Grep for the components and remove them; after this slice there is exactly ONE onboarding in the app (the six-step sequence) and account creation appears in exactly two places, ever: the keep this. moment after the first crystallizing capture, and Settings. Nothing asks for an account before the first encounter — auth-after-desire is canon.
+Also delete Task A's standalone birth-date entry if present (it may not exist in this baseline); either way, the signature step becomes the app's only birth-date form and the Origin tab only ever READS birthDate from the user doc (its empty state routes to the same signature screen component).
+B. Signed-out routing rule
+App start with no auth session → signInAnonymously() (as always) → if this uid's user doc is new/empty → the six-step onboarding; otherwise → the Origin tab.
+Explicit sign-out → land on the new onboarding's hello screen, which carries the quiet line "already keeping a field? sign in" (Slice 4's sign-in). From hello, begin → starts a fresh anonymous session and the six steps.
+There is no state, ever, in which the legacy flow or an account wall can appear.
+C. Launch tab is origin — always
+
+Cold start (existing user) lands on the Origin tab: the map, already drawn, epigraph waiting. Post-onboarding landing is Origin as well (per the Slice 5 terminal-state rule: begin → the Day-1 encounter; save for later → Origin). If a one-line initial-route change already shipped in an earlier slice, verify it survived; otherwise make it here. Touch only the navigator's initial route.

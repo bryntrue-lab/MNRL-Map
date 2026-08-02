@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -7,25 +6,18 @@ import { FontFamily } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 
-export const BIRTHDATE_PROMPTED_KEY = "mineral_birthdate_prompted";
-
 /**
- * Entry routing (§4): first launch signs in anonymously, then the single
- * birth-date step, then the tabs. Returning launches go straight to the tabs.
+ * Entry routing (Slice 5, amendment B): app start with no session signs in
+ * anonymously. A new/empty user doc (never onboarded, no birth date) →
+ * the six-step onboarding; otherwise → the tabs (Origin is the launch tab).
+ * There is no state in which a legacy flow or account wall can appear.
  */
 export default function Index() {
   const { user, loading, signInAnon } = useAuth();
   const { profile, loading: profileLoading } = useUser();
   const [authFailed, setAuthFailed] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  const [prompted, setPrompted] = useState<boolean | null>(null);
   const attempted = useRef(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(BIRTHDATE_PROMPTED_KEY)
-      .then((v) => setPrompted(v === "1"))
-      .catch(() => setPrompted(false));
-  }, []);
 
   // Safety valve: if Firebase auth never resolves (e.g. network offline),
   // surface the quiet retry state instead of waiting forever.
@@ -34,7 +26,7 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, []);
 
-  // §4 — anonymous auth on first launch.
+  // Anonymous auth on first launch — as always.
   useEffect(() => {
     if (loading || user || attempted.current) return;
     attempted.current = true;
@@ -55,13 +47,13 @@ export default function Index() {
     );
   }
 
-  if (!user || profileLoading || !profile || prompted === null) {
+  if (!user || profileLoading || !profile) {
     // Dark ground while auth and the profile resolve — no white flash.
     return <View style={styles.ground} />;
   }
 
-  if (!profile.birthDate && !prompted) return <Redirect href="/birthdate" />;
-  return <Redirect href="/(tabs)" />;
+  const isNew = !profile.onboarded && !profile.birthDate;
+  return isNew ? <Redirect href="/onboarding" /> : <Redirect href="/(tabs)" />;
 }
 
 const styles = StyleSheet.create({
