@@ -37,6 +37,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { AccountForm } from "@/components/AccountForm";
 import { LinkPrimary, LinkWhisper, LinkSecondary } from "@/components/Links";
+import { wasMorningCallOffered } from "@/lib/notifications";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
@@ -552,7 +553,18 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
   // ── Close (§1g) ──
   const closingRef = useRef(false);
-  const closeOut = () => {
+  // Slice 6: the permission moment fires once, after the FIRST close (the
+  // account moment, if it triggers, has already run inside the close stage).
+  const morningCallOfferedRef = useRef(true);
+  useEffect(() => {
+    if (Platform.OS === "web") return; // notifications are native-only
+    wasMorningCallOffered()
+      .then((v) => {
+        morningCallOfferedRef.current = v;
+      })
+      .catch(() => {});
+  }, []);
+  const closeOut = async () => {
     if (closingRef.current) return;
     closingRef.current = true;
     if (sequence) {
@@ -561,6 +573,16 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       completeEncounter(uid, encounter.id, turn, profile?.sequenceDay ?? 1).catch(
         (err) => console.warn("completion queued/failed", err)
       );
+    }
+    // Re-read the flag at the moment of decision — the mount-time preload
+    // may not have resolved on a very fast first close.
+    let offered = morningCallOfferedRef.current;
+    if (sequence && Platform.OS !== "web") {
+      offered = await wasMorningCallOffered().catch(() => offered);
+    }
+    if (sequence && Platform.OS !== "web" && !offered) {
+      router.replace("/morning-call");
+      return;
     }
     router.replace("/(tabs)/origin");
   };

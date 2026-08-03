@@ -3,6 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +21,7 @@ import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { functions } from "@/lib/firebase";
 import { hasAnyFieldNote } from "@/lib/firestore";
+import { dumpMorningCallQueue } from "@/lib/notifications";
 
 /**
  * Task C §2/§3 + C.1 §1h — Settings: keep this (link), sign in, sign out,
@@ -152,6 +154,25 @@ export default function SettingsScreen() {
               testID="settings-sign-out"
             />
           </>
+        )}
+
+        {/* Slice 6 — the permanent path to the morning call (no re-prompt). */}
+        {Platform.OS !== "web" && (
+          <LinkSecondary
+            label="the morning call · set a time"
+            onPress={() => router.push("/morning-call?from=settings")}
+            style={styles.actionLine}
+            testID="settings-morning-call"
+          />
+        )}
+        {/* Dev-only gate: dump the scheduled queue (fire time + body). */}
+        {__DEV__ && Platform.OS !== "web" && (
+          <LinkSecondary
+            label="dev · dump notification queue"
+            onPress={() => dumpMorningCallQueue()}
+            style={styles.actionLine}
+            testID="settings-dev-queue"
+          />
         )}
 
         {/* ── Release ── */}

@@ -19,6 +19,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import MorningCallScheduler from "@/components/MorningCallScheduler";
 import { AuthProvider } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
 
@@ -40,6 +41,11 @@ function RootLayoutNav() {
       {/* Task C §2/§3 — account keeping and release. */}
       <Stack.Screen
         name="settings"
+        options={{ headerShown: false, animation: "fade" }}
+      />
+      {/* Slice 6 — the morning call permission moment / time chooser. */}
+      <Stack.Screen
+        name="morning-call"
         options={{ headerShown: false, animation: "fade" }}
       />
     </Stack>
@@ -73,6 +79,7 @@ export default function RootLayout() {
             <KeyboardProvider>
               <AuthProvider>
                 <UserProvider>
+                  <MorningCallScheduler />
                   <RootLayoutNav />
                 </UserProvider>
               </AuthProvider>
