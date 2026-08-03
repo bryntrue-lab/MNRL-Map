@@ -94,8 +94,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
   },
   body: {
-    ...TypeScale.serifSmall,
-    letterSpacing: 0.2,
+    ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.72)",
     textAlign: "center",
     maxWidth: 320,

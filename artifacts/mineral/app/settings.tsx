@@ -15,6 +15,7 @@ import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { AccountForm } from "@/components/AccountForm";
 import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import { SignInGuard } from "@/components/SignInGuard";
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { functions } from "@/lib/firebase";
@@ -227,13 +228,14 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
   },
   sectionLabel: {
-    ...TypeScale.micro,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.5)",
-    marginBottom: 14,
+    ...TypeScale.sectionTitle,
+    textTransform: "lowercase",
+    color: colors.light.textSecondary,
+    marginTop: 32,
+    marginBottom: 13,
   },
   releaseLabel: {
-    marginTop: 56,
+    marginTop: 40,
   },
   bodyLine: {
     ...TypeScale.serifSmall,

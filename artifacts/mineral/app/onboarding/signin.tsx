@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   lead: {
-    ...TypeScale.serifBody,
+    ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 36,
   },

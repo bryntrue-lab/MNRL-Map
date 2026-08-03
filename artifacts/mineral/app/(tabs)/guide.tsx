@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { LinkWhisper } from "@/components/Links";
 import TabTopBar from "@/components/TabTopBar";
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
@@ -132,7 +133,7 @@ export default function GuideScreen() {
         )}
 
         {/* Lenses — rendered, listening until Milestone D */}
-        <Text style={styles.lensesLabel}>EXPLORE</Text>
+        <Text style={styles.sectionHead}>EXPLORE</Text>
         {LENSES.map((lens) => (
           <Pressable
             key={lens.id}
@@ -156,8 +157,8 @@ export default function GuideScreen() {
         {/* 2.1.4c — the Notes tab owns the archive; the Guide owns the
             mirror. Three freshest notes only, then a quiet link out. */}
         {hasField && (
-          <View style={styles.feedSection}>
-            <Text style={styles.lensesLabel}>FRESH</Text>
+          <View>
+            <Text style={styles.sectionHead}>FRESH</Text>
             {notes.slice(0, 3).map((n) => (
               <View key={n.id} style={styles.noteItem} testID={`guide-note-${n.id}`}>
                 <Text style={styles.noteLine} numberOfLines={2}>
@@ -236,8 +237,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   returningLine: {
-    ...TypeScale.serifSmall,
-    lineHeight: 23,
+    ...TypeScale.serifBody,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 6,
   },
@@ -247,17 +247,18 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
   },
 
-  lensesLabel: {
-    ...TypeScale.micro,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.5)",
-    marginBottom: 16,
+  sectionHead: {
+    ...TypeScale.sectionTitle,
+    textTransform: "lowercase",
+    color: colors.light.textSecondary,
+    marginTop: 32,
+    marginBottom: 13,
   },
   lensRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderTopWidth: 0.5,
     borderTopColor: "rgba(255,255,255,0.06)",
   },
@@ -285,8 +286,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
   },
   lensPromise: {
-    ...TypeScale.serifSmall,
-    lineHeight: 16,
+    ...TypeScale.metadata,
     color: "rgba(255,255,255,0.5)",
     marginTop: 3,
   },
@@ -296,17 +296,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  feedSection: {
-    marginTop: 36,
-  },
   noteItem: {
     paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
   noteLine: {
-    ...TypeScale.serifSmall,
-    lineHeight: 20,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.85)",
     marginBottom: 4,
   },

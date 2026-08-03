@@ -215,12 +215,12 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    ...TypeScale.display,
+    ...TypeScale.serifDisplay,
     color: "rgba(255,255,255,0.96)",
     marginBottom: 10,
   },
   subtitle: {
-    ...TypeScale.serifSmall,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.58)",
     marginBottom: 28,
   },
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   unlockItem: {
-    ...TypeScale.serifSmall,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.72)",
   },
   fields: {

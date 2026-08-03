@@ -134,9 +134,10 @@ export function SpiralIndicator({
 const spiralStyles = StyleSheet.create({
   container: { alignItems: "center", marginBottom: 22 },
   label: { alignItems: "center", marginTop: 12 },
+  // T-c §3: the phase name is a ritual-object title — serif register
+  // (phase text-tint passed in by the caller via `color`).
   phaseName: {
-    ...TypeScale.body,
-    letterSpacing: -0.3,
+    ...TypeScale.serifTitle,
     marginBottom: 3,
   },
   turnLabel: {
@@ -300,6 +301,13 @@ interface OriginMapProps {
    * east/west labels fully on screen with a ≥12pt margin.
    */
   screenInsetX?: number;
+  /**
+   * §6 wander recession — the station being approached. Non-null ONLY
+   * while wandering: its adjacent year labels stay full strength; all
+   * other year labels drop one step dimmer than their (receded) stations.
+   * null in daily/intro states → year labels render at uniform strength.
+   */
+  approachedQuarter?: Quarter | null;
 }
 
 export function OriginMap({
@@ -310,6 +318,7 @@ export function OriginMap({
   width,
   height,
   screenInsetX = 0,
+  approachedQuarter = null,
 }: OriginMapProps) {
   const clampedAge = currentAge == null ? null : Math.min(currentAge, MAX_AGE - 0.05);
 
@@ -458,6 +467,12 @@ export function OriginMap({
                     fill="rgba(255,255,255,0.5)"
                     fontSize={12}
                     fontFamily="sans-serif"
+                    // §6 — while wandering, years not adjacent to the
+                    // approached station drop one step dimmer than their
+                    // stations. Uniform (1) in daily/intro states.
+                    opacity={
+                      approachedQuarter != null && c.q !== approachedQuarter ? 0.5 : 1
+                    }
                   >
                     {birthYear + c.age}
                   </SvgText>

@@ -131,6 +131,11 @@ export function LinkSecondary({
   preserveCase,
   numberOfLines,
 }: LinkProps & { preserveCase?: boolean }) {
+  // T-c §10 (now §6d canon): one signifier per link — a label that ends
+  // in "→" carries the arrow and suppresses the hairline; arrowless
+  // labels keep the hairline. Press: hairline brightens to 0.5 on the
+  // hairline variant; the arrow variant presses like its glyph family.
+  const arrowed = /→\s*$/.test(label);
   return (
     <Pressable
       onPress={onPress}
@@ -142,9 +147,10 @@ export function LinkSecondary({
       {({ pressed }) => (
         <View
           style={[
-            styles.secondaryHairline,
+            !arrowed && styles.secondaryHairline,
             // §6d press: only the hairline brightens; the text never dims.
-            pressed && { borderBottomColor: "rgba(255,255,255,0.5)" },
+            !arrowed && pressed && { borderBottomColor: "rgba(255,255,255,0.5)" },
+            arrowed && pressed && { opacity: 0.5 },
           ]}
         >
           <Text

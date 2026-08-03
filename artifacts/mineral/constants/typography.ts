@@ -80,43 +80,60 @@ export const TypeScale = {
     lineHeight: 12,
   },
 
+  // Instructions and practice steps, prominent helper copy — the sans
+  // "explaining" voice at reading size (Slice T-c §8).
+  bodyLarge: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 16,
+    letterSpacing: 0,
+    lineHeight: 24,
+  },
+
   // ── Serif — Cormorant Garamond italic (the ritual voice) ────
+  // Tracking + revised line-heights per the Slice T §2 serif table
+  // (applied in T-c §1); 500 weight at 18px and below.
   // Season titles, onboarding questions
   serifDisplay: {
     fontFamily: FontFamily.serifItalicMedium,
     fontSize: 30,
-    lineHeight: 36,
+    letterSpacing: 0.6,
+    lineHeight: 37,
   },
   // ⟡ questions, HUD station, encounter titles
   serifTitle: {
     fontFamily: FontFamily.serifItalicMedium,
     fontSize: 26,
-    lineHeight: 32,
+    letterSpacing: 0.5,
+    lineHeight: 33,
   },
   // Epigraph, hold line, close line
   serifLarge: {
     fontFamily: FontFamily.serifItalic,
     fontSize: 23,
-    lineHeight: 30,
+    letterSpacing: 0.4,
+    lineHeight: 31,
   },
-  // Woven line, season question, carry closings, block instructions
+  // Woven line, season question, carry closings
   serifMedium: {
     fontFamily: FontFamily.serifItalic,
     fontSize: 20,
-    lineHeight: 27,
+    letterSpacing: 0.4,
+    lineHeight: 28,
   },
-  // Counterweight question, guide quotes, feed excerpts
+  // Counterweight question, guide quotes — 500 at 18 and below
   serifBody: {
-    fontFamily: FontFamily.serifItalic,
+    fontFamily: FontFamily.serifItalicMedium,
     fontSize: 18,
-    lineHeight: 25,
+    letterSpacing: 0.3,
+    lineHeight: 26,
   },
-  // Subtitles, companion descriptors, promise lines — the serif floor,
-  // weight 500 to hold Cormorant's small x-height at this size.
+  // Subtitles, companion descriptors — the serif floor, weight 500
+  // to hold Cormorant's small x-height at this size.
   serifSmall: {
     fontFamily: FontFamily.serifItalicMedium,
     fontSize: 16,
-    lineHeight: 21,
+    letterSpacing: 0.3,
+    lineHeight: 22,
   },
 } as const;
 
@@ -152,14 +169,31 @@ export const LinkType = {
     textTransform: "uppercase" as const,
     lineHeight: 15,
   },
+  // T-c §8 amendment to §6a: the serif never renders inside an
+  // interactive control — CTA titles are Inter 500.
   ctaTitle: {
-    fontFamily: FontFamily.serifItalicMedium,
+    fontFamily: FontFamily.sans500,
     fontSize: 18,
+    letterSpacing: -0.1,
     lineHeight: 24,
   },
   ctaArrow: {
     fontFamily: FontFamily.sans400,
     fontSize: 18,
     lineHeight: 24,
+  },
+  // Compact Begin pill (T-c §2, title per §8 — Inter inside controls)
+  ctaBeginTitle: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 19,
+    letterSpacing: -0.1,
+    lineHeight: 24,
+  },
+  ctaBeginMeta: {
+    fontFamily: FontFamily.sans500,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: "uppercase" as const,
+    lineHeight: 14,
   },
 } as const;

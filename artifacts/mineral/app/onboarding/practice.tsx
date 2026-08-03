@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   stepDesc: {
-    ...TypeScale.serifSmall,
+    ...TypeScale.body,
     color: "rgba(255,255,255,0.58)",
   },
   closing: {

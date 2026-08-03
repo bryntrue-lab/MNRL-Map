@@ -21,6 +21,7 @@ import Cta from "@/components/Cta";
 import { LinkWhisper } from "@/components/Links";
 import { CompanionsSheet, QuietToast, ReadingSheet } from "@/components/OriginSheets";
 import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralComponents";
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
@@ -442,7 +443,10 @@ export default function OriginScreen() {
     if (introRunning && clampedCurrent != null) return introVisual(introT as number, clampedCurrent);
     const so = { north: 0, east: 0, south: 0, west: 0 } as Record<Quarter, number>;
     QUARTERS.forEach((q) => {
-      so[q] = wanderFade * (q === r.quarter ? 0.85 : 0.4);
+      // §6 recession — one station leads while wandering: the approached
+      // station stays full strength; the other three drop to 50% of their
+      // wander opacity (0.4 → 0.2). Daily state is unaffected (wanderFade 0).
+      so[q] = wanderFade * (q === r.quarter ? 0.85 : 0.4 * 0.5);
     });
     return {
       blackout: 0,
@@ -942,6 +946,7 @@ export default function OriginScreen() {
                     width={zone.w}
                     height={zone.h}
                     screenInsetX={26}
+                    approachedQuarter={wandering ? r.quarter : null}
                   />
                   {/* NOW halo — breathes in the approached station's color */}
                   {hasBirth && visual.nowOn > 0.01 && (
@@ -1131,8 +1136,7 @@ const styles = StyleSheet.create({
     color: "rgba(240,235,255,0.92)",
   },
   hudStructure: {
-    ...TypeScale.label,
-    letterSpacing: 3,
+    ...TypeScale.micro,
     color: "rgba(200,190,225,0.5)",
     marginTop: 3,
   },
@@ -1216,7 +1220,11 @@ const styles = StyleSheet.create({
   },
 
   wordZone: {
+    // §6 — the caption block clears the map above by ≥16pt and the CTA
+    // below by ≥28pt; the pill must never touch the caption's shoulders.
     height: 46,
+    marginTop: 16,
+    marginBottom: 28,
     justifyContent: "center",
   },
   captionWrap: {
@@ -1225,14 +1233,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   captionStation: {
-    ...TypeScale.serifBody,
+    ...TypeScale.serifTitle,
     color: "rgba(240,235,255,0.9)",
   },
   captionMeta: {
     ...TypeScale.metadata,
-    letterSpacing: 1.6,
+    // §6 spec-mandated tracking: metadata carries 0.1; +0.4 lands here as an
+    // absolute override (no token exists for this value — noted in report).
+    letterSpacing: 0.4,
     textTransform: "lowercase",
-    color: "rgba(200,190,225,0.5)",
+    color: colors.light.textTertiary,
     marginTop: 4,
   },
   hint: {

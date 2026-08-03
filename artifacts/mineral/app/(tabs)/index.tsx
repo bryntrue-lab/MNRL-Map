@@ -220,7 +220,7 @@ export default function TodayScreen() {
             <Text style={styles.encounterTitle}>{encounter.title}</Text>
             <Text style={styles.encounterSubtitle}>{encounter.subtitle}</Text>
 
-            <BeginButton onPress={begin} meta="3 min · voice" />
+            <BeginButton onPress={begin} meta="3 min · voice" accent={accent} />
 
             {notReady && (
               <Animated.Text style={[styles.notReady, { opacity: notReadyOpacity }]}>
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   encounterTitle: {
-    ...TypeScale.display,
+    ...TypeScale.serifTitle,
     color: "rgba(255,255,255,0.98)",
     textAlign: "center",
     marginBottom: 12,

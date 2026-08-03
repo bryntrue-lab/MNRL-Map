@@ -1250,7 +1250,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   blockInstruction: {
-    ...TypeScale.serifBody,
+    ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.82)",
     marginBottom: 22,
   },
