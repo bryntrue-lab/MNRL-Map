@@ -15,12 +15,16 @@
  *   userEncounters update to 'completed' → users/{uid}.completedEncounterCount
  *   increments. Server-only field; nothing reads it yet.
  *
- * Neither function computes `charge` or writes patterns.
+ * Neither transcription nor completion counting computes `charge`.
+ *
+ * updatePatterns (Task D, Slice D.1): the Pattern Engine — see
+ * patternEngine.js. Counts and quotes verbatim; never interprets.
  */
 
 const {
   onDocumentCreated,
   onDocumentUpdated,
+  onDocumentWritten,
 } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
@@ -143,6 +147,49 @@ exports.deleteAccount = onCall(
     await getAuth().deleteUser(uid);
 
     return { ok: true };
+  }
+);
+
+/**
+ * updatePatterns (Task D §1): one function, all three moments —
+ *   create  → text captures (content present immediately)
+ *   update  → audio captures, when transcriptStatus flips to 'done'
+ *   delete  → reversal; a deleted note leaves no residue
+ * Double-processing is guarded by the `processed` ledger ON the pattern
+ * docs (clients own fieldNotes — nothing is written there).
+ */
+const { updatePatternsForNote } = require("./patternEngine");
+
+exports.updatePatterns = onDocumentWritten(
+  {
+    document: "users/{uid}/fieldNotes/{noteId}",
+    memory: "256MiB",
+    timeoutSeconds: 120,
+    retry: true, // ledger makes redelivery safe in both directions
+  },
+  async (event) => {
+    const { uid, noteId } = event.params;
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
+
+    if (!after && before) {
+      // Delete: reverse whatever this note contributed, recomputed from
+      // its own final content.
+      await updatePatternsForNote(uid, noteId, before, "remove");
+      return;
+    }
+    if (!after) return;
+
+    const isCreateWithContent = !before && !!after.content;
+    const transcriptJustLanded =
+      !!before &&
+      before.transcriptStatus !== "done" &&
+      after.transcriptStatus === "done" &&
+      !!after.content;
+
+    if (isCreateWithContent || transcriptJustLanded) {
+      await updatePatternsForNote(uid, noteId, after, "add");
+    }
   }
 );
 

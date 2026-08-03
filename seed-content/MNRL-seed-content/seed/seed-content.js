@@ -48,6 +48,7 @@ const CONTENT_ROOT = path.resolve(__dirname, '..', 'mineral-content');
 const ENCOUNTERS_DIR = path.join(CONTENT_ROOT, 'encounters');
 const AUDIO_DIR = path.join(CONTENT_ROOT, 'audio');
 const OFFERINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'offerings.json');
+const MOTIF_LEXICON_FILE = path.join(CONTENT_ROOT, 'motif-lexicon', 'lexicon.json');
 
 const VALID_PHASES = new Set(['signal', 'field', 'friction', 'voice']);
 const VALID_BLOCK_TYPES = new Set(['listen', 'practice', 'reflection', 'integration', 'carry']);
@@ -319,6 +320,84 @@ async function seedPractitionerContent(db) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SEEDING — MOTIF LEXICON (Task D §1)
+// The founder replaces/expands this by editing
+// mineral-content/motif-lexicon/lexicon.json — content, not code.
+// ─────────────────────────────────────────────────────────────
+
+function validateLexiconEntry(entry, i) {
+  const errors = [];
+  if (!entry.key) errors.push(`lexicon[${i}]: missing key`);
+  if (!Array.isArray(entry.terms) || entry.terms.length === 0) {
+    errors.push(`lexicon[${i}] (${entry.key || '?'}): terms must be a non-empty array`);
+  }
+  if (entry.keyType !== 'motif' && entry.keyType !== 'resistance') {
+    errors.push(`lexicon[${i}] (${entry.key || '?'}): keyType must be 'motif' or 'resistance'`);
+  }
+  return errors;
+}
+
+async function seedMotifLexicon(db) {
+  console.log('\n─── Motif lexicon ────────────────────────────');
+  if (!fs.existsSync(MOTIF_LEXICON_FILE)) {
+    console.log('  no lexicon.json; skipping.');
+    return;
+  }
+
+  let entries;
+  try {
+    entries = JSON.parse(fs.readFileSync(MOTIF_LEXICON_FILE, 'utf8'));
+  } catch (e) {
+    console.log(`  ✗ lexicon.json parse error — ${e.message}`);
+    return;
+  }
+  if (!Array.isArray(entries)) {
+    console.log('  ✗ lexicon.json must be an array');
+    return;
+  }
+
+  let created = 0, updated = 0, failed = 0;
+  const seenKeys = new Set();
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const errors = validateLexiconEntry(entry, i);
+    if (errors.length) {
+      errors.forEach(e => console.log(`  ✗ ${e}`));
+      failed++;
+      continue;
+    }
+
+    // Deterministic doc id — idempotent on repeat runs
+    const docId = entry.key.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (seenKeys.has(docId)) {
+      console.log(`  ✗ lexicon[${i}]: duplicate key "${docId}"`);
+      failed++;
+      continue;
+    }
+    seenKeys.add(docId);
+
+    const ref = db.collection('motifLexicon').doc(docId);
+    const existing = await ref.get();
+    try {
+      await ref.set({ key: entry.key, terms: entry.terms, keyType: entry.keyType });
+      if (existing.exists) {
+        console.log(`  ↻ ${docId} (${entry.keyType}, ${entry.terms.length} terms) — updated`);
+        updated++;
+      } else {
+        console.log(`  ✓ ${docId} (${entry.keyType}, ${entry.terms.length} terms) — created`);
+        created++;
+      }
+    } catch (e) {
+      console.log(`  ✗ ${docId}: Firestore write failed — ${e.message}`);
+      failed++;
+    }
+  }
+
+  console.log(`\n  motifLexicon — created ${created}, updated ${updated}, failed ${failed}`);
+}
+
+// ─────────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────────
 
@@ -331,6 +410,7 @@ async function main() {
 
   await seedEncounters(db, bucket);
   await seedPractitionerContent(db);
+  await seedMotifLexicon(db);
 
   console.log('\nDone.\n');
   process.exit(0);

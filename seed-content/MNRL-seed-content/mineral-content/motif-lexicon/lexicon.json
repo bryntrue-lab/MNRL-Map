@@ -1,0 +1,22 @@
+[
+  { "key": "threshold", "keyType": "motif", "terms": ["door", "doorway", "threshold", "gate", "gateway", "entrance"] },
+  { "key": "seed", "keyType": "motif", "terms": ["seed", "seedling", "sprout", "germinate"] },
+  { "key": "tree", "keyType": "motif", "terms": ["tree", "branch", "branches", "root", "roots", "trunk"] },
+  { "key": "compass", "keyType": "motif", "terms": ["compass", "true north", "north star"] },
+  { "key": "ache", "keyType": "motif", "terms": ["ache", "aching", "ached", "aches"] },
+  { "key": "posture", "keyType": "motif", "terms": ["posture", "stance", "spine", "upright"] },
+  { "key": "question", "keyType": "motif", "terms": ["question", "questions", "questioning"] },
+  { "key": "invitation", "keyType": "motif", "terms": ["invitation", "invite", "invited", "inviting"] },
+  { "key": "voice", "keyType": "motif", "terms": ["voice", "voices", "whisper", "whispering"] },
+  { "key": "path", "keyType": "motif", "terms": ["path", "pathway", "trail", "road", "crossroads"] },
+  { "key": "support", "keyType": "motif", "terms": ["support", "supported", "supporting", "held up", "holding up"] },
+  { "key": "balance", "keyType": "motif", "terms": ["balance", "balanced", "balancing", "equilibrium"] },
+  { "key": "room", "keyType": "motif", "terms": ["room", "rooms", "chamber", "hallway", "corridor"] },
+  { "key": "mirror", "keyType": "motif", "terms": ["mirror", "mirrors", "mirrored", "reflection in"] },
+  { "key": "body", "keyType": "motif", "terms": ["body", "bodies", "chest", "shoulders", "breath", "breathing"] },
+  { "key": "fire", "keyType": "motif", "terms": ["fire", "flame", "flames", "ember", "embers", "burning"] },
+  { "key": "water", "keyType": "motif", "terms": ["water", "river", "ocean", "sea", "tide", "rain", "wave", "waves"] },
+  { "key": "light", "keyType": "motif", "terms": ["light", "glow", "glowing", "shine", "shining", "dawn", "sunrise"] },
+  { "key": "weight", "keyType": "motif", "terms": ["weight", "heavy", "heaviness", "burden", "carrying"] },
+  { "key": "home", "keyType": "motif", "terms": ["home", "homecoming", "belonging", "belong"] }
+]

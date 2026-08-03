@@ -13,6 +13,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Motif lexicon — engine-only (Admin SDK bypasses rules) ────────────
+    match /motifLexicon/{entryId} {
+      allow read, write: if false;
+    }
+
     // ── Per-user document ─────────────────────────────────────────────────
     match /users/{uid} {
       allow read: if request.auth.uid == uid;
