@@ -15,6 +15,7 @@ import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
 import { QuietToast } from "@/components/OriginSheets";
 import TabTopBar from "@/components/TabTopBar";
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
@@ -275,7 +276,8 @@ const styles = StyleSheet.create({
   },
 
   recentSection: {
-    marginTop: 12,
+    // T-c follow-up §3: section heads get ≥32pt above
+    marginTop: 32,
   },
   recentHeader: {
     flexDirection: "row",
@@ -283,10 +285,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 14,
   },
+  // T-c follow-up §3: section head, not an eyebrow
   recentLabel: {
-    ...TypeScale.micro,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.5)",
+    ...TypeScale.sectionTitle,
+    textTransform: "lowercase",
+    color: colors.light.textSecondary,
   },
   recentCount: {
     ...TypeScale.serifSmall,

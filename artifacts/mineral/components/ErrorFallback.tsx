@@ -80,7 +80,7 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </Text>
 
         <LinkPrimary
-          label="Try Again"
+          label="try again"
           onPress={handleRestart}
           noArrow
           color={colors.primary}

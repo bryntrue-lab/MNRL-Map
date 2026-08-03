@@ -43,7 +43,7 @@ export default function Index() {
     return (
       <Pressable style={styles.ground} onPress={retry}>
         <LinkPrimary
-          label="no connection — tap to try again"
+          label="no connection. tap to try again."
           onPress={retry}
           noArrow
           style={{ alignSelf: "center" }}

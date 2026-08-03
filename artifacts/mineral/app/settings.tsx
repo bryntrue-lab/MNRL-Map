@@ -51,7 +51,7 @@ export default function SettingsScreen() {
       await logOut().catch(() => {}); // auth record is already gone
       router.replace("/onboarding");
     } catch {
-      setDeleteError("the release didn't complete. try again.");
+      setDeleteError("something held on. try again.");
       setDeleting(false);
     }
   };
@@ -157,8 +157,8 @@ export default function SettingsScreen() {
         {/* ── Release ── */}
         <Text style={[styles.sectionLabel, styles.releaseLabel]}>RELEASE</Text>
         <Text style={styles.bodyLine}>
-          delete this account and everything it keeps — every note, every
-          recording, every trace. this cannot be undone.
+          Releasing your field deletes everything — every note, every
+          recording, the account itself — permanently. There is no way back.
         </Text>
         {!confirmingDelete ? (
           <LinkSecondary

@@ -16,9 +16,9 @@
  *                   paddingBottom 3, alignSelf flex-start) · press: hairline → 0.5.
  *
  * Strings render as written — the species controls case via textTransform,
- * never by rewriting copy. Sanctioned exception (founder ruling, T-b Step 1):
- * `NEED A WAY IN? ↓` keeps its authored uppercase — pass `preserveCase` on
- * LinkSecondary for that one instance only.
+ * never by rewriting copy. (`NEED A WAY IN? ↓` is no longer a link at all —
+ * per the T-c follow-up it is a disclosure control rendered in the eyebrow
+ * register at its call site, so LinkSecondary has no case exceptions.)
  */
 import React from "react";
 import {
@@ -128,14 +128,13 @@ export function LinkSecondary({
   style,
   textStyle,
   testID,
-  preserveCase,
   numberOfLines,
-}: LinkProps & { preserveCase?: boolean }) {
+}: LinkProps) {
   // T-c §10 (now §6d canon): one signifier per link — a label that ends
-  // in "→" carries the arrow and suppresses the hairline; arrowless
-  // labels keep the hairline. Press: hairline brightens to 0.5 on the
-  // hairline variant; the arrow variant presses like its glyph family.
-  const arrowed = /→\s*$/.test(label);
+  // in a directional glyph carries the glyph and suppresses the hairline;
+  // glyphless labels keep the hairline. Press: hairline brightens to 0.5
+  // on the hairline variant; the glyph variant presses like its family.
+  const arrowed = /[→↓↑←]\s*$/.test(label);
   return (
     <Pressable
       onPress={onPress}
@@ -156,7 +155,6 @@ export function LinkSecondary({
           <Text
             style={[
               styles.secondaryText,
-              preserveCase && { textTransform: "none" },
               textStyle,
             ]}
             numberOfLines={numberOfLines}

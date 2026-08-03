@@ -13,13 +13,12 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: "Oops!" }} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>
-          This screen doesn&apos;t exist.
+          this place isn&apos;t on the map.
         </Text>
 
         <LinkPrimary
-          label="Go to home screen!"
+          label="return to the map →"
           onPress={() => router.replace("/")}
-          noArrow
           color={colors.primary}
           style={styles.link}
         />
@@ -36,7 +35,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    ...TypeScale.screenTitle,
+    // Slice CS §2: not-found headline renders in serifMedium
+    ...TypeScale.serifMedium,
   },
   link: {
     marginTop: 15,

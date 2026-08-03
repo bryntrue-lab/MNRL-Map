@@ -693,13 +693,18 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           {warmUps.length > 0 && (
             <View style={styles.wayInWrap}>
               {!wayInOpen ? (
-                <LinkSecondary
-                  label="NEED A WAY IN? ↓"
-                  preserveCase
+                /* T-c follow-up §2: disclosure control, not a link — eyebrow
+                   register, no hairline; the ↓ is its only signifier. */
+                <Pressable
                   onPress={() => setWayInOpen(true)}
-                  style={{ alignSelf: "center" }}
+                  style={({ pressed }) => [
+                    styles.wayInEyebrowHit,
+                    { opacity: pressed ? 0.5 : 1 },
+                  ]}
                   testID="capture-way-in"
-                />
+                >
+                  <Text style={styles.wayInEyebrow}>NEED A WAY IN? ↓</Text>
+                </Pressable>
               ) : (
                 warmUps.map((p) => (
                   <Text key={p.id} style={styles.wayInPrompt}>
@@ -1220,6 +1225,16 @@ const styles = StyleSheet.create({
   wayInWrap: {
     marginTop: 22,
     alignItems: "center",
+  },
+  // ≥44pt tap target: 14 line-height + 2×15 padding
+  wayInEyebrowHit: {
+    alignSelf: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+  },
+  wayInEyebrow: {
+    ...TypeScale.eyebrow,
+    color: "rgba(255,255,255,0.5)",
   },
   wayInPrompt: {
     ...TypeScale.serifSmall,
