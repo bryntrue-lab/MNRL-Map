@@ -179,6 +179,9 @@ export type ExemplarEntry = {
   fieldNoteId: string;
   source: string;
   capturedAt: Timestamp;
+  // Task D: attribution material written by the engine (type · source · time)
+  noteType?: FieldNoteType | null;
+  encounterRef?: string | null;
 };
 
 export interface PatternDoc {
