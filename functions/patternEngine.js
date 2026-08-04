@@ -98,6 +98,12 @@ function normalize(text) {
     .trim();
 }
 
+/** Stopwords pass through raw — stemming them mangles phrase keys
+ *  ("this" → "thi"); only content words are stemmed. */
+function stemToken(raw) {
+  return STOPWORDS.has(raw) ? raw : stem(raw);
+}
+
 /** → [{ raw, stem, stop }] */
 function tokenize(text) {
   return normalize(text)
@@ -105,7 +111,7 @@ function tokenize(text) {
     .filter(Boolean)
     .map((raw) => ({
       raw,
-      stem: stem(raw),
+      stem: stemToken(raw),
       stop: STOPWORDS.has(raw) || STOPWORDS.has(stem(raw)) || raw.length < 2,
     }));
 }
@@ -139,25 +145,19 @@ function extractLanguage(content) {
     for (const t of tokens) {
       if (!t.stop && !items.has(t.stem)) items.set(t.stem, sentence);
     }
-    // phrases: runs of consecutive content words
-    let run = [];
-    const flush = () => {
-      for (let n = 2; n <= 5; n++) {
-        for (let i = 0; i + n <= run.length; i++) {
-          const phrase = run
-            .slice(i, i + n)
-            .map((t) => t.stem)
-            .join(" ");
-          if (!items.has(phrase)) items.set(phrase, sentence);
-        }
+    // PHRASE EXTRACTION v2: stopwords retained in the stream. Candidate
+    // grams are 3–6-word windows containing at least TWO content words;
+    // 2-word grams only when both words are content words. One count per
+    // note per gram (the items map dedupes).
+    for (let n = 2; n <= 6; n++) {
+      for (let i = 0; i + n <= tokens.length; i++) {
+        const win = tokens.slice(i, i + n);
+        const contentCount = win.reduce((c, t) => c + (t.stop ? 0 : 1), 0);
+        if (n === 2 ? contentCount !== 2 : contentCount < 2) continue;
+        const phrase = win.map((t) => t.stem).join(" ");
+        if (!items.has(phrase)) items.set(phrase, sentence);
       }
-      run = [];
-    };
-    for (const t of tokens) {
-      if (t.stop) flush();
-      else run.push(t);
     }
-    flush();
   });
 
   return items;
@@ -186,7 +186,7 @@ function extractMotifs(content, lexicon) {
   for (const entry of lexicon) {
     if (hits.has(entry.key)) continue;
     const termStemLists = (entry.terms || [])
-      .map((term) => normalize(term).split(/\s+/).filter(Boolean).map(stem))
+      .map((term) => normalize(term).split(/\s+/).filter(Boolean).map(stemToken))
       .filter((l) => l.length > 0);
     for (let si = 0; si < sentenceTokens.length && !hits.has(entry.key); si++) {
       for (const termStems of termStemLists) {
@@ -242,6 +242,81 @@ function applyAdd(doc, items, noteId, note) {
   doc.processed.push(noteId);
   if (doc.processed.length > LEDGER_CAP) {
     doc.processed = doc.processed.slice(-LEDGER_CAP);
+    // Watermark: ids trimmed from the ledger were the oldest processed
+    // notes. Any note captured at/before this moment has been through the
+    // pipeline — the floor keeps backfill/redelivery from recounting notes
+    // whose ids have aged out of the capped ledger.
+    doc.ledgerFloorAt = note.createdAt ?? Timestamp.now();
+  }
+}
+
+// ── PHRASE v2 doc hygiene (thread doc only) ──────────────────
+
+const PHRASE_ENTRY_CAP = 600;
+
+const isPhrase = (key) => key.includes(" ");
+
+/** contiguous word-subsequence test */
+function contiguousSub(aWords, bWords) {
+  outer: for (let i = 0; i + aWords.length <= bWords.length; i++) {
+    for (let j = 0; j < aWords.length; j++) {
+      if (bWords[i + j] !== aWords[j]) continue outer;
+    }
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Subsumption — keep the maximal phrase: if gram A is a contiguous
+ * sub-sequence of gram B and count(A) == count(B), drop A.
+ */
+function subsumePhrases(doc) {
+  const phrases = Object.keys(doc.itemCounts).filter(isPhrase);
+  for (const a of phrases) {
+    if (!(a in doc.itemCounts)) continue;
+    const aWords = a.split(" ");
+    for (const b of phrases) {
+      if (a === b || !(b in doc.itemCounts)) continue;
+      const bWords = b.split(" ");
+      if (bWords.length <= aWords.length) continue;
+      if (
+        doc.itemCounts[a] === doc.itemCounts[b] &&
+        contiguousSub(aWords, bWords)
+      ) {
+        delete doc.itemCounts[a];
+        delete doc.exemplars[a];
+        delete doc.offerings[a];
+        break;
+      }
+    }
+  }
+}
+
+/** earliest contribution time for a key (0 when unknown). */
+function earliestContribution(doc, key) {
+  const list = doc.exemplars[key];
+  if (!Array.isArray(list) || list.length === 0) return 0;
+  return Math.min(...list.map((e) => e.capturedAt?.toMillis?.() ?? 0));
+}
+
+/**
+ * Size control: when phrase entries exceed the cap, prune count-1
+ * phrases, oldest contribution first. Silent.
+ */
+function prunePhrases(doc) {
+  const phrases = Object.keys(doc.itemCounts).filter(isPhrase);
+  let excess = phrases.length - PHRASE_ENTRY_CAP;
+  if (excess <= 0) return;
+  const singles = phrases
+    .filter((k) => doc.itemCounts[k] === 1)
+    .sort((x, y) => earliestContribution(doc, x) - earliestContribution(doc, y));
+  for (const k of singles) {
+    if (excess <= 0) break;
+    delete doc.itemCounts[k];
+    delete doc.exemplars[k];
+    delete doc.offerings[k];
+    excess -= 1;
   }
 }
 
@@ -346,15 +421,30 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
       const alreadyProcessed = doc.processed.includes(noteId);
       if (direction === "add") {
         if (alreadyProcessed) return; // double-processing guard
+        // Ledger-floor guard: this note predates ids trimmed from the
+        // capped ledger — it was processed long ago; never recount it.
+        const floorMs = doc.ledgerFloorAt?.toMillis?.() ?? 0;
+        const createdMs = note.createdAt?.toMillis?.() ?? 0;
+        if (floorMs && createdMs && createdMs <= floorMs) return;
         if (items.size === 0) return; // nothing for this lens; no ledger noise
         applyAdd(doc, items, noteId, note);
         for (const [key] of items) {
           const offering = offerings.get(key);
           if (offering) doc.offerings[key] = offering;
         }
+        if (type === "thread") {
+          subsumePhrases(doc); // keep the maximal phrase
+          prunePhrases(doc); // silent size control
+        }
       } else {
         if (!alreadyProcessed) return; // never counted here; nothing to reverse
         applyRemove(doc, items, noteId);
+        // Same hygiene on removal — counts that became equal must subsume
+        // now, so a delete leaves the doc exactly as a recomputation would.
+        if (type === "thread") {
+          subsumePhrases(doc);
+          prunePhrases(doc);
+        }
       }
 
       doc.updatedAt = Timestamp.now();
@@ -374,8 +464,18 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
  *
  * Returns { scanned, processed }.
  */
-async function backfillPatternsForUser(uid) {
+async function backfillPatternsForUser(uid, options = {}) {
   const db = getFirestore();
+
+  // Rebuild mode (migration): zero the caller's pattern docs, then
+  // reprocess every note through the pipeline from scratch.
+  if (options.rebuild) {
+    await Promise.all(
+      ["thread", "motif", "resistance"].map((type) =>
+        db.doc(`users/${uid}/patterns/${type}`).delete()
+      )
+    );
+  }
 
   // Union of the three ledgers — a note in ANY ledger has been through
   // the pipeline (docs only ledger notes that contributed to them, but
@@ -383,9 +483,14 @@ async function backfillPatternsForUser(uid) {
   // and item-less notes are harmless to re-run).
   const patternSnap = await db.collection(`users/${uid}/patterns`).get();
   const seen = new Set();
+  let ledgerFloorMs = 0;
   for (const d of patternSnap.docs) {
-    const ledger = d.data().processed;
-    if (Array.isArray(ledger)) for (const id of ledger) seen.add(id);
+    const data = d.data();
+    if (Array.isArray(data.processed)) for (const id of data.processed) seen.add(id);
+    // Ledger-floor watermark: ids trimmed from a capped ledger belong to
+    // notes captured at/before this time — already processed, never recount.
+    const floor = data.ledgerFloorAt?.toMillis?.() ?? 0;
+    if (floor > ledgerFloorMs) ledgerFloorMs = floor;
   }
 
   const notesSnap = await db.collection(`users/${uid}/fieldNotes`).get();
@@ -393,6 +498,8 @@ async function backfillPatternsForUser(uid) {
   for (const noteDoc of notesSnap.docs) {
     if (seen.has(noteDoc.id)) continue;
     const note = noteDoc.data();
+    const createdMs = note.createdAt?.toMillis?.() ?? 0;
+    if (ledgerFloorMs && createdMs && createdMs <= ledgerFloorMs) continue;
     if (!note.content || typeof note.content !== "string" || !note.content.trim()) continue;
     // Audio notes wait for their transcript. Text notes carry
     // transcriptStatus 'none', so only genuinely in-flight states skip —

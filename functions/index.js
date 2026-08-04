@@ -218,7 +218,9 @@ exports.backfillPatterns = onCall(
     if (!uid) {
       throw new HttpsError("unauthenticated", "sign in to tend a field.");
     }
-    return await backfillPatternsForUser(uid);
+    return await backfillPatternsForUser(uid, {
+      rebuild: request.data?.rebuild === true,
+    });
   }
 );
 
