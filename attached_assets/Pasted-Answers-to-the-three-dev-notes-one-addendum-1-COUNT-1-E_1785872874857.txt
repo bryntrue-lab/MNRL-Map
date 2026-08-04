@@ -1,0 +1,45 @@
+Answers to the three dev notes + one addendum.
+
+1. COUNT-1 EXEMPLARS — approved as built. Your reasoning is correct: without
+   the first occurrence's verbatim sentence, gathering could only ever show
+   one of the two quotes. Retain exemplars from count 1; pruning (count-1
+   phrases, oldest first, at the ~600 bound) remains the size control.
+
+2. OVERLAP RULE EXTENSION — canonical, replaces bare subsumption:
+
+   First, strengthen subsumption's guard: drop item A when A is a
+   sub-sequence of B AND noteSet(A) == noteSet(B). Note-set equality, not
+   count equality — coincidentally equal counts from different notes must
+   not suppress. This also applies ACROSS classes: a WORD whose note set
+   equals a phrase's that contains it is suppressed from display
+   ("important · twice" disappears into the phrase; the word stays counted
+   internally so it can resurface if its count later diverges).
+
+   Second, MERGE overlapping siblings: when two grams have identical note
+   sets and their token spans overlap in every contributing note, replace
+   them with the union run (the full common word-sequence, allowed to
+   exceed the 6-word window; cap merged phrases at 12 words). This is what
+   subsumption can't reach — "this work is important to me" +
+   "work is important to me and" merge because the true common run
+   ("this work is important to me and") is 7 words, longer than the
+   extraction window.
+
+   Third, DISPLAY TRIM: strip TRAILING stopwords from a merged item's
+   rendered form (never leading, never interior — leading stopwords like
+   "this" are how people talk; a trailing "and" is a dangle). The stored
+   key keeps the untrimmed run. Result for the founder's field: ONE
+   gathering row — "this work is important to me" · twice.
+
+3. REBUILD/SELF-HEAL — acknowledged, correct as planned: admin rebuild
+   done, Guide-mount self-heal lands in Part B.
+
+ADDENDUM — hero/synthesis tie-break (the current synthesis picked "work"
+over "support" at 3=3): among established items, order phrases > lexicon-
+matched items (motifs/resistance) > plain words, then higher count, then
+most recent occurrence. A lexicon item can carry an offering; a plain word
+cannot — the richer item leads. With today's field the hero is therefore
+"support", per the D.3 prototype.
+
+Acceptance addition: the founder's field shows exactly one gathering row
+("this work is important to me" · twice, both exemplars); no word row
+shadows a phrase at the same note set; synthesis and hero name support.

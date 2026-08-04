@@ -189,6 +189,10 @@ export interface PatternDoc {
   itemCounts: Record<string, number>;
   exemplars: Record<string, ExemplarEntry[]>;
   offerings: Record<string, { key: string; text: string }>;
+  /** item → contributing note ids (D.3 note-set rules) */
+  itemNotes?: Record<string, string[]>;
+  /** processed-note ledger (read client-side only for self-heal checks) */
+  processed?: string[];
   updatedAt: Timestamp;
 }
 

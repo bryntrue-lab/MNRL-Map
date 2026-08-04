@@ -126,3 +126,95 @@ export function spellOut(n: number): string {
   ];
   return n >= 0 && n < 10 ? words[n] : String(n);
 }
+
+/** Full spelling to ninety-nine for sentence/field-line prose
+ *  (the D.3 prototype spells "thirty-one notes", "twenty-three days"). */
+export function spellNumber(n: number): string {
+  if (n < 10) return spellOut(n);
+  const teens = [
+    "ten", "eleven", "twelve", "thirteen", "fourteen",
+    "fifteen", "sixteen", "seventeen", "eighteen", "nineteen",
+  ];
+  if (n < 20) return teens[n - 10];
+  const tens = [
+    "", "", "twenty", "thirty", "forty",
+    "fifty", "sixty", "seventy", "eighty", "ninety",
+  ];
+  if (n < 100) {
+    const t = tens[Math.floor(n / 10)];
+    const r = n % 10;
+    return r === 0 ? t : `${t}-${spellOut(r)}`;
+  }
+  return String(n);
+}
+
+export function isStopword(word: string): boolean {
+  return STOPWORDS.has(word);
+}
+
+/** Engine key mirror: stopwords pass through raw; content words stem. */
+export function stemToken(raw: string): string {
+  return STOPWORDS.has(raw) ? raw : stem(raw);
+}
+
+/** Full token stream (stopwords retained) as [raw, keyStem] — mirror of
+ *  the engine's tokenize, for highlighting item runs inside exemplars. */
+export function tokenStream(text: string): { raw: string; stem: string }[] {
+  return normalize(text)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((raw) => ({ raw, stem: stemToken(raw) }));
+}
+
+/**
+ * DISPLAY TRIM (D.3 addendum): strip TRAILING stopwords from a rendered
+ * item — never leading, never interior. The stored key stays untrimmed.
+ */
+export function displayItem(key: string): string {
+  const words = key.split(" ");
+  let end = words.length;
+  while (end > 1 && STOPWORDS.has(words[end - 1])) end -= 1;
+  return words.slice(0, end).join(" ");
+}
+
+const sameSet = (a: string[] | undefined, b: string[] | undefined) => {
+  if (!a || !b || a.length < 2 || a.length !== b.length) return false;
+  const s = new Set(a);
+  return b.every((id) => s.has(id));
+};
+
+/**
+ * Display-side defensive suppression (D.3 addendum):
+ * — drop phrase A when A is a contiguous sub-sequence of phrase B with an
+ *   identical note set;
+ * — drop a WORD whose note set equals that of a phrase containing it
+ *   (the word stays counted in the doc; only its display is suppressed).
+ * `itemNotes` maps item → contributing note ids.
+ */
+export function suppressForDisplay<T extends { key: string }>(
+  items: T[],
+  itemNotes: Record<string, string[] | undefined>
+): T[] {
+  const contiguous = (a: string[], b: string[]) => {
+    outer: for (let i = 0; i + a.length <= b.length; i++) {
+      for (let j = 0; j < a.length; j++) {
+        if (b[i + j] !== a[j]) continue outer;
+      }
+      return true;
+    }
+    return false;
+  };
+  const phrases = items.filter((it) => it.key.includes(" "));
+  return items.filter((it) => {
+    const w = it.key.split(" ");
+    for (const p of phrases) {
+      if (p.key === it.key) continue;
+      const pw = p.key.split(" ");
+      if (pw.length <= w.length) continue;
+      if (contiguous(w, pw) && sameSet(itemNotes[it.key], itemNotes[p.key])) {
+        return false;
+      }
+    }
+    return true;
+  });
+}

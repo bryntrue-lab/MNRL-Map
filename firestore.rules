@@ -8,9 +8,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Practitioner offering library — fully locked ──────────────────────
+    // ── Practitioner offering library — locked, except teaching docs
+    //    (D.3 B9: lens-detail teaching renders client-side) ───────────────
     match /practitionerContent/{contentId} {
-      allow read, write: if false;
+      allow read: if request.auth != null && resource.data.kind == 'teaching';
+      allow write: if false;
     }
 
     // ── Motif lexicon — engine-only (Admin SDK bypasses rules) ────────────

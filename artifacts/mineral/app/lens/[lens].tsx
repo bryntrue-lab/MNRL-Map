@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -54,6 +54,29 @@ export default function LensScreen() {
 
   const [doc, setDoc] = useState<PatternDoc | null>(null);
   const [resistanceNoteCount, setResistanceNoteCount] = useState(0);
+  const [teaching, setTeaching] = useState<{
+    heldLine?: string;
+    paragraphs?: string[];
+  } | null>(null);
+
+  // D.3 B9 — teaching scaffold: practitionerContent doc `teaching_{lens}`
+  // (kind:'teaching'). No docs exist yet, so this renders nothing today.
+  useEffect(() => {
+    if (!user || !lens) return;
+    getDoc(fsDoc(db, "practitionerContent", `teaching_${lens}`))
+      .then((snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data() as {
+          kind?: string;
+          heldLine?: string;
+          paragraphs?: string[];
+        };
+        if (data.kind === "teaching") setTeaching(data);
+      })
+      .catch(() => {
+        /* locked or absent — scaffold stays silent */
+      });
+  }, [user, lens]);
 
   useEffect(() => {
     if (!user || !meta) return;
@@ -134,7 +157,9 @@ export default function LensScreen() {
         )}
 
         {rows.length === 0 ? (
-          <Text style={styles.listening}>listening.</Text>
+          teaching ? null : (
+            <Text style={styles.listening}>listening.</Text>
+          )
         ) : (
           rows.map(([item, count]) => {
             const exemplars = doc?.exemplars?.[item] ?? [];
@@ -159,6 +184,21 @@ export default function LensScreen() {
               </View>
             );
           })
+        )}
+
+        {/* B9 — teaching: below data on live lenses, replaces the empty
+            state on quiet ones */}
+        {teaching && (
+          <View style={styles.teachingWrap} testID="lens-teaching">
+            {teaching.heldLine ? (
+              <Text style={styles.teachingHeld}>{teaching.heldLine}</Text>
+            ) : null}
+            {(teaching.paragraphs ?? []).map((p, i) => (
+              <Text key={i} style={styles.teachingBody}>
+                {p}
+              </Text>
+            ))}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -250,5 +290,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: "rgba(255,255,255,0.6)",
+  },
+
+  // B9 — teaching scaffold
+  teachingWrap: {
+    marginTop: 36,
+  },
+  teachingHeld: {
+    ...TypeScale.serifMedium,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 16,
+  },
+  teachingBody: {
+    ...TypeScale.bodyLarge,
+    color: "rgba(255,255,255,0.72)",
+    marginBottom: 14,
   },
 });

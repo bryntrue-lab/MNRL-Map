@@ -213,6 +213,7 @@ function emptyPatternDoc(patternType) {
     itemCounts: {},
     exemplars: {},
     offerings: {},
+    itemNotes: {}, // item → contributing note ids (note-set rules)
     processed: [],
     updatedAt: null,
   };
@@ -231,8 +232,12 @@ function makeExemplar(sentence, noteId, note) {
 }
 
 function applyAdd(doc, items, noteId, note) {
+  if (!doc.itemNotes || typeof doc.itemNotes !== "object") doc.itemNotes = {};
   for (const [item, sentence] of items) {
     doc.itemCounts[item] = (doc.itemCounts[item] || 0) + 1;
+    const notes = doc.itemNotes[item] || [];
+    if (!notes.includes(noteId)) notes.push(noteId);
+    doc.itemNotes[item] = notes.slice(-ITEM_NOTES_CAP);
     const list = doc.exemplars[item] || [];
     list.push(makeExemplar(sentence, noteId, note));
     // most recent kept, capped
@@ -253,6 +258,8 @@ function applyAdd(doc, items, noteId, note) {
 // ── PHRASE v2 doc hygiene (thread doc only) ──────────────────
 
 const PHRASE_ENTRY_CAP = 600;
+const MERGED_PHRASE_WORD_CAP = 12;
+const ITEM_NOTES_CAP = 50; // note-set ops only matter at small counts
 
 const isPhrase = (key) => key.includes(" ");
 
@@ -267,11 +274,36 @@ function contiguousSub(aWords, bWords) {
   return false;
 }
 
+const noteSet = (doc, key) =>
+  Array.isArray(doc.itemNotes?.[key]) ? doc.itemNotes[key] : [];
+
+function sameNoteSet(doc, a, b) {
+  const sa = noteSet(doc, a);
+  const sb = noteSet(doc, b);
+  // Sets of fewer than two notes never suppress or merge: every gram of a
+  // single note trivially shares its note set — collapsing those would
+  // destroy the count-1 inventory a FUTURE note needs to match against.
+  if (sa.length < 2 || sa.length !== sb.length) return false;
+  const set = new Set(sa);
+  return sb.every((id) => set.has(id));
+}
+
+function dropItem(doc, key) {
+  delete doc.itemCounts[key];
+  delete doc.exemplars[key];
+  delete doc.offerings[key];
+  if (doc.itemNotes) delete doc.itemNotes[key];
+}
+
 /**
- * Subsumption — keep the maximal phrase: if gram A is a contiguous
- * sub-sequence of gram B and count(A) == count(B), drop A.
+ * Subsumption (canonical form): drop phrase A when A is a contiguous
+ * sub-sequence of phrase B AND noteSet(A) == noteSet(B). Note-set
+ * equality, not count equality — coincidentally equal counts from
+ * different notes must not suppress. (Word-vs-phrase suppression is
+ * display-side only; words stay counted here so they can resurface.)
  */
 function subsumePhrases(doc) {
+  let changed = false;
   const phrases = Object.keys(doc.itemCounts).filter(isPhrase);
   for (const a of phrases) {
     if (!(a in doc.itemCounts)) continue;
@@ -280,17 +312,99 @@ function subsumePhrases(doc) {
       if (a === b || !(b in doc.itemCounts)) continue;
       const bWords = b.split(" ");
       if (bWords.length <= aWords.length) continue;
-      if (
-        doc.itemCounts[a] === doc.itemCounts[b] &&
-        contiguousSub(aWords, bWords)
-      ) {
-        delete doc.itemCounts[a];
-        delete doc.exemplars[a];
-        delete doc.offerings[a];
+      if (sameNoteSet(doc, a, b) && contiguousSub(aWords, bWords)) {
+        dropItem(doc, a);
+        changed = true;
         break;
       }
     }
   }
+  return changed;
+}
+
+/** Largest end-overlap union of two word sequences, or null.
+ *  e.g. [this work is important to me] + [work is important to me and]
+ *  → [this work is important to me and]. */
+function overlapUnion(aWords, bWords) {
+  let best = null;
+  const tryDir = (x, y) => {
+    // suffix of x == prefix of y, overlap k ≥ 1
+    const max = Math.min(x.length, y.length) - 1;
+    for (let k = max; k >= 1; k--) {
+      let ok = true;
+      for (let j = 0; j < k; j++) {
+        if (x[x.length - k + j] !== y[j]) { ok = false; break; }
+      }
+      if (ok) {
+        const union = [...x, ...y.slice(k)];
+        if (!best || union.length < best.length) best = union;
+        return;
+      }
+    }
+  };
+  tryDir(aWords, bWords);
+  tryDir(bWords, aWords);
+  return best;
+}
+
+/** True when every available exemplar of both items contains the run. */
+function runAppearsInExemplars(doc, keys, runWords) {
+  for (const key of keys) {
+    for (const ex of doc.exemplars[key] || []) {
+      const tokens = tokenize(ex.text).map((t) => t.stem);
+      if (!contiguousSub(runWords, tokens)) return false;
+    }
+  }
+  return true;
+}
+
+/** True when stored exemplars for `key` include every contributing note. */
+function exemplarsCoverNoteSet(doc, key) {
+  const covered = new Set((doc.exemplars[key] || []).map((e) => e.fieldNoteId));
+  return noteSet(doc, key).every((id) => covered.has(id));
+}
+
+/**
+ * MERGE overlapping siblings: two grams with identical note sets whose
+ * token spans overlap in every contributing note are replaced by the
+ * union run (may exceed the 6-word window; capped at 12 words). This is
+ * what subsumption can't reach.
+ */
+function mergeOverlappingSiblings(doc) {
+  let changed = false;
+  const phrases = Object.keys(doc.itemCounts).filter(isPhrase);
+  for (const a of phrases) {
+    if (!(a in doc.itemCounts)) continue;
+    for (const b of phrases) {
+      if (a === b || !(a in doc.itemCounts) || !(b in doc.itemCounts)) continue;
+      if (!sameNoteSet(doc, a, b)) continue;
+      const aWords = a.split(" ");
+      const bWords = b.split(" ");
+      if (contiguousSub(aWords, bWords) || contiguousSub(bWords, aWords)) continue; // subsumption's job
+      const union = overlapUnion(aWords, bWords);
+      if (!union || union.length > MERGED_PHRASE_WORD_CAP) continue;
+      // Full-proof gate: exemplars are capped, so a merge is only sound
+      // when the stored exemplars cover EVERY contributing note for both
+      // keys — otherwise "overlaps in every contributing note" cannot be
+      // verified and the merged count would rest on partial evidence.
+      if (!exemplarsCoverNoteSet(doc, a) || !exemplarsCoverNoteSet(doc, b)) continue;
+      if (!runAppearsInExemplars(doc, [a, b], union)) continue;
+      const key = union.join(" ");
+      const notes = noteSet(doc, a);
+      const exemplars = [...(doc.exemplars[a] || []), ...(doc.exemplars[b] || [])]
+        .filter((e, i, arr) => arr.findIndex((x) => x.fieldNoteId === e.fieldNoteId) === i)
+        .sort((x, y) => (x.capturedAt?.toMillis?.() ?? 0) - (y.capturedAt?.toMillis?.() ?? 0))
+        .slice(-EXEMPLAR_CAP);
+      const count = doc.itemCounts[a];
+      dropItem(doc, a);
+      dropItem(doc, b);
+      doc.itemCounts[key] = count;
+      doc.exemplars[key] = exemplars;
+      doc.itemNotes[key] = notes;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /** earliest contribution time for a key (0 when unknown). */
@@ -313,22 +427,40 @@ function prunePhrases(doc) {
     .sort((x, y) => earliestContribution(doc, x) - earliestContribution(doc, y));
   for (const k of singles) {
     if (excess <= 0) break;
-    delete doc.itemCounts[k];
-    delete doc.exemplars[k];
-    delete doc.offerings[k];
+    dropItem(doc, k);
     excess -= 1;
   }
 }
 
+/** Subsume + merge to a fixpoint (merges can enable new subsumptions),
+ *  then prune. Thread doc only. */
+function phraseHygiene(doc) {
+  for (let i = 0; i < 6; i++) {
+    const a = subsumePhrases(doc);
+    const b = mergeOverlappingSiblings(doc);
+    if (!a && !b) break;
+  }
+  prunePhrases(doc);
+}
+
 function applyRemove(doc, items, noteId) {
-  for (const item of items.keys()) {
+  if (!doc.itemNotes || typeof doc.itemNotes !== "object") doc.itemNotes = {};
+  // Everything this note contributed: its recomputed grams PLUS any item
+  // whose note set contains it — merged phrases carry keys longer than
+  // the extraction window, so recomputation alone can't find them.
+  const contributed = new Set(items.keys());
+  for (const [item, notes] of Object.entries(doc.itemNotes)) {
+    if (Array.isArray(notes) && notes.includes(noteId)) contributed.add(item);
+  }
+  for (const item of contributed) {
     const next = (doc.itemCounts[item] || 0) - 1;
     if (next <= 0) {
-      delete doc.itemCounts[item];
-      delete doc.exemplars[item];
-      delete doc.offerings[item];
+      dropItem(doc, item);
     } else {
       doc.itemCounts[item] = next;
+      if (doc.itemNotes[item]) {
+        doc.itemNotes[item] = doc.itemNotes[item].filter((id) => id !== noteId);
+      }
     }
   }
   // The note's exemplars vanish everywhere, whatever item they sat under.
@@ -432,19 +564,13 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
           const offering = offerings.get(key);
           if (offering) doc.offerings[key] = offering;
         }
-        if (type === "thread") {
-          subsumePhrases(doc); // keep the maximal phrase
-          prunePhrases(doc); // silent size control
-        }
+        if (type === "thread") phraseHygiene(doc);
       } else {
         if (!alreadyProcessed) return; // never counted here; nothing to reverse
         applyRemove(doc, items, noteId);
-        // Same hygiene on removal — counts that became equal must subsume
-        // now, so a delete leaves the doc exactly as a recomputation would.
-        if (type === "thread") {
-          subsumePhrases(doc);
-          prunePhrases(doc);
-        }
+        // Same hygiene on removal — note sets that became equal must
+        // subsume/merge now, matching a deterministic recomputation.
+        if (type === "thread") phraseHygiene(doc);
       }
 
       doc.updatedAt = Timestamp.now();
