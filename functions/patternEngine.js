@@ -363,8 +363,50 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
   });
 }
 
+/**
+ * Backfill (Slice D.3 Part A): run the SAME pipeline over every fieldNote
+ * the ledgers have never seen. Notes created before the engine deployed
+ * (or missed by a gap between deploys) get processed; nothing else changes.
+ *
+ * Idempotent by construction: a note already in a ledger is skipped here
+ * (cheap pre-filter) and again inside the transaction (authoritative guard).
+ * Notes whose extraction yields no items simply no-op.
+ *
+ * Returns { scanned, processed }.
+ */
+async function backfillPatternsForUser(uid) {
+  const db = getFirestore();
+
+  // Union of the three ledgers — a note in ANY ledger has been through
+  // the pipeline (docs only ledger notes that contributed to them, but
+  // any note with extractable content lands in at least the thread doc,
+  // and item-less notes are harmless to re-run).
+  const patternSnap = await db.collection(`users/${uid}/patterns`).get();
+  const seen = new Set();
+  for (const d of patternSnap.docs) {
+    const ledger = d.data().processed;
+    if (Array.isArray(ledger)) for (const id of ledger) seen.add(id);
+  }
+
+  const notesSnap = await db.collection(`users/${uid}/fieldNotes`).get();
+  let processed = 0;
+  for (const noteDoc of notesSnap.docs) {
+    if (seen.has(noteDoc.id)) continue;
+    const note = noteDoc.data();
+    if (!note.content || typeof note.content !== "string" || !note.content.trim()) continue;
+    // Audio notes wait for their transcript. Text notes carry
+    // transcriptStatus 'none', so only genuinely in-flight states skip —
+    // present content is the real signal that a note is ready.
+    if (note.transcriptStatus === "pending" || note.transcriptStatus === "processing") continue;
+    await updatePatternsForNote(uid, noteDoc.id, note, "add");
+    processed += 1;
+  }
+  return { scanned: notesSnap.size, processed };
+}
+
 module.exports = {
   updatePatternsForNote,
+  backfillPatternsForUser,
   // exported for the gate/test path
   extractLanguage,
   extractMotifs,

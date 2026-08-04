@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mineral — Field Guide v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#0a0510;
+    --t1:#ffffff;
+    --t2:rgba(255,255,255,0.72);
+    --t3:rgba(255,255,255,0.58);
+    --tm:rgba(255,255,255,0.5);
+    --signal:#E08AAF;
+    --fieldg:#88DCBA;
+    --friction:#E9B76B;
+    --voice:#9BB6D6;
+    --integral:#C4BAEA;
+    --hair:rgba(255,255,255,0.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  body{
+    background:#050308;
+    font-family:'Inter',sans-serif;
+    display:flex;justify-content:center;align-items:flex-start;
+    min-height:100vh;padding:28px 12px 60px;
+  }
+  .phone{
+    width:393px;min-height:852px;position:relative;
+    background:radial-gradient(120% 70% at 50% 0%, #1b1226 0%, var(--ground) 55%, #070310 100%);
+    border-radius:36px;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.06);
+    padding:64px 26px 110px;
+  }
+  /* ---------- header ---------- */
+  .screenTitle{
+    font-size:12px;font-weight:600;letter-spacing:3.2px;color:var(--t3);
+  }
+  .fieldLine{
+    margin-top:10px;font-size:11px;font-weight:400;letter-spacing:0.4px;color:var(--tm);
+  }
+  /* ---------- synthesis ---------- */
+  .synthesis{
+    margin-top:34px;font-size:16px;line-height:25px;font-weight:400;color:var(--t2);
+    animation:landIn .8s ease .15s both;
+  }
+  .synthesis .uword{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;
+    font-size:20px;letter-spacing:0.3px;color:var(--t1);
+  }
+  @keyframes landIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* ---------- section heads (sectionTitle: 18/500 lowercase, textSecondary) ---------- */
+  .sec{
+    margin-top:44px;margin-bottom:14px;
+    font-size:18px;font-weight:500;color:var(--t2);letter-spacing:0;
+  }
+  /* ---------- hero: returning ---------- */
+  .heroWord{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;
+    font-size:38px;line-height:44px;letter-spacing:0.6px;color:var(--t1);
+    animation:bloom 1.1s ease .35s both;
+  }
+  @keyframes bloom{from{opacity:0;letter-spacing:3px}to{opacity:1;letter-spacing:0.6px}}
+  .heroCount{
+    margin-top:6px;font-size:11px;letter-spacing:0.4px;color:var(--tm);
+  }
+  .exemplar{
+    margin-top:20px;padding-left:14px;border-left:1px solid var(--hair);
+  }
+  .exemplar .q{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
+    font-size:18px;line-height:26px;letter-spacing:0.3px;color:var(--t2);
+  }
+  .exemplar .q em{font-style:italic;color:var(--t1);font-weight:500;}
+  .exemplar .attr{
+    margin-top:6px;font-size:11px;letter-spacing:0.3px;color:var(--tm);font-family:'Inter',sans-serif;
+  }
+  .freshest .q{position:relative;}
+  .freshest .q::after{
+    content:"";position:absolute;left:0;bottom:-3px;height:1px;background:var(--signal);
+    animation:rootline 1.4s ease 1s both;
+  }
+  @keyframes rootline{from{width:0;opacity:0}to{width:56%;opacity:.8}}
+  .offering{
+    margin-top:22px;padding:14px 16px;border-radius:14px;
+    background:rgba(255,255,255,0.035);
+    font-size:13px;line-height:20px;color:var(--t3);
+  }
+  .offering .from{display:block;margin-top:6px;font-size:10px;letter-spacing:1.6px;color:var(--tm);font-weight:600;}
+  /* ---------- gathering ---------- */
+  .gatherRow{margin-top:16px;}
+  .gatherHead{font-size:14px;color:var(--t2);}
+  .gatherHead .w{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;
+    font-size:18px;color:var(--t1);letter-spacing:0.3px;
+  }
+  .gatherHead .c{color:var(--tm);font-size:12px;margin-left:6px;}
+  .pair{margin-top:12px;display:grid;gap:10px;}
+  .pair .exemplar{margin-top:0;}
+  .twice{
+    margin-top:10px;font-size:11px;letter-spacing:0.4px;color:var(--tm);
+  }
+  /* ---------- arrivals ---------- */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .chip{
+    font-size:12px;font-weight:400;color:var(--t3);letter-spacing:0.3px;
+    padding:6px 12px;border:1px solid var(--hair);border-radius:999px;
+  }
+  /* ---------- lenses ---------- */
+  .lens{
+    display:flex;align-items:flex-start;gap:12px;
+    padding:18px 0;border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .lens:last-of-type{border-bottom:none;}
+  .dot{width:7px;height:7px;border-radius:50%;margin-top:6px;flex:none;}
+  .lensBody{flex:1;}
+  .lensName{font-size:16px;font-weight:400;color:var(--t1);}
+  .lensLive{
+    margin-top:5px;font-size:13px;line-height:19px;color:var(--t3);
+  }
+  .lensLive .w{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;
+    font-size:16px;color:var(--t2);letter-spacing:0.3px;
+  }
+  .lensArrow{color:var(--tm);font-size:15px;margin-top:2px;}
+  .stillListening{
+    margin-top:18px;font-size:12px;letter-spacing:0.3px;color:var(--tm);
+  }
+  /* ---------- field signature ---------- */
+  .signature{
+    margin-top:14px;font-size:13px;line-height:21px;color:var(--t3);
+  }
+  .signature .age{display:block;margin-top:8px;font-size:11px;color:var(--tm);}
+  /* ---------- tab bar ---------- */
+  .tabbar{
+    position:absolute;left:0;right:0;bottom:0;height:84px;
+    display:flex;justify-content:space-around;align-items:flex-start;padding-top:14px;
+    background:linear-gradient(to top, rgba(5,2,9,0.96), rgba(5,2,9,0.6) 70%, transparent);
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--tm);}
+  .tab .ic{font-size:15px;line-height:15px;}
+  .tab.active{color:var(--signal);}
+  /* ---------- dev toggle ---------- */
+  .devbar{
+    width:393px;margin:0 auto 14px;display:flex;justify-content:center;gap:0;
+  }
+  .devbar button{
+    font-family:'Inter',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    background:none;border:1px dashed rgba(255,255,255,0.25);color:rgba(255,255,255,0.55);
+    padding:7px 16px;cursor:pointer;
+  }
+  .devbar button:first-child{border-radius:8px 0 0 8px;border-right:none;}
+  .devbar button:last-child{border-radius:0 8px 8px 0;}
+  .devbar button.on{background:rgba(255,255,255,0.1);color:#fff;}
+  .wrap{display:flex;flex-direction:column;align-items:center;}
+  .devnote{font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;margin-bottom:18px;font-family:'Inter',sans-serif;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="devbar">
+    <button id="btnA" class="on" onclick="show('A')">week one · your real field</button>
+    <button id="btnB" onclick="show('B')">day twenty-three</button>
+  </div>
+  <div class="devnote">prototype control — not part of the design</div>
+
+  <div class="phone">
+    <!-- ================= STATE A: week one (Bryn's actual six entries) ================= -->
+    <div id="stateA">
+      <div class="screenTitle">FIELD GUIDE</div>
+      <div class="fieldLine">six notes · the first week</div>
+
+      <div class="synthesis"><span class="uword">Support</span>&nbsp; appears in three of your six notes.</div>
+
+      <div class="sec">returning</div>
+      <div class="heroWord">support</div>
+      <div class="heroCount">3 notes · one day</div>
+
+      <div class="exemplar">
+        <div class="q">"this work is important to me, and I think I need <em>support</em> to get through it."</div>
+        <div class="attr">reflection · the threshold · yesterday</div>
+      </div>
+      <div class="exemplar">
+        <div class="q">"Not enough <em>support</em>&nbsp; raising young children ages working full time."</div>
+        <div class="attr">reflection · the threshold · yesterday</div>
+      </div>
+      <div class="exemplar freshest">
+        <div class="q">"…hard to stick with my practices. Through all the uncertainty. I think. Some <em>support</em>…"</div>
+        <div class="attr">reflection · the threshold · yesterday</div>
+      </div>
+
+      <div class="offering">
+        What is named three times in one day was already waiting before the day began.
+        <span class="from">FROM THE FIELD</span>
+      </div>
+
+      <div class="sec">gathering</div>
+      <div class="gatherRow">
+        <div class="gatherHead"><span class="w">"this work is important to me"</span><span class="c">· twice</span></div>
+        <div class="pair">
+          <div class="exemplar">
+            <div class="q">"<em>this work is important to me</em>, and I think I need support to get through it."</div>
+            <div class="attr">reflection · yesterday</div>
+          </div>
+          <div class="exemplar">
+            <div class="q">"<em>this work is important to me</em> and it's hard to stick with my practices."</div>
+            <div class="attr">reflection · yesterday</div>
+          </div>
+        </div>
+        <div class="twice">the same sentence, twice — shown side by side</div>
+      </div>
+
+      <div class="sec">today's arrivals</div>
+      <div class="chips">
+        <span class="chip">uncertainty</span>
+        <span class="chip">practices</span>
+        <span class="chip">consciousness</span>
+        <span class="chip">psyche</span>
+        <span class="chip">overwhelmed</span>
+      </div>
+
+      <div class="sec">the lenses</div>
+      <div class="lens">
+        <div class="dot" style="background:var(--signal)"></div>
+        <div class="lensBody">
+          <div class="lensName">recurring resistance</div>
+          <div class="lensLive">one wall named — <span class="w">overwhelm</span></div>
+        </div>
+        <div class="lensArrow">→</div>
+      </div>
+      <div class="lens">
+        <div class="dot" style="background:var(--fieldg)"></div>
+        <div class="lensBody">
+          <div class="lensName">your recurring language</div>
+          <div class="lensLive">one word established · one phrase gathering</div>
+        </div>
+        <div class="lensArrow">→</div>
+      </div>
+      <div class="stillListening">mythic motifs · conditions · consciousness — listening.</div>
+
+      <div class="sec">the field</div>
+      <div class="signature">
+        five reflections · one resistance
+        <span class="age">the field is one day old.</span>
+      </div>
+    </div>
+
+    <!-- ================= STATE B: day twenty-three ================= -->
+    <div id="stateB" style="display:none">
+      <div class="screenTitle">FIELD GUIDE</div>
+      <div class="fieldLine">thirty-one notes · twenty-three days</div>
+
+      <div class="synthesis"><span class="uword">The sea</span>&nbsp; appears in five of your thirty-one notes.</div>
+
+      <div class="sec">returning</div>
+      <div class="heroWord">the sea</div>
+      <div class="heroCount">5 notes · three weeks</div>
+
+      <div class="exemplar">
+        <div class="q">"dreamt I was swimming out past the break again, no fear this time"</div>
+        <div class="attr">dream · day nine · two weeks ago</div>
+      </div>
+      <div class="exemplar">
+        <div class="q">"everything moves like water lately, nothing to hold"</div>
+        <div class="attr">reflection · day fifteen · eight days ago</div>
+      </div>
+      <div class="exemplar freshest">
+        <div class="q">"<em>the sea</em> again — on the radio, then the book I opened at random"</div>
+        <div class="attr">synchronicity · day twenty-one · two days ago</div>
+      </div>
+
+      <div class="offering">
+        Water that returns is rarely about water.
+        <span class="from">FROM THE FIELD</span>
+      </div>
+
+      <div class="sec">gathering</div>
+      <div class="gatherRow">
+        <div class="gatherHead"><span class="w">balance</span><span class="c">· twice</span></div>
+      </div>
+      <div class="gatherRow">
+        <div class="gatherHead"><span class="w">"the old house"</span><span class="c">· twice</span></div>
+      </div>
+
+      <div class="sec">today's arrivals</div>
+      <div class="chips">
+        <span class="chip">tide</span>
+        <span class="chip">threshold</span>
+        <span class="chip">salt</span>
+      </div>
+
+      <div class="sec">the lenses</div>
+      <div class="lens">
+        <div class="dot" style="background:var(--signal)"></div>
+        <div class="lensBody">
+          <div class="lensName">recurring resistance</div>
+          <div class="lensLive">the same wall, three times — <span class="w">not enough time</span></div>
+        </div>
+        <div class="lensArrow">→</div>
+      </div>
+      <div class="lens">
+        <div class="dot" style="background:var(--fieldg)"></div>
+        <div class="lensBody">
+          <div class="lensName">your recurring language</div>
+          <div class="lensLive">two phrases · five words returning</div>
+        </div>
+        <div class="lensArrow">→</div>
+      </div>
+      <div class="lens">
+        <div class="dot" style="background:var(--friction)"></div>
+        <div class="lensBody">
+          <div class="lensName">mythic motifs</div>
+          <div class="lensLive"><span class="w">the sea</span> · <span class="w">door</span> · <span class="w">weight</span></div>
+        </div>
+        <div class="lensArrow">→</div>
+      </div>
+      <div class="stillListening">conditions · consciousness — listening.</div>
+
+      <div class="sec">the field</div>
+      <div class="signature">
+        eighteen reflections · six dreams · four resistances · three sparks
+        <span class="age">the field is twenty-three days old.</span>
+      </div>
+    </div>
+
+    <div class="tabbar">
+      <div class="tab"><span class="ic">●</span>today</div>
+      <div class="tab"><span class="ic">〵</span>notes</div>
+      <div class="tab active"><span class="ic">◐</span>guide</div>
+      <div class="tab"><span class="ic">⊙</span>origin</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(which){
+  document.getElementById('stateA').style.display = which==='A' ? 'block':'none';
+  document.getElementById('stateB').style.display = which==='B' ? 'block':'none';
+  document.getElementById('btnA').classList.toggle('on', which==='A');
+  document.getElementById('btnB').classList.toggle('on', which==='B');
+  // re-trigger entry animations
+  const st = document.getElementById('state'+which);
+  st.querySelectorAll('.synthesis,.heroWord').forEach(el=>{
+    el.style.animation='none'; void el.offsetWidth; el.style.animation='';
+  });
+}
+</script>
+</body>
+</html>

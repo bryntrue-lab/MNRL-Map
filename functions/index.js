@@ -158,7 +158,10 @@ exports.deleteAccount = onCall(
  * Double-processing is guarded by the `processed` ledger ON the pattern
  * docs (clients own fieldNotes — nothing is written there).
  */
-const { updatePatternsForNote } = require("./patternEngine");
+const {
+  updatePatternsForNote,
+  backfillPatternsForUser,
+} = require("./patternEngine");
 
 exports.updatePatterns = onDocumentWritten(
   {
@@ -189,7 +192,33 @@ exports.updatePatterns = onDocumentWritten(
 
     if (isCreateWithContent || transcriptJustLanded) {
       await updatePatternsForNote(uid, noteId, after, "add");
+      // Self-healing (Slice D.3 Part A): if earlier notes never made it
+      // into the ledgers (e.g. they predate an engine deploy), sweep them
+      // through the same pipeline now. Idempotent; usually a no-op scan.
+      try {
+        await backfillPatternsForUser(uid);
+      } catch (err) {
+        // The triggering note itself was processed; a failed sweep must
+        // not fail (and re-deliver) the event. The next note retries it.
+        console.error("backfill sweep failed", { uid }, err);
+      }
     }
+  }
+);
+
+/**
+ * backfillPatterns (Slice D.3 Part A): self-only callable that runs the
+ * engine over every fieldNote the ledgers have never seen. Same guard
+ * shape as deleteAccount — the caller can only backfill themselves.
+ */
+exports.backfillPatterns = onCall(
+  { memory: "256MiB", timeoutSeconds: 300 },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "sign in to tend a field.");
+    }
+    return await backfillPatternsForUser(uid);
   }
 );
 
