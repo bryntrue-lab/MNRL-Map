@@ -1,11 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { collection, doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
-import { LinkSecondary } from "@/components/Links";
+import { LinkSecondary, LinkWhisper } from "@/components/Links";
+import { SheetShell } from "@/components/OriginSheets";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -57,10 +59,13 @@ export default function LensScreen() {
   const [teaching, setTeaching] = useState<{
     heldLine?: string;
     paragraphs?: string[];
+    closingParagraphIndex?: number;
   } | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const firstVisitLens = useRef<string | null>(null);
 
-  // D.3 B9 — teaching scaffold: practitionerContent doc `teaching_{lens}`
-  // (kind:'teaching'). No docs exist yet, so this renders nothing today.
+  // B9 AMENDED — teachings render as a sheet, not inline. Doc:
+  // practitionerContent/teaching_{lens} (kind:'teaching').
   useEffect(() => {
     if (!user || !lens) return;
     getDoc(fsDoc(db, "practitionerContent", `teaching_${lens}`))
@@ -70,13 +75,39 @@ export default function LensScreen() {
           kind?: string;
           heldLine?: string;
           paragraphs?: string[];
+          closingParagraphIndex?: number;
         };
         if (data.kind === "teaching") setTeaching(data);
       })
       .catch(() => {
-        /* locked or absent — scaffold stays silent */
+        /* locked or absent — everything renders as today */
       });
   }, [user, lens]);
+
+  // First visit per lens: the sheet presents itself once (after the view
+  // settles), then never again uninvited — the map-label doctrine.
+  useEffect(() => {
+    if (!teaching || !lens || firstVisitLens.current === lens) return;
+    firstVisitLens.current = lens;
+    const key = `mineral_teaching_seen_${lens}`;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    AsyncStorage.getItem(key)
+      .then((seen) => {
+        if (seen !== null || cancelled) return;
+        timer = setTimeout(() => {
+          if (cancelled) return;
+          // The flag commits only when the presentation actually begins.
+          setSheetOpen(true);
+          AsyncStorage.setItem(key, "1").catch(() => {});
+        }, 700);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [teaching, lens]);
 
   useEffect(() => {
     if (!user || !meta) return;
@@ -149,6 +180,13 @@ export default function LensScreen() {
           <Text style={styles.title}>{meta.title}</Text>
         </View>
 
+        {/* Inline, always — the held line only */}
+        {teaching?.heldLine ? (
+          <Text style={styles.heldLine} testID="lens-held-line">
+            {teaching.heldLine}
+          </Text>
+        ) : null}
+
         {lens === "resistance" && resistanceNoteCount > 0 && (
           <Text style={styles.countLine} testID="resistance-note-count">
             resistance · {resistanceNoteCount}{" "}
@@ -157,7 +195,19 @@ export default function LensScreen() {
         )}
 
         {rows.length === 0 ? (
-          teaching ? null : (
+          teaching?.paragraphs ? (
+            // Quiet lens — the closing paragraph(s) replace the old
+            // promise/empty line. Nothing else renders inline.
+            <View style={styles.closingWrap} testID="lens-closing">
+              {teaching.paragraphs
+                .slice(teaching.closingParagraphIndex ?? teaching.paragraphs.length - 1)
+                .map((p, i) => (
+                  <Text key={i} style={styles.teachingBody}>
+                    {p}
+                  </Text>
+                ))}
+            </View>
+          ) : (
             <Text style={styles.listening}>listening.</Text>
           )
         ) : (
@@ -186,10 +236,30 @@ export default function LensScreen() {
           })
         )}
 
-        {/* B9 — teaching: below data on live lenses, replaces the empty
-            state on quiet ones */}
+        {/* The full teaching lives in a sheet, summoned on request */}
         {teaching && (
-          <View style={styles.teachingWrap} testID="lens-teaching">
+          <LinkWhisper
+            label="the teaching"
+            onPress={() => setSheetOpen(true)}
+            style={styles.teachingLink}
+            testID="lens-teaching-link"
+          />
+        )}
+      </ScrollView>
+
+      {teaching && (
+        <SheetShell
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          bottomPad={insets.bottom}
+          swipeToDismiss
+          modal
+          testID="teaching-sheet"
+        >
+          <ScrollView
+            style={{ maxHeight: Dimensions.get("window").height * 0.62 }}
+            showsVerticalScrollIndicator={false}
+          >
             {teaching.heldLine ? (
               <Text style={styles.teachingHeld}>{teaching.heldLine}</Text>
             ) : null}
@@ -198,9 +268,9 @@ export default function LensScreen() {
                 {p}
               </Text>
             ))}
-          </View>
-        )}
-      </ScrollView>
+          </ScrollView>
+        </SheetShell>
+      )}
     </View>
   );
 }
@@ -292,18 +362,27 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.6)",
   },
 
-  // B9 — teaching scaffold
-  teachingWrap: {
+  // B9 AMENDED — teaching presence
+  heldLine: {
+    ...TypeScale.serifMedium,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 14,
+  },
+  closingWrap: {
+    marginTop: 28,
+  },
+  teachingLink: {
+    alignSelf: "flex-start",
     marginTop: 36,
   },
   teachingHeld: {
     ...TypeScale.serifMedium,
     color: "rgba(255,255,255,0.85)",
-    marginBottom: 16,
+    marginBottom: 20,
   },
   teachingBody: {
     ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.72)",
-    marginBottom: 14,
+    marginBottom: 16,
   },
 });

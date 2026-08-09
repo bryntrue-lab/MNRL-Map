@@ -5,6 +5,7 @@ import { httpsCallable } from "firebase/functions";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { LinkWhisper } from "@/components/Links";
+import { SheetShell } from "@/components/OriginSheets";
 import TabTopBar from "@/components/TabTopBar";
 import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
@@ -185,6 +188,7 @@ export default function GuideScreen() {
   const [notes, setNotes] = useState<FieldNoteWithId[]>([]);
   const [patterns, setPatterns] = useState<Patterns>({});
   const [patternsLoaded, setPatternsLoaded] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -538,11 +542,12 @@ export default function GuideScreen() {
             </Animated.Text>
           </View>
         ) : (
-          <View style={styles.synthesisWrap}>
-            <Text style={styles.eyebrow}>● TAKING ROOT</Text>
-            <Text style={styles.emptySynthesis}>
-              Your field begins with your first reflection. Patterns emerge with time
-              and return.
+          // The Guide's opening description — empty state only; retires
+          // once the field has notes (the patterns speak instead).
+          <View style={styles.synthesisWrap} testID="guide-opening">
+            <Text style={styles.openingBody}>{OPENING_PARAGRAPHS[0]}</Text>
+            <Text style={[styles.openingBody, styles.openingSecond]}>
+              {OPENING_PARAGRAPHS[1]}
             </Text>
           </View>
         )}
@@ -685,15 +690,42 @@ export default function GuideScreen() {
           </View>
         )}
 
-        {!hasField && (
-          <Text style={styles.closingThought}>
-            {"The Guide grows as you practice.\nReturn here as your field deepens."}
-          </Text>
-        )}
+        {/* Permanent footer whisper — the opening text, summoned as a sheet */}
+        <LinkWhisper
+          label="about the guide"
+          onPress={() => setAboutOpen(true)}
+          style={styles.aboutLink}
+          testID="guide-about-link"
+        />
       </ScrollView>
+
+      <SheetShell
+        open={aboutOpen}
+        onClose={() => setAboutOpen(false)}
+        bottomPad={insets.bottom}
+        swipeToDismiss
+        modal
+        testID="about-guide-sheet"
+      >
+        <ScrollView
+          style={{ maxHeight: Dimensions.get("window").height * 0.62 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.openingBody}>{OPENING_PARAGRAPHS[0]}</Text>
+          <Text style={[styles.openingBody, styles.openingSecond]}>
+            {OPENING_PARAGRAPHS[1]}
+          </Text>
+        </ScrollView>
+      </SheetShell>
     </View>
   );
 }
+
+// FINAL canon, verbatim — the Guide's opening description.
+const OPENING_PARAGRAPHS = [
+  "The Field Guide doesn't explain your life. It helps you notice the patterns your life has already been repeating: A phrase you keep using, resistance that won't loosen, an image that follows you from dream to conversation to notebook.",
+  "Across traditions, these repetitions were never treated as accidents. They were treated as instruction.",
+];
 
 const styles = StyleSheet.create({
   container: {
@@ -731,10 +763,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#ffffff",
   },
-  emptySynthesis: {
-    ...TypeScale.serifSmall,
-    lineHeight: 22,
+  openingBody: {
+    ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.72)",
+  },
+  openingSecond: {
+    marginTop: 16,
   },
 
   sectionHead: {
@@ -903,12 +937,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  closingThought: {
-    ...TypeScale.serifSmall,
-    lineHeight: 22,
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    marginTop: 40,
-    paddingHorizontal: 24,
+  aboutLink: {
+    alignSelf: "flex-start",
+    marginTop: 44,
   },
 });

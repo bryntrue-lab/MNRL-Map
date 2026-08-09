@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Easing,
   Keyboard,
+  Modal,
   PanResponder,
   Platform,
   Pressable,
@@ -38,6 +40,14 @@ interface SheetShellProps {
   testID: string;
   /** Adds a grab handle with swipe-down-to-dismiss (§C.1 1e). */
   swipeToDismiss?: boolean;
+  /**
+   * Renders inside a transparent root Modal with a dimmed full-screen
+   * backdrop — for sheets taller than the origin map's (~70% teaching
+   * sheets) that must cover navigator siblings like the tab bar. Slide
+   * distance becomes the full window height so a closed sheet is never
+   * partially visible. Origin callers are unaffected (default false).
+   */
+  modal?: boolean;
   children: React.ReactNode;
 }
 
@@ -47,6 +57,7 @@ export function SheetShell({
   bottomPad,
   testID,
   swipeToDismiss,
+  modal,
   children,
 }: SheetShellProps) {
   const slide = useRef(new Animated.Value(0)).current;
@@ -119,10 +130,12 @@ export function SheetShell({
 
   if (!mounted) return null;
 
-  return (
+  const slideDistance = modal ? Dimensions.get("window").height : 460;
+
+  const body = (
     <>
       <Pressable
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, modal && styles.dimBackdrop]}
         onPress={() => {
           // §C.1 1e — tap outside: the keyboard leaves first, then the sheet.
           Keyboard.dismiss();
@@ -140,7 +153,7 @@ export function SheetShell({
                 translateY: Animated.add(
                   slide.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [460, 0],
+                    outputRange: [slideDistance, 0],
                   }),
                   kbRise
                 ),
@@ -158,6 +171,13 @@ export function SheetShell({
         {children}
       </Animated.View>
     </>
+  );
+
+  if (!modal) return body;
+  return (
+    <Modal transparent visible animationType="none" onRequestClose={onClose}>
+      {body}
+    </Modal>
   );
 }
 
@@ -347,6 +367,9 @@ export function QuietToast({ toast, bottom, onDone }: QuietToastProps) {
 // ─────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  dimBackdrop: {
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
   sheet: {
     position: "absolute",
     left: 0,
