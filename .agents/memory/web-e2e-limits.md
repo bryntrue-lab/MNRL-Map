@@ -10,3 +10,5 @@ description: What the Playwright testing subagent cannot exercise in this enviro
 **How to apply:** Treat the quiet type-mode fallback as the *verifiable* web behavior for recording. Verify the voice pipeline server-side instead: admin-upload a WAV (ffmpeg is available; encounter MP3s in Storage make good speech sources) + create a pending note doc, then watch the transcription function settle it. Firestore/Storage **rules** are best verified with REST probes (anon signUp → commit/upload with the exact allowed and denied shapes) — this catches path mismatches the UI never exercises.
 
 Also: Expo typed routes — after adding a new route file, `tsc` fails on `router.push("/new-route")` until the dev server regenerates `.expo/types`; restart the workflow and wait a few seconds before trusting that error.
+
+- Screenshot/preview sessions are UNAUTHENTICATED (Mineral has no auto anonymous sign-in): any auth-gated content (e.g. teaching held lines) is legitimately absent in screenshots. Verify reads via Identity Toolkit anon token + Firestore REST instead of chasing phantom client bugs.

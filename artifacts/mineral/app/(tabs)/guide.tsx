@@ -672,9 +672,24 @@ export default function GuideScreen() {
               </Pressable>
             ))}
             {quietRows.length > 0 && (
-              <Text style={styles.stillListening} testID="lenses-listening">
-                {quietRows.map((r) => r.lens.label).join(" · ")} — listening.
-              </Text>
+              /* B6 amended — the quiet line stays one line, visually
+                 unchanged, but the lens names are individually tappable.
+                 Discovery is by touch; no arrows, no underlines. */
+              <View style={styles.stillListeningRow} testID="lenses-listening">
+                {quietRows.map((r, i) => (
+                  <React.Fragment key={r.lens.id}>
+                    {i > 0 && <Text style={styles.stillListening}> · </Text>}
+                    <Pressable
+                      onPress={() => router.push(`/lens/${r.lens.id}`)}
+                      hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
+                      testID={`quiet-lens-${r.lens.id}`}
+                    >
+                      <Text style={styles.stillListening}>{r.lens.label}</Text>
+                    </Pressable>
+                  </React.Fragment>
+                ))}
+                <Text style={styles.stillListening}> — listening.</Text>
+              </View>
             )}
           </View>
         )}
@@ -918,10 +933,15 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
     marginTop: 2,
   },
+  stillListeningRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    marginTop: 18,
+  },
   stillListening: {
     ...TypeScale.metadata,
     color: "rgba(255,255,255,0.4)",
-    marginTop: 18,
   },
 
   // B8 — signature

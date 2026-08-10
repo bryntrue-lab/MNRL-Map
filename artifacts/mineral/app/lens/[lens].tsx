@@ -29,11 +29,15 @@ const SOURCE_LABEL: Record<string, string> = {
 
 const LENS_META: Record<
   string,
-  { pattern: PatternType; title: string; color: string }
+  { pattern: PatternType | null; title: string; color: string }
 > = {
   threads: { pattern: "thread", title: "your recurring language", color: "#88dcba" },
   motifs: { pattern: "motif", title: "mythic motifs", color: "#e9b76b" },
   resistance: { pattern: "resistance", title: "recurring resistance", color: "#e08aaf" },
+  // Quiet lenses (no engine yet) — the teaching IS the content. When
+  // their engines ship, data sections appear above with no nav change.
+  conditions: { pattern: null, title: "conditions", color: "#9bb6d6" },
+  consciousness: { pattern: null, title: "consciousness", color: "#c4baea" },
 };
 
 function attribution(e: ExemplarEntry): string {
@@ -110,7 +114,7 @@ export default function LensScreen() {
   }, [teaching, lens]);
 
   useEffect(() => {
-    if (!user || !meta) return;
+    if (!user || !meta?.pattern) return;
     const unsubPatterns = onSnapshot(
       collection(db, "users", user.uid, "patterns"),
       (snap) => {
@@ -207,9 +211,9 @@ export default function LensScreen() {
                   </Text>
                 ))}
             </View>
-          ) : (
+          ) : meta.pattern !== null ? (
             <Text style={styles.listening}>listening.</Text>
-          )
+          ) : null
         ) : (
           rows.map(([item, count]) => {
             const exemplars = doc?.exemplars?.[item] ?? [];
