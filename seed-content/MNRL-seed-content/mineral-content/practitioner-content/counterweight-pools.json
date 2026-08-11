@@ -2,13 +2,19 @@
   "id": "counterweight_pools",
   "kind": "counterweight_pools",
   "pools": {
-    "signal": ["What was arriving then that this season is answering?"],
+    "signal": [
+      "What was arriving then that this season is answering?",
+      "What did you envision then given only the faintest glimpse of what's to come?"
+    ],
     "field": ["What was gathering then that you are now speaking?"],
     "friction": ["What were you up against then that has since become material?"],
     "voice": ["What were you saying then that this season is gathering toward?"]
   },
   "futurePools": {
-    "signal": ["What will be arriving then that today is already preparing?"],
+    "signal": [
+      "What will be arriving then that today is already preparing?",
+      "What will you envision then given only the faintest glimpse of what's to come?"
+    ],
     "field": ["What gathers now that you will be speaking then?"],
     "friction": ["What are you up against now that will have become material by then?"],
     "voice": ["What are you saying now that then will gather toward?"]

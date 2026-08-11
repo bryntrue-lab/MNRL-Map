@@ -285,6 +285,25 @@ export const PCX = 170;
 export const PCY = 290;
 export const PR = 128;
 
+// H3 — the scrub label speaks the day in words: `encounter twelve`.
+const ONES = [
+  "", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+  "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+  "seventeen", "eighteen", "nineteen",
+];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+/** Lowercase English words for 1..108 (wheel days). */
+export function dayNumberWord(n: number): string {
+  if (n < 1 || n > 108) return String(n);
+  if (n > 100) return `one hundred ${dayNumberWord(n - 100)}`;
+  if (n === 100) return "one hundred";
+  if (n < 20) return ONES[n];
+  const t = Math.floor(n / 10);
+  const o = n % 10;
+  return o === 0 ? TENS[t] : `${TENS[t]}-${ONES[o]}`;
+}
+
 /** Wheel day nearest a pointer position (viewBox coords), or null off-ring. */
 export function wheelDayFromPoint(x: number, y: number): number | null {
   const dx = x - PCX;

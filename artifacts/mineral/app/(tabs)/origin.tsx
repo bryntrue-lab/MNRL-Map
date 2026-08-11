@@ -51,6 +51,7 @@ import {
   ageFromPointer,
   dateAtAge,
   dayInTurn,
+  dayNumberWord,
   monthYearLabel,
   phaseOfDay,
   practiceTurnOf,
@@ -228,6 +229,10 @@ export default function OriginScreen() {
   const wheelDay = dayInTurn(sequenceDay);
   const practiceTurn = practiceTurnOf(sequenceDay);
 
+  // H3 — scrub-select on the practice wheel: the day under the finger plus
+  // the finger's zone coordinates, for the highlight and floating label.
+  const [scrub, setScrub] = useState<{ day: number; x: number; y: number } | null>(null);
+
   const [library, setLibrary] = useState<EncounterWithId[] | null>(null);
   useEffect(() => {
     let on = true;
@@ -287,6 +292,13 @@ export default function OriginScreen() {
     });
     return s;
   }, [turnDocs, library]);
+
+  // H3 — the encounter under the scrubbing finger (phase/order depend only
+  // on the 1..108 day, so the wheel day doubles as a sequence day here).
+  const scrubEncounter = useMemo(
+    () => (library && scrub ? selectEncounterForDay(library, scrub.day, practiceTurn) : null),
+    [library, scrub, practiceTurn]
+  );
 
   // Yesterday's instance — on day one of a new turn it lives in the PREVIOUS
   // turn, outside the turnDocs listener, so it needs a one-shot read.
@@ -636,6 +648,7 @@ export default function OriginScreen() {
     setDisplayAge,
     setZoomBoth,
     animateZoomTo,
+    setScrub,
   });
   actionsRef.current = {
     toViewBox,
@@ -650,6 +663,7 @@ export default function OriginScreen() {
     setDisplayAge,
     setZoomBoth,
     animateZoomTo,
+    setScrub,
   };
 
   const dragRef = useRef({
@@ -658,6 +672,7 @@ export default function OriginScreen() {
     preAge: 0.2,
     lastDetent: null as number | null,
     wandered: false,
+    lastScrubDay: null as number | null,
   });
 
   const pinchStart = useRef({ s0: 1, tx0: 0, ty0: 0, fx0: 0, fy0: 0 });
@@ -732,12 +747,26 @@ export default function OriginScreen() {
           preAge: displayAgeRef.current,
           lastDetent: null,
           wandered: false,
+          lastScrubDay: null,
         };
       })
       .onUpdate((e) => {
         const st = stateRef.current;
         const act = actionsRef.current;
-        if (st.introRunning || st.turnOpen || st.sheet || st.clampedCurrent == null) return;
+        if (st.introRunning || st.sheet) return;
+        // H3 — turn mode: scrub-select. The nearest day highlights and the
+        // floating label follows the finger; the wheel's geometry stays fixed.
+        if (st.turnOpen) {
+          const p = act.toViewBox(e.x, e.y);
+          const d = wheelDayFromPoint(p.x, p.y);
+          if (d !== dragRef.current.lastScrubDay) {
+            dragRef.current.lastScrubDay = d;
+            if (d != null) Haptics.selectionAsync().catch(() => {}); // soft detent
+          }
+          act.setScrub(d == null ? null : { day: d, x: e.x, y: e.y });
+          return;
+        }
+        if (st.clampedCurrent == null) return;
         const vb = act.toViewBox(e.x, e.y);
         dragRef.current.wandered = true;
         if (!st.wandering) act.setWandering(true);
@@ -757,7 +786,19 @@ export default function OriginScreen() {
       .onEnd((e) => {
         const st = stateRef.current;
         const act = actionsRef.current;
-        if (st.introRunning || st.turnOpen || st.sheet || st.clampedCurrent == null) return;
+        if (st.introRunning || st.sheet) return;
+        // H3 — release resolves the scrub: past → visit; future → quiet
+        // toast; today or off-ring → cancel (a plain tap still opens today).
+        if (st.turnOpen) {
+          const d = dragRef.current.lastScrubDay;
+          dragRef.current.lastScrubDay = null;
+          act.setScrub(null);
+          if (d == null) return;
+          if (d < st.wheelDay) act.visitPastDay(d);
+          else if (d > st.wheelDay) act.showToast("still to come.");
+          return;
+        }
+        if (st.clampedCurrent == null) return;
         const dur = Date.now() - dragRef.current.startT;
         // Swipe up from the lower map region → the reading sheet.
         if (
@@ -1038,8 +1079,33 @@ export default function OriginScreen() {
                     visited={visitedDays}
                     width={zone.w}
                     height={zone.h}
+                    highlight={scrub?.day ?? null}
                   />
                 </Animated.View>
+
+                {/* H3 — floating scrub label, above the finger */}
+                {scrub && (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.scrubLabel,
+                      {
+                        left: Math.max(8, Math.min(scrub.x - 110, zone.w - 228)),
+                        top: Math.max(8, scrub.y - 78),
+                      },
+                    ]}
+                    testID="wheel-scrub-label"
+                  >
+                    <Text style={styles.scrubLabelMeta}>
+                      encounter {dayNumberWord(scrub.day)}
+                    </Text>
+                    <Text style={styles.scrubLabelTitle} numberOfLines={1}>
+                      {scrub.day > wheelDay
+                        ? "still to come."
+                        : (scrubEncounter?.title ?? "")}
+                    </Text>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -1256,6 +1322,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 
+  // H3 — floating scrub label
+  scrubLabel: {
+    position: "absolute",
+    width: 220,
+    alignItems: "center",
+    zIndex: 30,
+  },
+  scrubLabelMeta: {
+    ...TypeScale.metadata,
+    letterSpacing: 1.6,
+    color: "rgba(255,255,255,0.55)",
+    marginBottom: 2,
+  },
+  scrubLabelTitle: {
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.85)",
+  },
   chipRow: {
     alignItems: "flex-end",
     marginTop: -2,

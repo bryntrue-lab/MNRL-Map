@@ -280,7 +280,8 @@ export default function SignatureScreen() {
 
           {/* F1 — structured birth place: city text + country picker. Both
               optional; the one-tap skip below covers the whole screen. */}
-          <Text style={styles.fieldLabel}>birth city</Text>
+          {/* H1 — final verbatim label; one field, users may type "Portland, Oregon". */}
+          <Text style={styles.fieldLabel}>Birth city, State or Province</Text>
           <TextInput
             style={styles.input}
             placeholder="city or town"

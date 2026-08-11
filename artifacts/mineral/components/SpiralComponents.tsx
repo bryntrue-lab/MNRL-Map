@@ -590,6 +590,8 @@ interface TurnWheelProps {
   visited: ReadonlySet<number>;
   width: number;
   height: number;
+  /** H3 — scrub-select: the day under the finger, enlarged with a halo. */
+  highlight?: number | null;
 }
 
 const PHASE_LABELS: { name: string; frac: number; phase: PhaseId }[] = [
@@ -599,7 +601,7 @@ const PHASE_LABELS: { name: string; frac: number; phase: PhaseId }[] = [
   { name: "VOICE", frac: 0.875, phase: "voice" },
 ];
 
-export function TurnWheel({ today, visited, width, height }: TurnWheelProps) {
+export function TurnWheel({ today, visited, width, height, highlight }: TurnWheelProps) {
   const dots = useMemo(() => {
     const list: { d: number; x: number; y: number; accent: string }[] = [];
     for (let d = 1; d <= 108; d++) {
@@ -697,6 +699,25 @@ export function TurnWheel({ today, visited, width, height }: TurnWheelProps) {
           </G>
         );
       })}
+
+      {/* H3 — scrub highlight: enlarged dot + halo on the nearest day */}
+      {highlight != null && highlight >= 1 && highlight <= 108 && (() => {
+        const dot = dots[highlight - 1];
+        return (
+          <G>
+            <Circle cx={dot.x} cy={dot.y} r={4} fill="rgba(255,255,255,0.92)" />
+            <Circle
+              cx={dot.x}
+              cy={dot.y}
+              r={9}
+              fill="none"
+              stroke={dot.accent}
+              strokeWidth={0.8}
+              opacity={0.7}
+            />
+          </G>
+        );
+      })()}
 
       {/* The still point holds the center of this clock too */}
       <Circle cx={PCX} cy={PCY} r={12} fill="rgba(200,190,225,0.06)" />

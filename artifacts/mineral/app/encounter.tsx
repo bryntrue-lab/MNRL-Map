@@ -193,6 +193,15 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   const [blockIdx, setBlockIdx] = useState(initial.blockIdx);
   const [woven, setWoven] = useState<string | null>(initial.woven);
   const [cwShown, setCwShown] = useState(initial.stage === "counterweight");
+
+  // H2 — whether this encounter's ⟡ note is already kept (this session OR a
+  // resume that landed past capture). Backing into a kept capture shows it
+  // as historical — never a second submittable prompt.
+  const [kept, setKept] = useState(() => {
+    const r = session.resume;
+    return !!(r && (r.blockIndex >= 1 || r.crystallizing));
+  });
+  const keptContentRef = useRef<string | null>(session.resume?.crystallizing?.content ?? null);
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
@@ -310,7 +319,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
   // Audio completes → 1.5s held silence → the ⟡ screen.
   useEffect(() => {
-    if (stage !== "listen" || !status.didJustFinish) return;
+    if (stage !== "listen" || !status.didJustFinish || relistenRef.current) return;
     heldTimer.current = setTimeout(() => toCapture(), HELD_SILENCE_MS);
     return () => {
       if (heldTimer.current != null) clearTimeout(heldTimer.current);
@@ -332,10 +341,9 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     return () => loop.stop();
   }, [stage, status.playing, breath]);
 
-  // E6 — a way back after skipping: skipping keeps the audio position so
-  // `← the voice` can return to where it was left. Natural completion
-  // spends the moment (position resets) and never shows the way back.
-  const [arrivedBySkip, setArrivedBySkip] = useState(false);
+  // H2 — re-entering listen via back must not auto-bounce to capture off a
+  // stale didJustFinish; cleared when the user plays or restarts (↺).
+  const relistenRef = useRef(false);
   const toCapture = (skipped = false) => {
     try {
       player.pause();
@@ -344,12 +352,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       // Reaching the ⟡ naturally means the audio moment is spent.
       saveAudioPosition(uid, encounter.id, turn, 0).catch(() => {});
     }
-    setArrivedBySkip(skipped);
     setStage("capture");
-  };
-  const backToVoice = () => {
-    setArrivedBySkip(false);
-    setStage("listen");
   };
 
   // ── ⟡ Capture (§1c) ──
@@ -424,8 +427,9 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   };
 
   const keepVoice = (uri: string) => {
-    if (savingRef.current || !prompt) return;
+    if (savingRef.current || kept || !prompt) return;
     savingRef.current = true;
+    setKept(true);
     const noteId = newFieldNoteId(uid);
     const contentType = Platform.OS === "web" ? "audio/webm" : "audio/m4a";
     const questionId = prompt.id;
@@ -462,8 +466,10 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
   const keepTyped = () => {
     const content = typed.trim();
-    if (!content || savingRef.current || !prompt) return;
+    if (!content || savingRef.current || kept || !prompt) return;
     savingRef.current = true;
+    setKept(true);
+    keptContentRef.current = content;
     createFieldNote(uid, {
       type: "reflection",
       captureMode: "text",
@@ -519,6 +525,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
   // ── Advancing ──
   const toResolution = (content: string | null) => {
+    if (content != null) keptContentRef.current = content;
     if (cwAvailable && prompt) {
       setWoven(wovenLine(content, prompt.text));
       setCwShown(true);
@@ -544,21 +551,41 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     else toClose();
   };
 
-  // Quiet back — ‹ or swipe-right, for re-reading only (§1).
+  // H2 — quiet back (← or swipe-right) on EVERY step, strictly sequential:
+  // close → last block → … → counterweight → ⟡ prompt → the audio screen.
+  // The hold is transient (a note is landing) and the audio screen is first,
+  // so neither carries a back.
+  // Entering the counterweight from EITHER direction — a resume at a later
+  // block never showed it this mount, so the woven line may need weaving
+  // from the kept note (null content weaves the question alone).
+  const toCounterweight = () => {
+    if (!woven && prompt) setWoven(wovenLine(keptContentRef.current, prompt.text));
+    setCwShown(true);
+    setStage("counterweight");
+  };
   const goBack = () => {
     if (stage === "close") {
       if (postBlocks.length > 0) toBlock(postBlocks.length);
-      else if (cwShown) setStage("counterweight");
+      else if (cwShown || cwAvailable) toCounterweight();
+      else setStage("capture");
       return;
     }
     if (stage === "block") {
       if (blockIdx > 1) toBlock(blockIdx - 1);
-      else if (cwShown) setStage("counterweight");
+      else if (cwShown || cwAvailable) toCounterweight();
+      else setStage("capture");
+      return;
+    }
+    if (stage === "counterweight") {
+      setStage("capture");
+      return;
+    }
+    if (stage === "capture") {
+      relistenRef.current = true;
+      setStage("listen");
     }
   };
-  const canGoBack =
-    (stage === "block" && (blockIdx > 1 || cwShown)) ||
-    (stage === "close" && (postBlocks.length > 0 || cwShown));
+  const canGoBack = stage !== "listen" && stage !== "hold";
 
   const backRef = useRef(goBack);
   backRef.current = goBack;
@@ -671,7 +698,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       </Animated.View>
       {stage === "counterweight" && <View style={styles.darken} />}
 
-      {/* Quiet back ‹ */}
+      {/* H2 — quiet back ←, top-left, whisper register, every step */}
       {canGoBack && (
         <Pressable
           onPress={goBack}
@@ -679,7 +706,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           style={[styles.backChevron, { top: insets.top + 14 }]}
           testID="encounter-back"
         >
-          <Text style={styles.backChevronText}>‹</Text>
+          <Text style={styles.backChevronText}>←</Text>
         </Pressable>
       )}
 
@@ -724,14 +751,35 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             />
           </View>
           <View style={[styles.listenControls, { paddingBottom: insets.bottom + 34 }]}>
-            <View style={styles.listenSide} />
+            <View style={[styles.listenSide, styles.listenSideLeft]}>
+              {/* H2 — ↺ restarts the audio from the beginning, whether the
+                  user arrived by resume, back-navigation, or mid-listen. */}
+              <Pressable
+                onPress={() => {
+                  relistenRef.current = false;
+                  userPausedRef.current = false;
+                  try {
+                    player.seekTo(0);
+                  } catch {}
+                  player.play();
+                }}
+                style={styles.replayTarget}
+                hitSlop={10}
+                testID="listen-replay"
+              >
+                <Text style={styles.replayText}>↺</Text>
+              </Pressable>
+            </View>
             <Pressable
               onPress={() => {
                 // Explicit user pause — unchanged behavior (Slice 3.1 only
                 // marks it so it isn't mistaken for an interruption).
                 userPausedRef.current = status.playing;
                 if (status.playing) player.pause();
-                else player.play();
+                else {
+                  relistenRef.current = false;
+                  player.play();
+                }
               }}
               style={styles.playPause}
               hitSlop={8}
@@ -746,20 +794,9 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         </View>
       )}
 
-      {/* E6 — a way back, only when the audio was skipped */}
-      {stage === "capture" && arrivedBySkip && (
-        <View style={[styles.voiceBack, { top: insets.top + 16 }]}>
-          {/* F4 — noArrow: the species appends " →" unless the label ENDS
-              with a glyph, so this leading-← label rendered "← the voice →".
-              Backward motion keeps only its own arrow. */}
-          <LinkWhisper
-            label="← the voice"
-            onPress={backToVoice}
-            noArrow
-            testID="capture-back-to-voice"
-          />
-        </View>
-      )}
+      {/* H2 — E6's `← the voice` is absorbed by the generalized back: the ←
+          on the ⟡ prompt IS the way to the voice, so the special-case
+          whisper is removed. */}
 
       {/* ── ⟡ Capture ── */}
       {stage === "capture" && prompt && (
@@ -777,7 +814,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           {prompt.subtext ? <Text style={styles.captureSubtext}>{prompt.subtext}</Text> : null}
 
           {/* §5 — warm-ups stay collapsed; the ⟡ leads with one prompt, one capture */}
-          {warmUps.length > 0 && (
+          {!kept && warmUps.length > 0 && (
             <View style={styles.wayInWrap}>
               {!wayInOpen ? (
                 /* T-c follow-up §2: disclosure control, not a link — eyebrow
@@ -802,7 +839,25 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             </View>
           )}
 
-          {!typeMode ? (
+          {kept ? (
+            /* H2 — backing into a kept ⟡: historical, never re-submittable.
+               Continue is the step's own primary action, forward as usual. */
+            <View style={styles.keptWrap}>
+              <Text style={styles.keptLine} testID="capture-kept-line">
+                already kept.
+              </Text>
+              <LinkPrimary
+                label="continue →"
+                onPress={() => {
+                  if (cwShown || cwAvailable) toCounterweight();
+                  else if (postBlocks.length > 0) toBlock(1);
+                  else toClose();
+                }}
+                style={{ alignSelf: "center", marginTop: 10 }}
+                testID="capture-kept-continue"
+              />
+            </View>
+          ) : !typeMode ? (
             <View style={styles.recordWrap}>
               <View style={styles.waveRow} testID="capture-waveform">
                 {recording &&
@@ -1123,8 +1178,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backChevronText: {
-    ...TypeScale.display,
-    color: "rgba(255,255,255,0.5)",
+    // H2 — whisper register (ritual dim-lavender), navGlyph optical size so
+    // the ← sits in balance with the ✕ opposite it.
+    ...TypeScale.navGlyph,
+    color: "rgba(200,190,225,0.55)",
   },
   ambientPlus: {
     position: "absolute",
@@ -1176,6 +1233,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "flex-end",
   },
+  listenSideLeft: {
+    alignItems: "flex-start",
+  },
+  replayTarget: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  replayText: {
+    // H2 — same quiet register as the transport controls.
+    ...TypeScale.body,
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.72)",
+  },
   playPause: {
     minWidth: 88,
     minHeight: 44,
@@ -1186,6 +1258,16 @@ const styles = StyleSheet.create({
     ...TypeScale.body,
     letterSpacing: 1.2,
     color: "rgba(255,255,255,0.72)",
+  },
+
+  // H2 — the kept (historical) ⟡
+  keptWrap: {
+    marginTop: 40,
+    alignItems: "center",
+  },
+  keptLine: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.6)",
   },
 
   // ⟡ Capture
@@ -1371,11 +1453,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   // E6 — top-left whisper back to the audio, skip arrivals only
-  voiceBack: {
-    position: "absolute",
-    left: 28,
-    zIndex: 10,
-  },
 
   advance: {
     alignSelf: "flex-start",
