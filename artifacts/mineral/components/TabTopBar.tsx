@@ -9,6 +9,9 @@ interface TabTopBarProps {
   rightIcon?: string;
   onLeftPress?: () => void;
   onRightPress?: () => void;
+  /** E3 amendment — a fully custom right slot (own Pressable + animation);
+   *  wins over rightIcon/onRightPress when provided. */
+  rightNode?: React.ReactNode;
 }
 
 // No dead chrome (§C.1 1d): an icon renders only when it has a real
@@ -20,6 +23,7 @@ export default function TabTopBar({
   rightIcon = "⊙",
   onLeftPress,
   onRightPress,
+  rightNode,
 }: TabTopBarProps) {
   return (
     <View style={styles.topBar}>
@@ -31,7 +35,9 @@ export default function TabTopBar({
         <View style={styles.iconTarget} />
       )}
       <Text style={styles.eyebrow}>{title}</Text>
-      {onRightPress ? (
+      {rightNode ? (
+        rightNode
+      ) : onRightPress ? (
         <Pressable onPress={onRightPress} style={styles.iconTarget} hitSlop={4}>
           <Text style={styles.iconText}>{rightIcon}</Text>
         </Pressable>

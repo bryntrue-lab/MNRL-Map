@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -54,6 +54,67 @@ const TURN_WORDS = ["first", "second", "third", "fourth", "fifth"] as const;
  * The encounter is selected by the practice clock (sequenceDay); visits
  * arrive from the turn wheel with their day in the visit store.
  */
+// E3 amendment — Today's settings glyph is ··· (tracked, 24pt optical in the
+// 44pt target, textTertiary). On opening Settings it rotates 90° while
+// crossfading into the ✕; refocusing Today reverses the morph. The ⊙ is
+// retired here (it collided with the origin tab icon).
+function SettingsMorphGlyph() {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }, [progress]),
+  );
+
+  const openSettings = () => {
+    // Push on completion so the morph is actually visible before the
+    // Settings fade covers the header (the stack uses animation: "fade").
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) router.push("/settings");
+    });
+  };
+
+  const rotate = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "90deg"],
+  });
+  const dotsOpacity = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+
+  return (
+    <Pressable
+      onPress={openSettings}
+      style={styles.glyphTarget}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel="Open settings"
+      testID="today-settings"
+    >
+      <Animated.View style={[styles.glyphStack, { transform: [{ rotate }] }]}>
+        <Animated.Text style={[styles.glyphDots, { opacity: dotsOpacity }]}>
+          ···
+        </Animated.Text>
+        <Animated.Text
+          style={[styles.glyphCross, StyleSheet.absoluteFillObject, { opacity: progress }]}
+        >
+          ✕
+        </Animated.Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -280,7 +341,7 @@ export default function TodayScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <TabTopBar title="TODAY" rightIcon="⊙" onRightPress={() => router.push("/settings")} />
+        <TabTopBar title="TODAY" rightNode={<SettingsMorphGlyph />} />
 
         <View style={styles.spiralWrap}>
           <SpiralIndicator phase={phase} turn={turnWord} size={200} />
@@ -325,6 +386,26 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
+  glyphTarget: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  glyphStack: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  glyphDots: {
+    ...TypeScale.navGlyph,
+    letterSpacing: 2,
+    color: "rgba(255,255,255,0.58)",
+  },
+  glyphCross: {
+    ...TypeScale.navGlyph,
+    color: "rgba(255,255,255,0.58)",
+    textAlign: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#050208",
