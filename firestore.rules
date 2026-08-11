@@ -11,7 +11,8 @@ service cloud.firestore {
     // ── Practitioner offering library — locked, except teaching docs
     //    (D.3 B9: lens-detail teaching renders client-side) ───────────────
     match /practitionerContent/{contentId} {
-      allow read: if request.auth != null && resource.data.kind == 'teaching';
+      allow read: if request.auth != null
+        && (resource.data.kind == 'teaching' || resource.data.kind == 'counterweight_pools');
       allow write: if false;
     }
 

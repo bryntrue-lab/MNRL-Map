@@ -21,17 +21,22 @@ import {
   type EncounterMode,
   type EncounterSession,
 } from "@/lib/encounter";
+import { onSnapshot } from "firebase/firestore";
+
 import {
   beginSequenceEncounter,
   fetchEncounterLibrary,
   findCrystallizingNote,
+  getUserEncounter,
   recordVisit,
   resolveAudioUrl,
   selectEncounterForDay,
   userEncounterId,
+  userEncounterRef,
   type EncounterWithId,
 } from "@/lib/firestore";
 import { PHASE_ACCENT, dayInTurn, practiceTurnOf, word } from "@/lib/spiral";
+import type { UserEncounterDoc } from "@/types/firestore";
 import { consumeVisitDay } from "@/lib/visitStore";
 import type { PhaseId } from "@/types/firestore";
 
@@ -89,6 +94,49 @@ export default function TodayScreen() {
 
   const encounter = library ? selectEncounterForDay(library, day, practiceTurn) : null;
 
+  // F5 — one completion per local calendar day. If yesterday's instance
+  // was completed TODAY, today's door stays closed until local midnight.
+  const prevSeq = sequenceDay - 1;
+  const prevTurn = prevSeq >= 1 ? practiceTurnOf(prevSeq) : null;
+  const prevEncounter =
+    library && prevTurn != null ? selectEncounterForDay(library, prevSeq, prevTurn) : null;
+  const [gatedToday, setGatedToday] = useState(false);
+  // F5 — the gate reopens AT local midnight even if the screen just sits
+  // there; dayKey turning re-runs the listener's date comparison.
+  const [dayKey, setDayKey] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const n = new Date();
+    const next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 1);
+    const t = setTimeout(
+      () => setDayKey(new Date().toDateString()),
+      Math.max(1000, next.getTime() - Date.now())
+    );
+    return () => clearTimeout(t);
+  }, [dayKey]);
+  useEffect(() => {
+    if (!user || !prevEncounter || prevTurn == null) {
+      setGatedToday(false);
+      return;
+    }
+    // Live doc listener with estimated server timestamps — a just-queued
+    // completion (offline batch) gates immediately, never an early unlock.
+    const unsub = onSnapshot(
+      userEncounterRef(user.uid, prevEncounter.id, prevTurn),
+      (snap) => {
+        const d = snap.data({ serverTimestamps: "estimate" }) as
+          | UserEncounterDoc
+          | undefined;
+        setGatedToday(
+          d?.status === "completed" &&
+            (!d.completedAt ||
+              d.completedAt.toDate().toDateString() === dayKey)
+        );
+      },
+      () => setGatedToday(false)
+    );
+    return unsub;
+  }, [user, prevEncounter, prevTurn, dayKey]);
+
   // §9 — visits record status 'visited' + visitedAt (never downgrading).
   useEffect(() => {
     if (!visiting || !user || !encounter) return;
@@ -130,6 +178,30 @@ export default function TodayScreen() {
 
   const begin = async () => {
     if (!encounter || busy.current || !user) return;
+    // F5 — belt over the render gate: the next encounter is not playable
+    // until local midnight. Visits (past days) are unaffected.
+    if (!visiting && gatedToday) return;
+    // Preflight — the listener above may not have delivered yet on a fresh
+    // screen; resolve yesterday's doc before opening today's door.
+    if (!visiting && prevEncounter && prevTurn != null) {
+      busy.current = true;
+      try {
+        const prevDoc = await getUserEncounter(user.uid, prevEncounter.id, prevTurn);
+        if (
+          prevDoc?.status === "completed" &&
+          (!prevDoc.completedAt ||
+            prevDoc.completedAt.toDate().toDateString() === new Date().toDateString())
+        ) {
+          setGatedToday(true);
+          busy.current = false;
+          return;
+        }
+      } catch {
+        // Offline with no cached doc — fall through; the batch-queued
+        // completion path is already covered by the live listener.
+      }
+      busy.current = false;
+    }
     busy.current = true;
     try {
       // Resolve the Storage URL first — a missing file surfaces here and
@@ -220,7 +292,15 @@ export default function TodayScreen() {
             <Text style={styles.encounterTitle}>{encounter.title}</Text>
             <Text style={styles.encounterSubtitle}>{encounter.subtitle}</Text>
 
-            <BeginButton onPress={begin} meta="3 min · voice" accent={accent} />
+            {!visiting && gatedToday ? (
+              // F5 — the quiet acknowledged state; the door reopens at
+              // local midnight. Same words as the Origin CTA.
+              <Text style={styles.notReadyStatic} testID="threshold-gated">
+                complete · tomorrow
+              </Text>
+            ) : (
+              <BeginButton onPress={begin} meta="3 min · voice" accent={accent} />
+            )}
 
             {notReady && (
               <Animated.Text style={[styles.notReady, { opacity: notReadyOpacity }]}>

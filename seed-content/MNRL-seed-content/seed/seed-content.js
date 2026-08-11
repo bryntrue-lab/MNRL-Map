@@ -49,6 +49,7 @@ const ENCOUNTERS_DIR = path.join(CONTENT_ROOT, 'encounters');
 const AUDIO_DIR = path.join(CONTENT_ROOT, 'audio');
 const OFFERINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'offerings.json');
 const TEACHINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'teachings.json');
+const COUNTERWEIGHT_POOLS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'counterweight-pools.json');
 const MOTIF_LEXICON_FILE = path.join(CONTENT_ROOT, 'motif-lexicon', 'lexicon.json');
 
 const VALID_PHASES = new Set(['signal', 'field', 'friction', 'voice']);
@@ -459,6 +460,55 @@ async function seedMotifLexicon(db) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// COUNTERWEIGHT POOLS (Slice F6)
+// ─────────────────────────────────────────────────────────────
+
+async function seedCounterweightPools(db) {
+  console.log('\n─── Counterweight pools ──────────────────────');
+  if (!fs.existsSync(COUNTERWEIGHT_POOLS_FILE)) {
+    console.log('  no counterweight-pools.json; skipping.');
+    return;
+  }
+
+  let entry;
+  try {
+    entry = JSON.parse(fs.readFileSync(COUNTERWEIGHT_POOLS_FILE, 'utf8'));
+  } catch (e) {
+    console.log(`  ✗ counterweight-pools.json parse error — ${e.message}`);
+    return;
+  }
+
+  const { id, ...doc } = entry || {};
+  const errors = [];
+  if (id !== 'counterweight_pools') errors.push('id must be "counterweight_pools"');
+  if (doc.kind !== 'counterweight_pools') errors.push('kind must be "counterweight_pools"');
+  for (const field of ['pools', 'futurePools']) {
+    const rec = doc[field];
+    if (!rec || typeof rec !== 'object') { errors.push(`${field} must be an object`); continue; }
+    for (const phase of VALID_PHASES) {
+      const pool = rec[phase];
+      if (!Array.isArray(pool) || pool.length < 1 || pool.length > 4 ||
+          pool.some(q => typeof q !== 'string' || !q.trim())) {
+        errors.push(`${field}.${phase} must be 1–4 non-empty strings`);
+      }
+    }
+  }
+  if (errors.length) {
+    errors.forEach(e => console.log(`  ✗ ${e}`));
+    return;
+  }
+
+  const ref = db.collection('practitionerContent').doc(id);
+  const existing = await ref.get();
+  try {
+    await ref.set(doc, { merge: true });
+    console.log(`  ${existing.exists ? '↻' : '✓'} ${id} — ${existing.exists ? 'updated' : 'created'}`);
+  } catch (e) {
+    console.log(`  ✗ ${id}: Firestore write failed — ${e.message}`);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────────
 
@@ -472,6 +522,7 @@ async function main() {
   await seedEncounters(db, bucket);
   await seedPractitionerContent(db);
   await seedTeachings(db);
+  await seedCounterweightPools(db);
   await seedMotifLexicon(db);
 
   console.log('\nDone.\n');

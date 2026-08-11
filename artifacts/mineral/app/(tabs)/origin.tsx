@@ -207,6 +207,13 @@ export default function OriginScreen() {
   // ── The life clock ────────────────────────────────────────
   const [now, setNow] = useState(() => new Date());
   useFocusEffect(useCallback(() => setNow(new Date()), []));
+  // F5 — the day gate must open AT local midnight, even if the screen just
+  // sits there: re-anchor `now` when the calendar day turns.
+  useEffect(() => {
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+    const t = setTimeout(() => setNow(new Date()), Math.max(1000, next.getTime() - Date.now()));
+    return () => clearTimeout(t);
+  }, [now]);
 
   const birthDate = useMemo(
     () => (profile?.birthDate ? profile.birthDate.toDate() : null),
@@ -256,7 +263,14 @@ export default function OriginScreen() {
     const unsub = onSnapshot(
       turnEncountersQuery(user.uid, practiceTurn),
       (snap) =>
-        setTurnDocs(snap.docs.map((d) => ({ id: d.id, ...(d.data() as UserEncounterDoc) }))),
+        // F5a — estimate pending serverTimestamps so a just-written
+        // completedAt flips the CTA immediately, not on server ack.
+        setTurnDocs(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data({ serverTimestamps: "estimate" }) as UserEncounterDoc),
+          }))
+        ),
       (err) => console.warn("turn encounters", err)
     );
     return unsub;
@@ -307,10 +321,13 @@ export default function OriginScreen() {
         prevTurn === practiceTurn
           ? turnDocs.find((d) => d.encounterId === prevEncounter.id)
           : prevTurnDoc;
+      // F5 — one completion per local calendar day. A completed doc whose
+      // completedAt hasn't resolved yet (offline batch, pending server
+      // timestamp) counts as completed TODAY — never an early unlock.
       if (
         prevDoc?.status === "completed" &&
-        prevDoc.completedAt &&
-        prevDoc.completedAt.toDate().toDateString() === now.toDateString()
+        (!prevDoc.completedAt ||
+          prevDoc.completedAt.toDate().toDateString() === now.toDateString())
       )
         return "complete";
     }

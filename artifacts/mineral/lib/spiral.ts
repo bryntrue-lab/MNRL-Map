@@ -79,6 +79,26 @@ export const FUTURE_COUNTERWEIGHT_QUESTION: Record<PhaseId, string> = {
   voice: "What are you saying now that then will gather toward?",
 };
 
+/** F6 — practitioner-editable pools of counterweight questions, keyed by
+ *  phase. Founder-supplied via practitionerContent/counterweight_pools;
+ *  until pools arrive, each phase falls back to its single question. */
+export type CounterweightPools = Partial<Record<PhaseId, string[]>>;
+
+/** F6 — rotate the angle, keep the season: deterministic daily selection,
+ *  `pool[sequenceDay % pool.length]`. No randomness, no consecutive-day
+ *  repeats once a pool has ≥2 entries; single-entry pools behave as today. */
+export function counterweightQuestionForDay(
+  phase: PhaseId,
+  sequenceDay: number,
+  pools: CounterweightPools | null
+): string {
+  const pool = (pools?.[phase] ?? []).filter(
+    (q) => typeof q === "string" && q.trim().length > 0
+  );
+  if (pool.length === 0) return COUNTERWEIGHT_QUESTION[phase];
+  return pool[((sequenceDay % pool.length) + pool.length) % pool.length];
+}
+
 export interface Season {
   title: string;
   question: string;

@@ -4,8 +4,10 @@ import { Timestamp } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   Dimensions,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { COUNTRIES, type Country } from "@/constants/countries";
 import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { LinkPrimary, LinkSecondary, LinkWhisper } from "@/components/Links";
@@ -84,7 +87,12 @@ export default function SignatureScreen() {
   const [birthTimeObj, setBirthTimeObj] = useState<Date | null>(null);
   const [webDate, setWebDate] = useState("");
   const [webTime, setWebTime] = useState("");
-  const [birthPlace, setBirthPlace] = useState("");
+  // F1 — structured birth place: city text + country from the static ISO
+  // list. No network, no geocoding.
+  const [birthCity, setBirthCity] = useState("");
+  const [country, setCountry] = useState<Country | null>(null);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countryFilter, setCountryFilter] = useState("");
   const [dateOpen, setDateOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,7 +146,15 @@ export default function SignatureScreen() {
         birthDate: Timestamp.fromDate(parsed),
         birthDateISO: toISODate(parsed),
         ...(timeString ? { birthTime: timeString } : {}),
-        ...(birthPlace.trim() ? { birthPlace: birthPlace.trim() } : {}),
+        ...(birthCity.trim() || country
+          ? {
+              birthPlaceParts: {
+                city: birthCity.trim(),
+                country: country?.name ?? "",
+                countryCode: country?.code ?? "",
+              },
+            }
+          : {}),
       });
       leave();
     } catch {
@@ -207,7 +223,7 @@ export default function SignatureScreen() {
 
           {/* Birth time — optional, one-tap skip. */}
           <View style={styles.optionalRow}>
-            <Text style={styles.fieldLabel}>time, if you know it</Text>
+            <Text style={styles.fieldLabel}>Birth time, if you know it</Text>
             {(timeOpen || timeString) && (
               <LinkWhisper
                 label="skip"
@@ -262,19 +278,35 @@ export default function SignatureScreen() {
             </>
           )}
 
-          {/* Birth place — optional, stored as typed. */}
-          <Text style={styles.fieldLabel}>place</Text>
+          {/* F1 — structured birth place: city text + country picker. Both
+              optional; the one-tap skip below covers the whole screen. */}
+          <Text style={styles.fieldLabel}>birth city</Text>
           <TextInput
             style={styles.input}
-            placeholder="birth place  (optional)"
+            placeholder="city or town"
             placeholderTextColor="rgba(255,255,255,0.5)"
-            value={birthPlace}
-            onChangeText={setBirthPlace}
+            value={birthCity}
+            onChangeText={setBirthCity}
             autoCapitalize="words"
             returnKeyType="done"
             onSubmitEditing={() => proceed()}
-            testID="signature-birthplace"
+            testID="signature-birthcity"
           />
+
+          <Text style={styles.fieldLabel}>country</Text>
+          <Pressable
+            style={styles.input}
+            onPress={() => {
+              setDateOpen(false);
+              setTimeOpen(false);
+              setCountryOpen(true);
+            }}
+            testID="signature-country"
+          >
+            <Text style={country ? styles.fieldValue : styles.fieldPlaceholder}>
+              {country ? country.name : "—"}
+            </Text>
+          </Pressable>
         </View>
 
         {failed ? (
@@ -296,6 +328,82 @@ export default function SignatureScreen() {
           />
         </View>
       )}
+
+      {/* F1 — the country list: static, filtered locally, one tap. */}
+      <Modal
+        visible={countryOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCountryOpen(false)}
+      >
+        <View style={styles.countryBackdrop}>
+          <View style={[styles.countrySheet, { paddingTop: insets.top + 24 }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="country"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={countryFilter}
+              onChangeText={setCountryFilter}
+              autoCapitalize="words"
+              autoFocus={!isWeb}
+              testID="signature-country-filter"
+            />
+            <ScrollView
+              style={styles.countryList}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {COUNTRIES.filter((c) =>
+                c.name.toLowerCase().includes(countryFilter.trim().toLowerCase())
+              ).map((c) => (
+                <Pressable
+                  key={c.code}
+                  style={styles.countryRow}
+                  onPress={() => {
+                    setCountry(c);
+                    setCountryOpen(false);
+                    setCountryFilter("");
+                  }}
+                  testID={`country-${c.code}`}
+                >
+                  <Text
+                    style={
+                      country?.code === c.code
+                        ? styles.fieldValue
+                        : styles.countryName
+                    }
+                  >
+                    {c.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <View style={[styles.countryFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+              {country ? (
+                <LinkWhisper
+                  label="clear"
+                  onPress={() => {
+                    setCountry(null);
+                    setCountryOpen(false);
+                    setCountryFilter("");
+                  }}
+                  testID="signature-country-clear"
+                />
+              ) : (
+                <View />
+              )}
+              <LinkSecondary
+                label="not now"
+                onPress={() => {
+                  setCountryOpen(false);
+                  setCountryFilter("");
+                }}
+                testID="signature-country-close"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {fromOrigin ? (
         <View style={[styles.originFooter, { bottom: footerBottom }]}>
@@ -406,5 +514,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+
+  // F1 — country picker
+  countryBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(3,1,8,0.92)",
+  },
+  countrySheet: {
+    flex: 1,
+    paddingHorizontal: 36,
+  },
+  countryList: {
+    flex: 1,
+    marginTop: 14,
+  },
+  countryRow: {
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  countryName: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.72)",
+  },
+  countryFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
   },
 });

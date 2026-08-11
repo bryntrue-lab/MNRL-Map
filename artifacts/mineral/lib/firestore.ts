@@ -87,7 +87,7 @@ export function userEncounterId(encounterId: string, turn: number): string {
   return `${encounterId}_t${turn}`;
 }
 
-function userEncounterRef(uid: string, encounterId: string, turn: number) {
+export function userEncounterRef(uid: string, encounterId: string, turn: number) {
   return doc(db, "users", uid, "userEncounters", userEncounterId(encounterId, turn));
 }
 
@@ -224,11 +224,13 @@ export async function completeEncounter(
   );
 
   const next = sequenceDay + 1;
+  // F5 — absolute set, not increment(1): two devices closing the same
+  // encounter from the same snapshot both land on `next`, never `+2`.
   const updates: {
-    sequenceDay: FieldValue;
+    sequenceDay: number;
     currentPhase?: PhaseId;
     currentTurn?: number;
-  } = { sequenceDay: increment(1) };
+  } = { sequenceDay: next };
   const nextPhase = encounterFor(next).phase;
   if (nextPhase !== encounterFor(sequenceDay).phase) updates.currentPhase = nextPhase;
   const nextTurn = practiceTurnOf(next);

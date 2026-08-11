@@ -47,8 +47,12 @@ export interface UserDoc {
   birthDateISO?: string | null;
   birthTime: string | null;
   birthLocation: { lat: number; lng: number; label: string } | null;
-  /** E1 — free-text birth place, stored as typed (no geocoding in v1). */
+  /** E1 — free-text birth place, stored as typed (no geocoding in v1).
+   *  Legacy after F1; new writes use birthPlaceParts. */
   birthPlace?: string | null;
+  /** F1 — structured birth place: city as typed + ISO country from the
+   *  static list. Deterministic enough to geocode server-side later. */
+  birthPlaceParts?: { city: string; country: string; countryCode: string } | null;
   humanDesignType: string | null;
   currentPhase: PhaseId;
   currentTurn: number;

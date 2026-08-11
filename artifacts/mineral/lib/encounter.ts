@@ -85,6 +85,44 @@ export function postCaptureBlocks(
   return all.filter((_, i) => i !== (reflectionIdx === -1 ? -2 : reflectionIdx));
 }
 
+/** F3 — does this block resolve to visible content? A screen exists only
+ *  if its block has content; anything else is skipped, never blank. */
+function blockHasContent(b: EncounterBlock): boolean {
+  switch (b.type) {
+    case "integration":
+      return typeof b.instruction === "string" && b.instruction.trim().length > 0;
+    case "reflection":
+      return (b.prompts ?? []).some((p) => (p.text ?? "").trim().length > 0);
+    default:
+      // carry (dropped since E5) and any unknown future type: no screen.
+      return false;
+  }
+}
+
+export interface SkippedBlock {
+  index: number; // index within the encounter's original blocks array
+  type: string;
+}
+
+/** F3 — the flow's screen list, generated from the encounter's block
+ *  array: post-⟡ blocks that actually have content. Empty ones are
+ *  returned in `skipped` so bad content is caught, not silently
+ *  swallowed. */
+export function renderablePostBlocks(blocks: EncounterBlock[] | undefined): {
+  blocks: EncounterBlock[];
+  skipped: SkippedBlock[];
+} {
+  const all = blocks ?? [];
+  const post = postCaptureBlocks(all);
+  const kept: EncounterBlock[] = [];
+  const skipped: SkippedBlock[] = [];
+  for (const b of post) {
+    if (b.type !== "carry" && blockHasContent(b)) kept.push(b);
+    else if (b.type !== "carry") skipped.push({ index: all.indexOf(b), type: b.type });
+  }
+  return { blocks: kept, skipped };
+}
+
 // ─────────────────────────────────────────────────────────────
 // Woven-line rule (§1e, v1, client-side):
 //   the first sentence of 4–12 words; if none, the first 8 words

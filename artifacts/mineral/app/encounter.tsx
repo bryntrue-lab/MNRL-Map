@@ -8,7 +8,7 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { router } from "expo-router";
-import { onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -45,7 +45,7 @@ import {
   HOLD_TIMEOUT_MS,
   consumeEncounterSession,
   crystallizingPrompt,
-  postCaptureBlocks,
+  renderablePostBlocks,
   warmUpPrompts,
   wovenLine,
   type EncounterSession,
@@ -60,18 +60,20 @@ import {
   uploadCaptureAudio,
   userEncounterId,
 } from "@/lib/firestore";
+import { db } from "@/lib/firebase";
 import {
-  COUNTERWEIGHT_QUESTION,
   CX,
   CY,
   MAX_AGE,
   PHASE_ACCENT,
   ageAt,
   counterweightDate,
+  counterweightQuestionForDay,
   pt,
   resolve,
   ritualDateLabel,
   spiralPath,
+  type CounterweightPools,
 } from "@/lib/spiral";
 import type { EncounterBlock, FieldNoteDoc, PhaseId } from "@/types/firestore";
 
@@ -133,13 +135,19 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     }
     return null;
   }, [encounter.blocks]);
-  // E5 — ONE close screen. Carry blocks rendered a second consecutive
-  // "return to the map" screen before the close; they are dropped from
-  // the flow (their intro/closing copy no longer renders anywhere).
-  const postBlocks = useMemo(
-    () => postCaptureBlocks(encounter.blocks).filter((b) => b.type !== "carry"),
-    [encounter.blocks]
-  );
+  // E5 — ONE close screen: carry blocks stay dropped. F3 — the screen
+  // sequence is generated from the encounter's block array; a screen
+  // exists only if its block has content. Skipped blocks are logged so
+  // bad content is caught, never silently swallowed.
+  const postBlocks = useMemo(() => {
+    const { blocks, skipped } = renderablePostBlocks(encounter.blocks);
+    for (const s of skipped) {
+      console.warn(
+        `[encounter] block with no renderable content skipped — ${encounter.id} block[${s.index}] (${s.type})`
+      );
+    }
+    return blocks;
+  }, [encounter.blocks, encounter.id]);
   // §5 — warm-ups live behind the collapsed reveal, never listed openly.
   const warmUps = useMemo(() => warmUpPrompts(encounter.blocks), [encounter.blocks]);
   const [wayInOpen, setWayInOpen] = useState(false);
@@ -599,6 +607,23 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     router.replace("/(tabs)/origin");
   };
 
+  // F6 — practitioner-editable counterweight pools. One quiet read; on
+  // any failure the client falls back to the built-in single questions.
+  const [cwPools, setCwPools] = useState<CounterweightPools | null>(null);
+  useEffect(() => {
+    let on = true;
+    getDoc(doc(db, "practitionerContent", "counterweight_pools"))
+      .then((snap) => {
+        if (!on || !snap.exists()) return;
+        const pools = (snap.data() as { pools?: CounterweightPools }).pools;
+        if (pools) setCwPools(pools);
+      })
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, []);
+
   // ── Counterweight geometry (§1e) — Task A spiral math at small scale ──
   const cw = useMemo(() => {
     if (!cwAvailable || currentAge == null || !birthDate) return null;
@@ -616,7 +641,8 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     const w = Math.max(...xs) + pad - minX;
     const h = Math.max(...ys) + pad - minY;
     return {
-      question: COUNTERWEIGHT_QUESTION[r.phase],
+      // F6 — rotate the angle, keep the season: deterministic daily pick.
+      question: counterweightQuestionForDay(r.phase, profile?.sequenceDay ?? 1, cwPools),
       phase: r.phase,
       isoDate,
       color: r.station.color,
@@ -627,7 +653,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       vb: `${minX} ${minY} ${w} ${h}`,
       ratio: h / w,
     };
-  }, [cwAvailable, currentAge, birthDate]);
+  }, [cwAvailable, currentAge, birthDate, cwPools, profile?.sequenceDay]);
 
   // ── Render ──
   const block: EncounterBlock | null =
@@ -657,7 +683,19 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         </Pressable>
       )}
 
-      {/* Ambient + — block screens only, never the ⟡ (§1f) */}
+      {/* F2 — the quiet exit ✕: every screen, top-right, no confirm.
+          Exit only navigates; whatever is already kept stays kept. */}
+      <Pressable
+        onPress={() => router.replace("/(tabs)")}
+        hitSlop={14}
+        style={[styles.exitX, { top: insets.top + 14 }]}
+        testID="encounter-exit"
+      >
+        <Text style={styles.exitXText}>✕</Text>
+      </Pressable>
+
+      {/* Ambient + — block screens only, never the ⟡ (§1f). Shifted left
+          of the ✕ since F2 gave the corner to the exit. */}
       {stage === "block" && (
         <Pressable
           onPress={() => setSheetMode("ambient")}
@@ -1082,7 +1120,8 @@ const styles = StyleSheet.create({
   },
   ambientPlus: {
     position: "absolute",
-    right: 18,
+    // F2 — shifted left of the exit ✕, which now owns the corner.
+    right: 62,
     zIndex: 20,
     width: 44,
     height: 44,
@@ -1092,6 +1131,21 @@ const styles = StyleSheet.create({
   ambientPlusText: {
     ...TypeScale.screenTitle,
     color: "rgba(255,255,255,0.5)",
+  },
+  // F2 — quiet exit: 24pt glyph (navGlyph token) in a 44pt target,
+  // textTertiary, no confirm.
+  exitX: {
+    position: "absolute",
+    right: 18,
+    zIndex: 20,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exitXText: {
+    ...TypeScale.navGlyph,
+    color: "rgba(255,255,255,0.58)",
   },
 
   // Listen
