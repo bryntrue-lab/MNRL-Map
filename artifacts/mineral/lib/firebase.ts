@@ -10,7 +10,7 @@ import {
   // but is missing from some firebase@12 type definitions. §9.
   getReactNativePersistence,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
@@ -66,7 +66,21 @@ function initAppCheck(): void {
 }
 
 export const auth = initAuth();
-export const db = getFirestore(app);
+
+// Firestore transport: on native, the web SDK's default WebChannel streaming
+// can silently hang on the RN network stack — content appears only after
+// multi-minute internal retries (seen as notes/guide blank for 2–3 min on
+// open). Force long polling on native; web keeps the default streaming.
+function initDb() {
+  try {
+    if (Platform.OS === "web") return getFirestore(app);
+    return initializeFirestore(app, { experimentalForceLongPolling: true });
+  } catch {
+    // Already initialized — happens on hot reload.
+    return getFirestore(app);
+  }
+}
+export const db = initDb();
 export const storage = getStorage(app);
 // C §3 — the deleteAccount callable lives in us-central1 with the rest.
 export const functions = getFunctions(app, "us-central1");
