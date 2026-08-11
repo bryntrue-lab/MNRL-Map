@@ -24,3 +24,5 @@ description: What the FIREBASE_SERVICE_ACCOUNT identity can and cannot deploy fo
 5. Run deploys in the FOREGROUND of one shell call — background processes die when the call returns.
 7. firebase.json declares codebase "mineral": single-function deploys need `--only functions:mineral:<fn>` — plain `functions:<fn>` aborts with "No function matches given --only filters".
 6. Speech v2 batchRecognize: per-file "An internal error occurred" = the Speech service agent (`service-<projectNumber>@gcp-sa-speech.iam.gserviceaccount.com`) can't read the bucket. Grant it `roles/storage.objectViewer` via BUCKET-level IAM — Storage Admin on the SA suffices, no Owner needed. Fixed transcription instantly.
+
+**Calling callables as the founder:** mint a custom token with the service account (JWT aud=identitytoolkit…IdentityToolkit, `uid` claim), exchange via `accounts:signInWithCustomToken?key=$FIREBASE_API_KEY`, then POST `{"data":{...}}` to `https://us-central1-mineral-resonance.cloudfunctions.net/<fn>` with `Authorization: Bearer <idToken>`. Used for `backfillPatterns {rebuild:true}` after lexicon/stopword changes.

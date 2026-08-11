@@ -8,7 +8,6 @@ import {
 import {
   CormorantGaramond_400Regular_Italic,
   CormorantGaramond_500Medium_Italic,
-  CormorantGaramond_600SemiBold_Italic,
 } from "@expo-google-fonts/cormorant-garamond";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -60,7 +59,6 @@ export default function RootLayout() {
     Inter_700Bold,
     CormorantGaramond_400Regular_Italic,
     CormorantGaramond_500Medium_Italic,
-    CormorantGaramond_600SemiBold_Italic,
   });
 
   useEffect(() => {

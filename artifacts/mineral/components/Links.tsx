@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   whisperText: {
     ...LinkType.whisper,
-    color: "rgba(200,190,225,0.55)",
+    color: colors.light.whisper,
   },
   secondaryTarget: {
     minHeight: 44,

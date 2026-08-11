@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mineral — Field Guide v4 (1B · centered title)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --t1:#fff; --t2:rgba(255,255,255,0.72); --t3:rgba(255,255,255,0.58); --tm:rgba(255,255,255,0.5);
+    --hair:rgba(255,255,255,0.07); --whisper:rgba(200,190,225,0.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+  body{background:#050308;font-family:'Inter',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:28px 12px 60px;}
+  .devbar{display:flex;margin-bottom:8px;}
+  .devbar button{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;background:none;border:1px dashed rgba(255,255,255,0.25);color:rgba(255,255,255,0.55);padding:7px 16px;cursor:pointer;}
+  .devbar button:first-child{border-radius:8px 0 0 8px;border-right:none;}
+  .devbar button:last-child{border-radius:0 8px 8px 0;}
+  .devbar button.on{background:rgba(255,255,255,0.1);color:#fff;}
+  .devnote{font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:0.5px;margin-bottom:16px;}
+  .phone{width:393px;min-height:852px;position:relative;border-radius:36px;overflow:hidden;
+    background:radial-gradient(120% 70% at 50% 0%, #1b1226 0%, #0a0510 55%, #070310 100%);
+    box-shadow:0 30px 80px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.06);
+    padding:64px 26px 108px;}
+  /* header — centered, matching the other tabs */
+  .screenTitle{text-align:center;font-size:12px;font-weight:600;letter-spacing:3.2px;color:var(--t3);}
+  .fieldLine{text-align:center;font-size:11px;letter-spacing:0.4px;color:var(--tm);margin-top:8px;}
+  /* eyebrow section markers (per the refinement, at 10 not 9) */
+  .eb{font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--tm);}
+  /* hero */
+  .heroRow{display:flex;align-items:baseline;gap:10px;margin-top:12px;animation:bloom 1.1s ease .2s both;}
+  .heroWord{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;font-size:30px;line-height:36px;letter-spacing:0.6px;color:var(--t1);}
+  .heroCount{font-size:11px;letter-spacing:0.2px;color:var(--tm);}
+  @keyframes bloom{from{opacity:0;letter-spacing:3px}to{opacity:1;letter-spacing:0.6px}}
+  .exemplar{margin-top:16px;padding-left:14px;border-left:1px solid rgba(255,255,255,0.1);}
+  .exemplar .q{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;font-size:18px;line-height:25px;letter-spacing:0.3px;color:var(--t2);position:relative;}
+  .exemplar .q em{font-style:italic;font-weight:500;color:var(--t1);}
+  .exemplar .q::after{content:"";position:absolute;left:0;bottom:-3px;height:1px;background:#E08AAF;animation:rootline 1.4s ease 1s both;}
+  @keyframes rootline{from{width:0;opacity:0}to{width:56%;opacity:.8}}
+  .exemplar .attr{margin-top:8px;font-size:11px;letter-spacing:0.2px;color:var(--tm);font-family:'Inter',sans-serif;}
+  .whisper{margin-top:14px;font-size:12px;letter-spacing:0.5px;color:var(--whisper);cursor:pointer;}
+  .offering{margin-top:18px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.035);}
+  .offering .t{font-size:14px;line-height:21px;color:var(--t3);}
+  .offering .from{display:block;margin-top:8px;font-size:9px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--tm);}
+  /* sections */
+  .sec{margin-top:26px;}
+  .gRow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--hair);cursor:pointer;}
+  .gRow .w{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;font-size:16px;line-height:21px;letter-spacing:0.3px;color:var(--t2);flex:1;}
+  .gRow .c{font-size:11px;color:var(--tm);flex:none;}
+  .gPair{display:none;padding:4px 0 10px;border-bottom:1px solid var(--hair);}
+  .gWrap.open .gPair{display:block;}
+  .gPair .exemplar{margin-top:10px;}
+  .gPair .exemplar .q::after{display:none;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .chip{font-size:12px;font-weight:500;letter-spacing:0.2px;color:var(--t3);padding:6px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:999px;}
+  .chip span{color:var(--tm);margin-left:6px;}
+  .lens{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--hair);}
+  .dot{width:7px;height:7px;border-radius:50%;flex:none;}
+  .lens .n{flex:1;font-size:14px;color:var(--t1);}
+  .lens .c{font-size:11px;color:var(--tm);}
+  .lens .a{font-size:14px;color:var(--tm);}
+  .listening{padding-top:10px;font-size:11px;letter-spacing:0.2px;color:var(--tm);}
+  .footerSig{margin-top:30px;padding-top:16px;border-top:1px solid var(--hair);font-size:11px;letter-spacing:0.2px;color:var(--tm);}
+  .tabbar{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;justify-content:space-around;align-items:flex-start;padding-top:14px;
+    background:linear-gradient(to top, rgba(5,2,9,0.96), rgba(5,2,9,0.6) 70%, transparent);}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:var(--tm);}
+  .tab .ic{font-size:15px;line-height:15px;}
+  .tab.active{color:#E08AAF;}
+</style>
+</head>
+<body>
+  <div class="devbar">
+    <button id="btnA" class="on" onclick="show('A')">week one</button>
+    <button id="btnB" onclick="show('B')">day twenty-three</button>
+  </div>
+  <div class="devnote">1B structure · centered title · prototype control not part of the design</div>
+
+  <div class="phone">
+    <!-- ============ STATE A ============ -->
+    <div id="stateA">
+      <div class="screenTitle">FIELD GUIDE</div>
+      <div class="fieldLine">six notes · the first week</div>
+
+      <div class="sec" style="margin-top:34px">
+        <div class="eb">returning</div>
+        <div class="heroRow"><span class="heroWord">support</span><span class="heroCount">3 notes · one day</span></div>
+        <div class="exemplar">
+          <div class="q">"…hard to stick with my practices. Through all the uncertainty. I think. Some <em>support</em>…"</div>
+          <div class="attr">reflection · the threshold · yesterday</div>
+        </div>
+        <div class="whisper">all three notes →</div>
+      </div>
+
+      <div class="offering">
+        <div class="t">The old practices treated a thing named three times in one day as one that had arrived before the day began.</div>
+        <span class="from">from the field</span>
+      </div>
+
+      <div class="sec">
+        <div class="eb">gathering</div>
+        <div class="gWrap" onclick="this.classList.toggle('open')">
+          <div class="gRow"><span class="w">"this work is important to me"</span><span class="c">twice</span></div>
+          <div class="gPair">
+            <div class="exemplar">
+              <div class="q">"<em>this work is important to me</em>, and I think I need support to get through it."</div>
+              <div class="attr">reflection · yesterday</div>
+            </div>
+            <div class="exemplar">
+              <div class="q">"<em>this work is important to me</em> and it's hard to stick with my practices."</div>
+              <div class="attr">reflection · yesterday</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="eb">arriving today</div>
+        <div class="chips">
+          <span class="chip">uncertainty<span>1</span></span>
+          <span class="chip">practices<span>2</span></span>
+          <span class="chip">consciousness<span>1</span></span>
+          <span class="chip">psyche<span>1</span></span>
+          <span class="chip">overwhelmed<span>1</span></span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="eb" style="margin-bottom:2px">the lenses</div>
+        <div class="lens"><div class="dot" style="background:#88DCBA"></div><div class="n">your recurring language</div><div class="c">one word · one phrase</div><div class="a">→</div></div>
+        <div class="lens"><div class="dot" style="background:#E08AAF"></div><div class="n">recurring resistance</div><div class="c">one wall named</div><div class="a">→</div></div>
+        <div class="listening">mythic motifs · conditions · consciousness — listening.</div>
+      </div>
+
+      <div class="footerSig">five reflections · one resistance · the field is one day old</div>
+    </div>
+
+    <!-- ============ STATE B ============ -->
+    <div id="stateB" style="display:none">
+      <div class="screenTitle">FIELD GUIDE</div>
+      <div class="fieldLine">thirty-one notes · twenty-three days</div>
+
+      <div class="sec" style="margin-top:34px">
+        <div class="eb">returning</div>
+        <div class="heroRow"><span class="heroWord">the sea</span><span class="heroCount">5 notes · three weeks</span></div>
+        <div class="exemplar">
+          <div class="q">"<em>the sea</em> again — on the radio, then the book I opened at random"</div>
+          <div class="attr">synchronicity · encounter twenty-one · two days ago</div>
+        </div>
+        <div class="whisper">all five notes →</div>
+      </div>
+
+      <div class="offering">
+        <div class="t">Water has been read as a symbol of the unconscious, of emotion, of transition. Currents that return are often noted as carrying what the waking mind has not yet held.</div>
+        <span class="from">from the field</span>
+      </div>
+
+      <div class="sec">
+        <div class="eb">gathering</div>
+        <div class="gWrap">
+          <div class="gRow"><span class="w">balance</span><span class="c">twice</span></div>
+        </div>
+        <div class="gWrap">
+          <div class="gRow"><span class="w">"the old house"</span><span class="c">twice</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="eb">arriving today</div>
+        <div class="chips">
+          <span class="chip">tide<span>2</span></span>
+          <span class="chip">threshold<span>1</span></span>
+          <span class="chip">salt<span>1</span></span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="eb" style="margin-bottom:2px">the lenses</div>
+        <div class="lens"><div class="dot" style="background:#E9B76B"></div><div class="n">mythic motifs</div><div class="c">three returning</div><div class="a">→</div></div>
+        <div class="lens"><div class="dot" style="background:#88DCBA"></div><div class="n">your recurring language</div><div class="c">two phrases · five words</div><div class="a">→</div></div>
+        <div class="lens"><div class="dot" style="background:#E08AAF"></div><div class="n">recurring resistance</div><div class="c">the same wall, three times</div><div class="a">→</div></div>
+        <div class="listening">conditions · consciousness — listening.</div>
+      </div>
+
+      <div class="footerSig">eighteen reflections · six dreams · four resistances · three sparks · the field is twenty-three days old</div>
+    </div>
+
+    <div class="tabbar">
+      <div class="tab"><span class="ic">●</span>today</div>
+      <div class="tab"><span class="ic">〵</span>notes</div>
+      <div class="tab active"><span class="ic">◐</span>guide</div>
+      <div class="tab"><span class="ic">⊙</span>origin</div>
+    </div>
+  </div>
+
+<script>
+function show(which){
+  document.getElementById('stateA').style.display = which==='A' ? 'block':'none';
+  document.getElementById('stateB').style.display = which==='B' ? 'block':'none';
+  document.getElementById('btnA').classList.toggle('on', which==='A');
+  document.getElementById('btnB').classList.toggle('on', which==='B');
+}
+</script>
+</body>
+</html>

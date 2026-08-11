@@ -59,7 +59,9 @@ const STOPWORDS = new Set(
     "anything everything nothing someone anyone everyone one two today " +
     "yesterday tomorrow now then again back way ways time times day days " +
     "keep keeps keeping kept feel feels feeling felt little big right left " +
-    "first last next new old good bad yes okay ok oh um uh hmm"
+    "first last next new old good bad yes okay ok oh um uh hmm " +
+    // D.3d §3.1 — modal/auxiliary verbs
+    "can could would should will shall may might must"
   )
     .split(/\s+/)
     .filter(Boolean)

@@ -59,6 +59,10 @@ const colors = {
     voiceText: "#9BB6D6",
     integralText: "#C4BAEA",
 
+    // D.3d §4 — the whisper register's ritual dim-lavender, now a token
+    // (consumed by Links.tsx; deliberately NOT part of the text hierarchy).
+    whisper: "rgba(200,190,225,0.55)",
+
     // Phase accents (all four phases, use Signal for v0.5)
     signal: "#C44A8A",
     field: "#5DCAA5",

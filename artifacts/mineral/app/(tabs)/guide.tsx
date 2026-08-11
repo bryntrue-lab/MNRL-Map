@@ -123,8 +123,6 @@ function heroOrder(a: PoolItem, b: PoolItem): number {
   return rank(b) - rank(a) || b.count - a.count || b.latestMs - a.latestMs;
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 /** Age phrase for a span of days: one day · N days · N weeks. */
 function spanPhrase(days: number): string {
   if (days <= 1) return "one day";
@@ -278,7 +276,6 @@ export default function GuideScreen() {
   const noteDates = notes
     .map((n) => n.createdAt?.toDate?.())
     .filter(Boolean) as Date[];
-  const dayCount = new Set(noteDates.map((d) => d.toDateString())).size;
   const fieldAgeDays = noteDates.length
     ? Math.floor(
         (Date.now() - Math.min(...noteDates.map((d) => d.getTime()))) / 86400000
@@ -309,7 +306,7 @@ export default function GuideScreen() {
     if (established.length > 0) return established[0];
     if (gathering.length > 0) return gathering[0];
     if (arrivals.length > 0) {
-      const stemKey = contentWords(arrivals[0])[0]?.stem ?? arrivals[0];
+      const stemKey = contentWords(arrivals[0].word)[0]?.stem ?? arrivals[0].word;
       const pooled = visibleItems.find((i) => i.key === stemKey);
       return (
         pooled ?? {
@@ -349,54 +346,29 @@ export default function GuideScreen() {
     return spanPhrase(days);
   }, [hero, notes, heroExemplars]);
 
-  // ── Synthesis — precedence unchanged (D.2), item re-typeset ──────
-  const synthesis = useMemo((): { pre: string; item: string; post: string } => {
-    if (established.length > 0 && notes.length > 0) {
-      const it = established[0];
-      return {
-        pre: "",
-        item: cap(displayItem(it.key)),
-        post: ` appears in ${spellNumber(it.count)} of your ${spellNumber(
-          notes.length
-        )} notes.`,
-      };
-    }
-    if (gathering.length > 0) {
-      return {
-        pre: "",
-        item: cap(displayItem(gathering[0].key)),
-        post: " has appeared twice.",
-      };
-    }
-    if (arrivals.length > 0) {
-      const n = arrivals.length;
-      return {
-        pre: "",
-        item: "",
-        post: `${cap(spellNumber(n))} ${n === 1 ? "word" : "words"} entered your field today.`,
-      };
-    }
-    return {
-      pre: "",
-      item: "",
-      post: `${cap(spellNumber(notes.length))} ${
-        notes.length === 1 ? "note" : "notes"
-      } across ${spellNumber(dayCount)} ${dayCount === 1 ? "day" : "days"}.`,
-    };
-  }, [established, gathering, arrivals, notes.length, dayCount]);
-
-  // ── GATHERING rows (hero excluded — it is already staged above) ──
+  // ── GATHERING rows (D.3d §1d): hero excluded, phrases first, max 3;
+  //    a single WORD must be ≥4 characters to display here (§3.2) ──
   const gatheringRows = useMemo(
     () =>
       gathering
         .filter((i) => i.key !== hero?.key)
-        .sort((a, b) => Number(b.phrase) - Number(a.phrase) || heroOrder(a, b)),
+        .filter((i) => i.phrase || i.key.length >= 4)
+        .sort((a, b) => Number(b.phrase) - Number(a.phrase) || heroOrder(a, b))
+        .slice(0, 3),
     [gathering, hero]
   );
+  const [openGatherKey, setOpenGatherKey] = useState<string | null>(null);
+  // A live snapshot can remove the open row (item became the hero, count
+  // moved past two) — never let stale state reopen it on re-entry.
+  useEffect(() => {
+    if (openGatherKey && !gatheringRows.some((i) => i.key === openGatherKey)) {
+      setOpenGatherKey(null);
+    }
+  }, [gatheringRows, openGatherKey]);
 
-  // ── Post-encounter freshness moment — once per completion ────────
-  const eyebrowAnim = useRef(new Animated.Value(1)).current;
-  const synthesisAnim = useRef(new Animated.Value(1)).current;
+  // ── Taking-root moment, retargeted (D.3d §0.1): hero word bloom +
+  //    root-line underline, once per completion, never on ordinary opens ──
+  const bloomAnim = useRef(new Animated.Value(1)).current;
   const underlineAnim = useRef(new Animated.Value(0)).current;
   const [freshMoment, setFreshMoment] = useState(false);
   const completions = profile?.completedEncounterCount ?? null;
@@ -415,24 +387,18 @@ export default function GuideScreen() {
         await AsyncStorage.setItem(SEEN_COMPLETIONS_KEY, String(completions));
         if (cancelled) return;
         setFreshMoment(true);
-        eyebrowAnim.setValue(0);
-        synthesisAnim.setValue(0);
+        bloomAnim.setValue(0);
         underlineAnim.setValue(0);
-        Animated.sequence([
-          Animated.timing(eyebrowAnim, { toValue: 1, duration: 500, useNativeDriver: false }),
-          Animated.timing(eyebrowAnim, { toValue: 0.55, duration: 220, useNativeDriver: false }),
-          Animated.timing(eyebrowAnim, { toValue: 1, duration: 220, useNativeDriver: false }),
-        ]).start();
-        Animated.timing(synthesisAnim, {
+        Animated.timing(bloomAnim, {
           toValue: 1,
-          duration: 500,
-          delay: 600,
+          duration: 1100,
+          delay: 200,
           useNativeDriver: false,
         }).start();
         Animated.timing(underlineAnim, {
           toValue: 1,
-          duration: 700,
-          delay: 1100,
+          duration: 1400,
+          delay: 1000,
           useNativeDriver: false,
         }).start();
       }
@@ -440,92 +406,56 @@ export default function GuideScreen() {
     return () => {
       cancelled = true;
     };
-  }, [completions, eyebrowAnim, synthesisAnim, underlineAnim]);
+  }, [completions, bloomAnim, underlineAnim]);
 
-  // ── Lens rows — live only, specific status lines ─────────────────
+  // ── Lens rows — live only; COUNT PHRASE only, no prose (D.3d §1g) ──
   const resistanceNotes = notes.filter((n) => n.type === "resistance");
 
-  function lensStatus(lensId: string): { parts: React.ReactNode; live: boolean } {
+  function lensStatus(lensId: string): { phrase: string | null; live: boolean } {
     if (lensId === "threads") {
-      const threadItems = visibleItems.filter((i) => i.type === "thread");
-      const estP = threadItems.filter((i) => i.count >= 3 && i.phrase).length;
-      const estW = threadItems.filter((i) => i.count >= 3 && !i.phrase).length;
-      const gatP = threadItems.filter((i) => i.count === 2 && i.phrase).length;
-      const gatW = threadItems.filter((i) => i.count === 2 && !i.phrase).length;
+      const threadItems = visibleItems.filter(
+        (i) => i.type === "thread" && i.count >= 2
+      );
+      const words = threadItems.filter((i) => !i.phrase).length;
+      const phrases = threadItems.filter((i) => i.phrase).length;
       const pieces: string[] = [];
-      if (estP) pieces.push(`${spellNumber(estP)} ${estP === 1 ? "phrase" : "phrases"} established`);
-      if (estW) pieces.push(`${spellNumber(estW)} ${estW === 1 ? "word" : "words"} established`);
-      if (gatP) pieces.push(`${spellNumber(gatP)} ${gatP === 1 ? "phrase" : "phrases"} gathering`);
-      if (gatW) pieces.push(`${spellNumber(gatW)} ${gatW === 1 ? "word" : "words"} gathering`);
-      if (pieces.length === 0) return { parts: null, live: false };
-      return { parts: <Text style={styles.lensLive}>{pieces.join(" · ")}</Text>, live: true };
+      if (words) pieces.push(`${spellNumber(words)} ${words === 1 ? "word" : "words"}`);
+      if (phrases) pieces.push(`${spellNumber(phrases)} ${phrases === 1 ? "phrase" : "phrases"}`);
+      if (pieces.length === 0) return { phrase: null, live: false };
+      return { phrase: pieces.join(" · "), live: true };
     }
     if (lensId === "motifs") {
-      const items = visibleItems
-        .filter((i) => i.type === "motif")
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
-      if (items.length === 0) return { parts: null, live: false };
-      return {
-        parts: (
-          <Text style={styles.lensLive}>
-            {items.map((it, i) => (
-              <Text key={it.key}>
-                {i > 0 && " · "}
-                <Text style={styles.lensLiveItem}>{displayItem(it.key)}</Text>
-              </Text>
-            ))}
-          </Text>
-        ),
-        live: true,
-      };
+      const n = visibleItems.filter((i) => i.type === "motif" && i.count >= 2).length;
+      if (n === 0) return { phrase: null, live: false };
+      return { phrase: `${spellNumber(n)} returning`, live: true };
     }
     if (lensId === "resistance") {
       const items = visibleItems
         .filter((i) => i.type === "resistance")
         .sort((a, b) => b.count - a.count);
-      if (items.length > 0) {
-        const top = items[0];
-        const lead =
-          top.count >= 2
-            ? `the same wall, ${spellNumber(top.count)} times — `
-            : "one wall named — ";
+      if (items.length > 0 && items[0].count >= 2) {
         return {
-          parts: (
-            <Text style={styles.lensLive}>
-              {lead}
-              <Text style={styles.lensLiveItem}>{displayItem(top.key)}</Text>
-            </Text>
-          ),
+          phrase: `the same wall, ${spellNumber(items[0].count)} times`,
           live: true,
         };
       }
-      if (resistanceNotes.length > 0) {
-        const latest = resistanceNotes[0];
-        const words = latest.content ? contentWords(latest.content) : [];
-        const named = words.length ? words[words.length - 1].stem : null;
-        const n = resistanceNotes.length;
+      const n = Math.max(items.length, resistanceNotes.length);
+      if (n > 0) {
         return {
-          parts: (
-            <Text style={styles.lensLive}>
-              {n === 1 ? "one wall named" : `${spellNumber(n)} walls named`}
-              {named ? " — " : ""}
-              {named ? <Text style={styles.lensLiveItem}>{named}</Text> : null}
-            </Text>
-          ),
+          phrase: n === 1 ? "one wall named" : `${spellNumber(n)} walls named`,
           live: true,
         };
       }
-      return { parts: null, live: false };
+      return { phrase: null, live: false };
     }
-    return { parts: null, live: false };
+    return { phrase: null, live: false };
   }
 
   const lensRows = LENSES.map((l) => ({ lens: l, status: lensStatus(l.id) }));
   const liveRows = lensRows.filter((r) => r.status.live);
   const quietRows = lensRows.filter((r) => !r.status.live);
 
-  // ── The field — the signature ────────────────────────────────────
+  // ── Footer signature, one line (D.3d §1h) ────────────────────────
   const signature = useMemo(() => {
     const byType = new Map<string, number>();
     for (const n of notes) byType.set(n.type, (byType.get(n.type) ?? 0) + 1);
@@ -534,6 +464,10 @@ export default function GuideScreen() {
       .map(([type, c]) => `${spellNumber(c)} ${type}${c === 1 ? "" : "s"}`)
       .join(" · ");
   }, [notes]);
+
+  // Hero whisper destination — the lens that owns the item.
+  const heroLensId =
+    hero?.type === "motif" ? "motifs" : hero?.type === "resistance" ? "resistance" : "threads";
 
   return (
     <View style={styles.container}>
@@ -546,7 +480,7 @@ export default function GuideScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* B1 — header + field line */}
+        {/* §1a — header, centered, field line centered beneath */}
         <TabTopBar title="FIELD GUIDE" rightIcon="⌕" />
         {hasField && (
           <Text style={styles.fieldLine} testID="guide-field-line">
@@ -555,28 +489,9 @@ export default function GuideScreen() {
           </Text>
         )}
 
-        {/* B2 — synthesis, re-typeset; taking-root moment unchanged */}
-        {hasField ? (
-          <View style={styles.synthesisWrap}>
-            <Animated.Text
-              style={[styles.eyebrow, freshMoment && { opacity: eyebrowAnim }]}
-            >
-              ● TAKING ROOT
-            </Animated.Text>
-            <Animated.Text
-              style={[styles.synthesis, freshMoment && { opacity: synthesisAnim }]}
-              testID="guide-synthesis"
-            >
-              {synthesis.item !== "" && (
-                <Text style={styles.synthesisItem}>{synthesis.item}</Text>
-              )}
-              {synthesis.post}
-            </Animated.Text>
-          </View>
-        ) : (
-          // The Guide's opening description — empty state only; retires
-          // once the field has notes (the patterns speak instead).
-          <View style={styles.synthesisWrap} testID="guide-opening">
+        {/* Empty state — the opening description (retires once the field lives) */}
+        {!hasField && (
+          <View style={styles.openingWrap} testID="guide-opening">
             <Text style={styles.openingBody}>{OPENING_PARAGRAPHS[0]}</Text>
             <Text style={[styles.openingBody, styles.openingSecond]}>
               {OPENING_PARAGRAPHS[1]}
@@ -613,37 +528,59 @@ export default function GuideScreen() {
           </View>
         )}
 
-        {/* B3 — returning: the hero */}
+        {/* §1b — RETURNING: the hero */}
         {hero && (
-          <View testID="returning-hero">
-            <Text style={styles.sectionHead}>returning</Text>
-            <Text style={styles.heroWord} testID="hero-item">
-              {displayItem(hero.key)}
-            </Text>
-            <Text style={styles.heroCount}>
-              {hero.count} {hero.count === 1 ? "note" : "notes"} · {heroSpan}
-            </Text>
+          <View style={styles.heroSection} testID="returning-hero">
+            <Text style={styles.eyebrow}>returning</Text>
+            <View style={styles.heroRow}>
+              <Animated.Text
+                style={[
+                  styles.heroWord,
+                  freshMoment && {
+                    opacity: bloomAnim,
+                    letterSpacing: bloomAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [3, 0.6],
+                    }),
+                  },
+                ]}
+                testID="hero-item"
+              >
+                {displayItem(hero.key)}
+              </Animated.Text>
+              <Text style={styles.heroCount}>
+                {hero.count} {hero.count === 1 ? "note" : "notes"} · {heroSpan}
+              </Text>
+            </View>
 
-            {heroExemplars.map((e, i) => (
-              <View key={`${e.fieldNoteId}-${i}`} style={styles.exemplarBlock}>
-                <View style={styles.quoteWrap}>
-                  <HighlightedQuote
-                    text={e.text}
-                    itemKey={hero.key}
-                    style={styles.quote}
-                  />
-                  {freshMoment && e.fieldNoteId === freshestId && (
-                    <Animated.View
-                      style={[
-                        styles.freshUnderline,
-                        { transform: [{ scaleX: underlineAnim }] },
-                      ]}
-                    />
-                  )}
+            {heroExemplars.length > 0 && (() => {
+              const e = heroExemplars[heroExemplars.length - 1]; // the freshest
+              return (
+                <View style={styles.exemplarBlock}>
+                  <View style={styles.quoteWrap}>
+                    <HighlightedQuote text={e.text} itemKey={hero.key} style={styles.quote} />
+                    {freshMoment && e.fieldNoteId === freshestId && (
+                      <Animated.View
+                        style={[
+                          styles.freshUnderline,
+                          { transform: [{ scaleX: underlineAnim }] },
+                        ]}
+                      />
+                    )}
+                  </View>
+                  <Text style={styles.exemplarMeta}>{attribution(e)}</Text>
                 </View>
-                <Text style={styles.exemplarMeta}>{attribution(e)}</Text>
-              </View>
-            ))}
+              );
+            })()}
+
+            {hero.count > 1 && (
+              <LinkWhisper
+                label={`all ${spellNumber(hero.count)} notes`}
+                onPress={() => router.push(`/lens/${heroLensId}`)}
+                style={styles.heroWhisper}
+                testID="hero-all-notes"
+              />
+            )}
 
             {heroOffering?.text ? (
               <View style={styles.offeringBox} testID="hero-offering">
@@ -654,88 +591,87 @@ export default function GuideScreen() {
           </View>
         )}
 
-        {/* B4 — gathering */}
+        {/* §1d — GATHERING: collapsed rows; tap expands in place, accordion */}
         {gatheringRows.length > 0 && (
-          <View testID="gathering-section">
-            <Text style={styles.sectionHead}>gathering</Text>
+          <View style={styles.section} testID="gathering-section">
+            <Text style={styles.eyebrow}>gathering</Text>
             {gatheringRows.map((it) => {
+              const open = openGatherKey === it.key;
               const exemplars = (patterns[it.type]?.exemplars?.[it.key] ?? []).slice(0, 2);
-              // Rendered expanded, non-pressable — serif never sits inside
-              // a pressable (T-c), and the prototype shows the open state.
               return (
-                <View
-                  key={`${it.type}:${it.key}`}
-                  style={styles.gatherRow}
-                  testID={`gathering-${it.key}`}
-                >
-                  <Text>
+                <View key={`${it.type}:${it.key}`}>
+                  {/* Serif never sits inside a pressable (T-c): the row is
+                      plain Views; a sibling press target overlays it. */}
+                  <View style={styles.gatherRow}>
                     <Text style={styles.gatherItem}>
                       {it.phrase ? `“${displayItem(it.key)}”` : displayItem(it.key)}
                     </Text>
-                    <Text style={styles.gatherTwice}> · twice</Text>
-                  </Text>
-                  <View style={styles.gatherPair}>
-                    {exemplars.map((e, i) => (
-                      <View key={`${e.fieldNoteId}-${i}`} style={styles.exemplarBlock}>
-                        <HighlightedQuote
-                          text={e.text}
-                          itemKey={it.key}
-                          style={styles.quote}
-                        />
-                        <Text style={styles.exemplarMeta}>{attribution(e)}</Text>
-                      </View>
-                    ))}
-                    {it.phrase && (
-                      <Text style={styles.gatherCaption}>
-                        the same sentence, twice — shown side by side
-                      </Text>
-                    )}
+                    <Text style={styles.gatherTwice}>
+                      {it.count === 2 ? "twice" : `${spellNumber(it.count)} times`}
+                    </Text>
+                    <Pressable
+                      style={({ pressed }) => [
+                        StyleSheet.absoluteFillObject,
+                        pressed && styles.gatherPressDim,
+                      ]}
+                      onPress={() => setOpenGatherKey(open ? null : it.key)}
+                      accessibilityRole="button"
+                      accessibilityLabel={displayItem(it.key)}
+                      accessibilityState={{ expanded: open }}
+                      testID={`gathering-${it.key}`}
+                    />
                   </View>
+                  {open && (
+                    <View style={styles.gatherPair} testID={`gathering-open-${it.key}`}>
+                      {exemplars.map((e, i) => (
+                        <View key={`${e.fieldNoteId}-${i}`} style={styles.exemplarBlock}>
+                          <HighlightedQuote text={e.text} itemKey={it.key} style={styles.quote} />
+                          <Text style={styles.exemplarMeta}>{attribution(e)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               );
             })}
           </View>
         )}
 
-        {/* B5 — today's arrivals */}
+        {/* §1f — ARRIVING TODAY: chips with in-day counts */}
         {arrivals.length > 0 && (
-          <View testID="todays-arrivals">
-            <Text style={styles.sectionHead}>today's arrivals</Text>
+          <View style={styles.section} testID="todays-arrivals">
+            <Text style={styles.eyebrow}>arriving today</Text>
             <View style={styles.chipRow}>
-              {arrivals.map((w) => (
-                <View key={w} style={styles.chip}>
-                  <Text style={styles.chipText}>{w}</Text>
+              {arrivals.map((a) => (
+                <View key={a.word} style={styles.chip}>
+                  <Text style={styles.chipText}>
+                    {a.word}
+                    <Text style={styles.chipCount}>  {a.count}</Text>
+                  </Text>
                 </View>
               ))}
             </View>
           </View>
         )}
 
-        {/* B6 — the lenses: live rows + one collapsed listening line */}
+        {/* §1g — THE LENSES: live rows, count phrase only + listening line */}
         {hasField && (
-          <View>
-            <Text style={styles.sectionHead}>the lenses</Text>
+          <View style={styles.section}>
+            <Text style={styles.eyebrow}>the lenses</Text>
             {liveRows.map(({ lens, status }) => (
               <Pressable
                 key={lens.id}
                 style={({ pressed }) => [styles.lensRow, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => {
-                  if (lens.pattern !== null) router.push(`/lens/${lens.id}`);
-                }}
+                onPress={() => router.push(`/lens/${lens.id}`)}
                 testID={`lens-${lens.id}`}
               >
                 <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
-                <View style={styles.lensBody}>
-                  <Text style={styles.lensName}>{lens.label}</Text>
-                  {status.parts}
-                </View>
+                <Text style={styles.lensName}>{lens.label}</Text>
+                {status.phrase ? <Text style={styles.lensCount}>{status.phrase}</Text> : null}
                 <Text style={styles.lensArrow}>→</Text>
               </Pressable>
             ))}
             {quietRows.length > 0 && (
-              /* B6 amended — the quiet line stays one line, visually
-                 unchanged, but the lens names are individually tappable.
-                 Discovery is by touch; no arrows, no underlines. */
               <View style={styles.stillListeningRow} testID="lenses-listening">
                 {quietRows.map((r, i) => (
                   <React.Fragment key={r.lens.id}>
@@ -755,15 +691,12 @@ export default function GuideScreen() {
           </View>
         )}
 
-        {/* B8 — the field: the signature */}
+        {/* §1h — footer signature, one line, hairline above */}
         {hasField && (
-          <View testID="field-signature">
-            <Text style={styles.sectionHead}>the field</Text>
-            <Text style={styles.signature}>{signature}</Text>
-            <Text style={styles.signatureAge}>
-              the field is {fieldAgeDays === 1 ? "one day" : `${spellNumber(fieldAgeDays)} days`} old.
-            </Text>
-          </View>
+          <Text style={styles.footerSig} testID="field-signature">
+            {signature} · the field is{" "}
+            {fieldAgeDays === 1 ? "one day" : `${spellNumber(fieldAgeDays)} days`} old
+          </Text>
         )}
 
         {/* Permanent footer whisper — the opening text, summoned as a sheet */}
@@ -812,32 +745,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
 
-  // B1
+  // §1a — centered field line
   fieldLine: {
     ...TypeScale.metadata,
-    color: "rgba(255,255,255,0.5)",
+    textAlign: "center",
+    color: colors.light.textMuted,
     marginTop: -14,
     marginBottom: 26,
   },
 
-  // B2
-  synthesisWrap: {
-    marginBottom: 10,
-  },
+  // §0.2 — Guide-scoped section marker: the eyebrow register, textMuted
   eyebrow: {
-    ...TypeScale.micro,
-    letterSpacing: 2.5,
-    color: "#E08AAF",
+    ...TypeScale.eyebrow,
+    color: colors.light.textMuted,
+  },
+
+  // §2 — vertical rhythm: 34pt title block → hero, 26pt between sections
+  heroSection: {
+    marginTop: 34,
+  },
+  section: {
+    marginTop: 26,
+  },
+
+  openingWrap: {
     marginBottom: 10,
-  },
-  synthesis: {
-    ...TypeScale.bodyLarge,
-    color: "rgba(255,255,255,0.72)",
-  },
-  synthesisItem: {
-    ...TypeScale.serifBody,
-    fontSize: 20,
-    color: "#ffffff",
   },
   openingBody: {
     ...TypeScale.bodyLarge,
@@ -855,20 +787,27 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  // B3 — hero
+  // §1b — hero: serifDisplay (30) with the count on the same baseline
+  heroRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 10,
+    marginTop: 12,
+  },
   heroWord: {
     ...TypeScale.serifDisplay,
-    fontSize: 38,
-    lineHeight: 44,
     color: "#ffffff",
   },
   heroCount: {
     ...TypeScale.metadata,
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 6,
+    color: colors.light.textMuted,
+  },
+  heroWhisper: {
+    marginTop: 14,
+    alignSelf: "flex-start",
   },
   exemplarBlock: {
-    marginTop: 20, // E7 — ≥20pt between rows within a section
+    marginTop: 16,
     paddingLeft: 14,
     borderLeftWidth: 1,
     borderLeftColor: "rgba(255,255,255,0.10)",
@@ -897,16 +836,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   offeringBox: {
-    marginTop: 22,
+    marginTop: 18,
     padding: 15,
     borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.035)",
   },
   offeringText: {
     ...TypeScale.body,
-    fontSize: 13,
-    lineHeight: 20,
-    color: "rgba(255,255,255,0.58)",
+    color: colors.light.textTertiary,
   },
   offeringFrom: {
     ...TypeScale.micro,
@@ -915,32 +852,41 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // B4 — gathering
+  // §1d — gathering: collapsed rows, item left, count word right, hairline
   gatherRow: {
-    marginBottom: 20, // E7 — ≥20pt between rows within a section
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
   gatherItem: {
-    ...TypeScale.serifBody,
-    color: "#ffffff",
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.72)",
+    flex: 1,
   },
   gatherTwice: {
     ...TypeScale.metadata,
-    color: "rgba(255,255,255,0.5)",
+    color: colors.light.textMuted,
+  },
+  gatherPressDim: {
+    backgroundColor: "rgba(255,255,255,0.03)",
   },
   gatherPair: {
-    marginTop: 4,
-  },
-  gatherCaption: {
-    ...TypeScale.metadata,
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 10,
+    paddingTop: 4,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
 
-  // B5 — arrivals
+  // §1f — arriving today
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    marginTop: 12,
   },
   chip: {
     paddingHorizontal: 12,
@@ -950,49 +896,44 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.10)",
   },
   chipText: {
-    ...TypeScale.metadata,
-    fontSize: 12,
-    color: "rgba(255,255,255,0.58)",
+    ...TypeScale.label,
+    color: colors.light.textTertiary,
     textTransform: "lowercase",
   },
+  chipCount: {
+    ...TypeScale.label,
+    color: colors.light.textMuted,
+  },
 
-  // B6 — lenses
+  // §1g — lenses: dot · name · count phrase · →, 11pt row padding
   lensRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
-    paddingVertical: 18,
+    paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomColor: "rgba(255,255,255,0.07)",
   },
   lensDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    marginTop: 6,
   },
   lensBody: {
     flex: 1,
   },
   lensName: {
-    ...TypeScale.bodyLarge,
-    color: "#ffffff",
-  },
-  lensLive: {
     ...TypeScale.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: "rgba(255,255,255,0.58)",
-    marginTop: 5,
+    color: "#ffffff",
+    flex: 1,
   },
-  lensLiveItem: {
-    ...TypeScale.serifSmall,
-    color: "rgba(255,255,255,0.72)",
+  lensCount: {
+    ...TypeScale.metadata,
+    color: colors.light.textMuted,
   },
   lensArrow: {
     ...TypeScale.body,
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 2,
+    color: colors.light.textMuted,
   },
   emptyLensPress: {
     flexDirection: "row",
@@ -1008,24 +949,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "baseline",
-    marginTop: 20, // E7 — ≥20pt between rows within a section
+    paddingTop: 10,
   },
   stillListening: {
     ...TypeScale.metadata,
-    color: "rgba(255,255,255,0.4)",
+    color: colors.light.textMuted,
   },
 
-  // B8 — signature
-  signature: {
-    ...TypeScale.body,
-    fontSize: 13,
-    lineHeight: 21,
-    color: "rgba(255,255,255,0.55)",
-  },
-  signatureAge: {
+  // §1h — footer signature, one line, hairline above
+  footerSig: {
     ...TypeScale.metadata,
-    color: "rgba(255,255,255,0.4)",
-    marginTop: 8,
+    color: colors.light.textMuted,
+    marginTop: 30,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.07)",
   },
 
   aboutLink: {

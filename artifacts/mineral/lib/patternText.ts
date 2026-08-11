@@ -32,7 +32,9 @@ const STOPWORDS = new Set(
     "anything everything nothing someone anyone everyone one two today " +
     "yesterday tomorrow now then again back way ways time times day days " +
     "keep keeps keeping kept feel feels feeling felt little big right left " +
-    "first last next new old good bad yes okay ok oh um uh hmm"
+    "first last next new old good bad yes okay ok oh um uh hmm " +
+    // D.3d §3.1 — modal/auxiliary verbs
+    "can could would should will shall may might must"
   )
     .split(/\s+/)
     .filter(Boolean)
@@ -76,13 +78,16 @@ export function contentWords(text: string): { raw: string; stem: string }[] {
 }
 
 /**
- * TODAY'S ARRIVALS — content words whose FIRST occurrence across the whole
+ * ARRIVING TODAY — content words whose FIRST occurrence across the whole
  * field is in today's notes. Verbatim (raw, lowercase), most recent first,
- * capped at 7 — anything beyond drops silently.
+ * capped at 7 — anything beyond drops silently. Each carries its in-day
+ * occurrence count (D.3d §1f).
  */
+export type Arrival = { word: string; count: number };
+
 export function todaysArrivals(
   notes: { content?: string | null; createdAt?: { toDate?: () => Date } }[]
-): string[] {
+): Arrival[] {
   const today = new Date().toDateString();
   // earliest occurrence day per stem
   const earliest = new Map<string, string>();
@@ -101,16 +106,25 @@ export function todaysArrivals(
     }
   }
 
+  // in-day occurrence count per stem, across ALL of today's notes
+  const dayCounts = new Map<string, number>();
+  for (const n of dated) {
+    if (n.date.toDateString() !== today) continue;
+    for (const w of contentWords(n.content)) {
+      dayCounts.set(w.stem, (dayCounts.get(w.stem) ?? 0) + 1);
+    }
+  }
+
   // walk today's notes newest-first; collect raws whose stem arrived today
   const seen = new Set<string>();
-  const arrivals: string[] = [];
+  const arrivals: Arrival[] = [];
   const desc = [...dated].sort((a, b) => b.date.getTime() - a.date.getTime());
   for (const n of desc) {
     if (n.date.toDateString() !== today) continue;
     for (const w of contentWords(n.content)) {
       if (earliest.get(w.stem) === today && !seen.has(w.stem)) {
         seen.add(w.stem);
-        arrivals.push(w.raw);
+        arrivals.push({ word: w.raw, count: dayCounts.get(w.stem) ?? 1 });
         if (arrivals.length >= 7) return arrivals;
       }
     }
@@ -167,13 +181,19 @@ export function tokenStream(text: string): { raw: string; stem: string }[] {
 }
 
 /**
- * DISPLAY TRIM (D.3 addendum): strip TRAILING stopwords from a rendered
- * item — never leading, never interior. The stored key stays untrimmed.
+ * DISPLAY TRIM (D.3d §3.3): the trim list is connectives-only — strip
+ * TRAILING connectives from a rendered item; never leading, never
+ * interior ("this work is important to me" renders in full). The stored
+ * key stays untrimmed.
  */
+const TRIM_WORDS = new Set([
+  "and", "but", "or", "so", "the", "a", "an", "of", "that", "with",
+]);
+
 export function displayItem(key: string): string {
   const words = key.split(" ");
   let end = words.length;
-  while (end > 1 && STOPWORDS.has(words[end - 1])) end -= 1;
+  while (end > 1 && TRIM_WORDS.has(words[end - 1])) end -= 1;
   return words.slice(0, end).join(" ");
 }
 
