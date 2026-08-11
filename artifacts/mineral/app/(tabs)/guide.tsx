@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -189,6 +189,9 @@ export default function GuideScreen() {
   const [patterns, setPatterns] = useState<Patterns>({});
   const [patternsLoaded, setPatternsLoaded] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  // Empty state only — each lens row carries its held line, verbatim
+  // from the seeded teaching docs.
+  const [heldLines, setHeldLines] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) {
@@ -243,6 +246,35 @@ export default function GuideScreen() {
 
   // ── Field arithmetic ─────────────────────────────────────────────
   const hasField = notes.length > 0;
+
+  // ── Empty-state held lines (fetched once; skipped once the field lives) ──
+  const heldLinesFetched = useRef(false);
+  useEffect(() => {
+    if (!user || hasField || heldLinesFetched.current) return;
+    heldLinesFetched.current = true; // one attempt per mount — empty or
+    // failed reads render name-only rows rather than refetching forever.
+    let cancelled = false;
+    Promise.all(
+      LENSES.map((l) =>
+        getDoc(fsDoc(db, "practitionerContent", `teaching_${l.id}`))
+          .then((snap) => {
+            const data = snap.exists()
+              ? (snap.data() as { kind?: string; heldLine?: string })
+              : null;
+            return [l.id, data?.kind === "teaching" ? data.heldLine ?? "" : ""] as const;
+          })
+          .catch(() => [l.id, ""] as const)
+      )
+    ).then((pairs) => {
+      if (cancelled) return;
+      const next: Record<string, string> = {};
+      for (const [id, line] of pairs) if (line) next[id] = line;
+      setHeldLines(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, hasField]);
   const noteDates = notes
     .map((n) => n.createdAt?.toDate?.())
     .filter(Boolean) as Date[];
@@ -549,6 +581,35 @@ export default function GuideScreen() {
             <Text style={[styles.openingBody, styles.openingSecond]}>
               {OPENING_PARAGRAPHS[1]}
             </Text>
+          </View>
+        )}
+
+        {/* Empty state — the lenses, all five, each already a door.
+            The description joins the Guide; it does not replace it.
+            Held line renders outside the Pressable (serif never sits
+            inside a pressable — T-c), beneath the tappable name row. */}
+        {!hasField && (
+          <View testID="empty-lenses-section">
+            <Text style={styles.sectionHead}>the lenses</Text>
+            {LENSES.map((lens) => (
+              <View key={lens.id} style={styles.lensRow} testID={`empty-lens-${lens.id}`}>
+                <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
+                <View style={styles.lensBody}>
+                  <Pressable
+                    style={({ pressed }) => [styles.emptyLensPress, { opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => router.push(`/lens/${lens.id}`)}
+                    hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                    testID={`empty-lens-press-${lens.id}`}
+                  >
+                    <Text style={styles.lensName}>{lens.label}</Text>
+                    <Text style={styles.lensArrow}>→</Text>
+                  </Pressable>
+                  {heldLines[lens.id] ? (
+                    <Text style={styles.lensHeld}>{heldLines[lens.id]}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))}
           </View>
         )}
 
@@ -932,6 +993,16 @@ const styles = StyleSheet.create({
     ...TypeScale.body,
     color: "rgba(255,255,255,0.5)",
     marginTop: 2,
+  },
+  emptyLensPress: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  lensHeld: {
+    ...TypeScale.serifSmall,
+    color: "rgba(255,255,255,0.58)",
+    marginTop: 5,
   },
   stillListeningRow: {
     flexDirection: "row",
