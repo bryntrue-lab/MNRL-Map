@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
-import { onSnapshot } from "firebase/firestore";
+import { doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -19,7 +19,13 @@ import { OriginAtmosphere } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
 import Cta from "@/components/Cta";
 import { LinkWhisper } from "@/components/Links";
-import { CompanionsSheet, QuietToast, ReadingSheet } from "@/components/OriginSheets";
+import {
+  CompanionsSheet,
+  MapTeachingSheet,
+  QuietToast,
+  ReadingSheet,
+  type MapTeaching,
+} from "@/components/OriginSheets";
 import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralComponents";
 import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
@@ -34,6 +40,7 @@ import {
   turnEncountersQuery,
   type EncounterWithId,
 } from "@/lib/firestore";
+import { db } from "@/lib/firebase";
 import {
   MAP_H,
   MAP_W,
@@ -359,7 +366,30 @@ export default function OriginScreen() {
   const [wandering, setWandering] = useState(false);
   const wanderFade = useEasedValue(wandering ? 1 : 0, 700);
 
-  const [sheet, setSheet] = useState<null | "reading" | "companions">(null);
+  const [sheet, setSheet] = useState<null | "reading" | "companions" | "map">(null);
+
+  // E9 — the map teaching, fetched once. The whisper renders only when
+  // the doc exists; the sheet never auto-presents.
+  const [mapTeaching, setMapTeaching] = useState<MapTeaching | null>(null);
+  useEffect(() => {
+    if (!user) {
+      setMapTeaching(null);
+      return;
+    }
+    let active = true;
+    getDoc(fsDoc(db, "practitionerContent", "teaching_map"))
+      .then((snap) => {
+        if (!active || !snap.exists()) return;
+        const data = snap.data() as MapTeaching & { kind?: string };
+        if (data.kind === "teaching") setMapTeaching(data);
+      })
+      .catch(() => {
+        /* locked or absent — the map stays silent */
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
   const arcsDim = useEasedValue(sheet ? 0.55 : 1, 300);
 
   // §6 — counterweight capture: the position read when "keep what comes"
@@ -1081,6 +1111,7 @@ export default function OriginScreen() {
                 phase: r.phase,
               });
             }}
+            onHowToRead={mapTeaching ? () => setSheet("map") : undefined}
           />
           <CompanionsSheet
             open={sheet === "companions"}
@@ -1089,6 +1120,13 @@ export default function OriginScreen() {
             bottomPad={tabBarHeight}
             onClose={() => setSheet(null)}
             onSwingTo={sheetSwingTo}
+            onHowToRead={mapTeaching ? () => setSheet("map") : undefined}
+          />
+          <MapTeachingSheet
+            open={sheet === "map"}
+            teaching={mapTeaching}
+            bottomPad={tabBarHeight}
+            onClose={() => setSheet(null)}
           />
         </>
       )}

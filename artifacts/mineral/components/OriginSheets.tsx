@@ -8,6 +8,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -203,6 +204,54 @@ export function SheetShell({
 // Reading sheet — §10. Always reflects the DISPLAYED position.
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// Map teaching sheet — E9. The spiral explains itself, on request.
+// Same sheet grammar as the lens teachings; never auto-presents.
+// ─────────────────────────────────────────────────────────────
+
+export interface MapTeaching {
+  heldLine?: string;
+  paragraphs?: string[];
+  glossary?: string[];
+}
+
+interface MapTeachingSheetProps {
+  open: boolean;
+  teaching: MapTeaching | null;
+  bottomPad: number;
+  onClose: () => void;
+}
+
+export function MapTeachingSheet({ open, teaching, bottomPad, onClose }: MapTeachingSheetProps) {
+  if (!teaching) return null;
+  return (
+    <SheetShell open={open} onClose={onClose} bottomPad={bottomPad} swipeToDismiss modal testID="map-teaching-sheet">
+      <ScrollView
+        style={{ maxHeight: Dimensions.get("window").height * 0.7 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {teaching.heldLine ? (
+          <Text style={styles.teachingHeld}>{teaching.heldLine}</Text>
+        ) : null}
+        {(teaching.paragraphs ?? []).map((p, i) => (
+          <Text key={i} style={styles.teachingBody}>
+            {p}
+          </Text>
+        ))}
+        {(teaching.glossary ?? []).length > 0 && (
+          <View style={styles.glossaryBlock}>
+            {(teaching.glossary ?? []).map((g, i) => (
+              <Text key={i} style={styles.glossaryLine}>
+                {g}
+              </Text>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </SheetShell>
+  );
+}
+
 interface ReadingSheetProps {
   open: boolean;
   displayAge: number;
@@ -215,6 +264,8 @@ interface ReadingSheetProps {
   onSwingTo: (age: number) => void;
   /** §6 — opens the standard capture sheet against this position's mapRef. */
   onKeepWhatComes?: () => void;
+  /** E9 — opens the map teaching sheet; hidden when the doc is absent. */
+  onHowToRead?: () => void;
 }
 
 export function ReadingSheet({
@@ -228,6 +279,7 @@ export function ReadingSheet({
   onCompanions,
   onSwingTo,
   onKeepWhatComes,
+  onHowToRead,
 }: ReadingSheetProps) {
   const r = resolve(displayAge);
   const season = seasonFor(r);
@@ -290,6 +342,14 @@ export function ReadingSheet({
         style={styles.companionsLink}
         testID="companions-link"
       />
+      {onHowToRead && (
+        <LinkWhisper
+          label="how to read the map →"
+          onPress={onHowToRead}
+          style={styles.howToRead}
+          testID="how-to-read-map"
+        />
+      )}
     </SheetShell>
   );
 }
@@ -306,6 +366,8 @@ interface CompanionsSheetProps {
   bottomPad: number;
   onClose: () => void;
   onSwingTo: (age: number) => void;
+  /** E9 — opens the map teaching sheet; hidden when the doc is absent. */
+  onHowToRead?: () => void;
 }
 
 export function CompanionsSheet({
@@ -315,6 +377,7 @@ export function CompanionsSheet({
   bottomPad,
   onClose,
   onSwingTo,
+  onHowToRead,
 }: CompanionsSheetProps) {
   const companions = companionsFor(displayAge);
 
@@ -341,6 +404,14 @@ export function CompanionsSheet({
           </View>
         </Pressable>
       ))}
+      {onHowToRead && (
+        <LinkWhisper
+          label="how to read the map →"
+          onPress={onHowToRead}
+          style={styles.howToRead}
+          testID="how-to-read-map-companions"
+        />
+      )}
     </SheetShell>
   );
 }
@@ -474,6 +545,30 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
 
+  // E9 — map teaching
+  howToRead: {
+    marginTop: 14,
+    alignSelf: "flex-start",
+  },
+  teachingHeld: {
+    ...TypeScale.serifMedium,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 20,
+  },
+  teachingBody: {
+    ...TypeScale.bodyLarge,
+    color: "rgba(255,255,255,0.72)",
+    marginBottom: 16,
+  },
+  glossaryBlock: {
+    marginTop: 8,
+    paddingBottom: 8,
+  },
+  glossaryLine: {
+    ...TypeScale.metadata,
+    color: "rgba(255,255,255,0.5)", // textMuted
+    marginBottom: 6,
+  },
   companionsLink: {
     paddingVertical: 6,
   },

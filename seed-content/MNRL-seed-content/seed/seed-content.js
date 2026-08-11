@@ -48,6 +48,7 @@ const CONTENT_ROOT = path.resolve(__dirname, '..', 'mineral-content');
 const ENCOUNTERS_DIR = path.join(CONTENT_ROOT, 'encounters');
 const AUDIO_DIR = path.join(CONTENT_ROOT, 'audio');
 const OFFERINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'offerings.json');
+const TEACHINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'teachings.json');
 const MOTIF_LEXICON_FILE = path.join(CONTENT_ROOT, 'motif-lexicon', 'lexicon.json');
 
 const VALID_PHASES = new Set(['signal', 'field', 'friction', 'voice']);
@@ -320,6 +321,66 @@ async function seedPractitionerContent(db) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SEEDING — TEACHINGS (E9: the map; stable explicit ids)
+// Entries: { id, kind: 'teaching', heldLine, paragraphs[], glossary?[] }
+// ─────────────────────────────────────────────────────────────
+
+async function seedTeachings(db) {
+  console.log('\n─── Teachings ────────────────────────────────');
+  if (!fs.existsSync(TEACHINGS_FILE)) {
+    console.log('  no teachings.json; skipping.');
+    return;
+  }
+
+  let entries;
+  try {
+    entries = JSON.parse(fs.readFileSync(TEACHINGS_FILE, 'utf8'));
+  } catch (e) {
+    console.log(`  ✗ teachings.json parse error — ${e.message}`);
+    return;
+  }
+  if (!Array.isArray(entries)) {
+    console.log('  ✗ teachings.json must be an array');
+    return;
+  }
+
+  let created = 0, updated = 0, failed = 0;
+
+  for (let i = 0; i < entries.length; i++) {
+    const { id, ...doc } = entries[i] || {};
+    const errors = [];
+    if (typeof id !== 'string' || !id.startsWith('teaching_')) errors.push(`teachings[${i}]: id must be a string starting with "teaching_"`);
+    if (doc.kind !== 'teaching') errors.push(`teachings[${i}]: kind must be "teaching"`);
+    if (typeof doc.heldLine !== 'string' || !doc.heldLine.trim()) errors.push(`teachings[${i}]: heldLine required`);
+    if (!Array.isArray(doc.paragraphs) || doc.paragraphs.some(p => typeof p !== 'string')) errors.push(`teachings[${i}]: paragraphs must be string[]`);
+    if (doc.glossary !== undefined && (!Array.isArray(doc.glossary) || doc.glossary.some(g => typeof g !== 'string'))) errors.push(`teachings[${i}]: glossary must be string[]`);
+    if (errors.length) {
+      errors.forEach(e => console.log(`  ✗ ${e}`));
+      failed++;
+      continue;
+    }
+
+    const ref = db.collection('practitionerContent').doc(id);
+    const existing = await ref.get();
+    try {
+      await ref.set(doc, { merge: true });
+      if (existing.exists) {
+        console.log(`  ↻ ${id} — updated`);
+        updated++;
+      } else {
+        console.log(`  ✓ ${id} — created`);
+        created++;
+      }
+    } catch (e) {
+      console.log(`  ✗ ${id}: Firestore write failed — ${e.message}`);
+      failed++;
+    }
+  }
+
+  console.log(`\n  teachings — created ${created}, updated ${updated}, failed ${failed}`);
+}
+
+// ─────────────────────────────────────────────────────────────
 // SEEDING — MOTIF LEXICON (Task D §1)
 // The founder replaces/expands this by editing
 // mineral-content/motif-lexicon/lexicon.json — content, not code.
@@ -410,6 +471,7 @@ async function main() {
 
   await seedEncounters(db, bucket);
   await seedPractitionerContent(db);
+  await seedTeachings(db);
   await seedMotifLexicon(db);
 
   console.log('\nDone.\n');
