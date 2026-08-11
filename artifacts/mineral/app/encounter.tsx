@@ -749,7 +749,15 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       {/* E6 — a way back, only when the audio was skipped */}
       {stage === "capture" && arrivedBySkip && (
         <View style={[styles.voiceBack, { top: insets.top + 16 }]}>
-          <LinkWhisper label="← the voice" onPress={backToVoice} testID="capture-back-to-voice" />
+          {/* F4 — noArrow: the species appends " →" unless the label ENDS
+              with a glyph, so this leading-← label rendered "← the voice →".
+              Backward motion keeps only its own arrow. */}
+          <LinkWhisper
+            label="← the voice"
+            onPress={backToVoice}
+            noArrow
+            testID="capture-back-to-voice"
+          />
         </View>
       )}
 
