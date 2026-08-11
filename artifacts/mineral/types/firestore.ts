@@ -43,8 +43,12 @@ export type NoteSource = "spontaneous" | "encounter";
 export interface UserDoc {
   email: string;
   birthDate: Timestamp | null;
+  /** E1 — canonical ISO capture (`YYYY-MM-DD`), the format Human Design needs. */
+  birthDateISO?: string | null;
   birthTime: string | null;
   birthLocation: { lat: number; lng: number; label: string } | null;
+  /** E1 — free-text birth place, stored as typed (no geocoding in v1). */
+  birthPlace?: string | null;
   humanDesignType: string | null;
   currentPhase: PhaseId;
   currentTurn: number;

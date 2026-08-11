@@ -133,8 +133,11 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     }
     return null;
   }, [encounter.blocks]);
+  // E5 — ONE close screen. Carry blocks rendered a second consecutive
+  // "return to the map" screen before the close; they are dropped from
+  // the flow (their intro/closing copy no longer renders anywhere).
   const postBlocks = useMemo(
-    () => postCaptureBlocks(encounter.blocks),
+    () => postCaptureBlocks(encounter.blocks).filter((b) => b.type !== "carry"),
     [encounter.blocks]
   );
   // §5 — warm-ups live behind the collapsed reveal, never listed openly.
@@ -321,15 +324,24 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     return () => loop.stop();
   }, [stage, status.playing, breath]);
 
-  const toCapture = () => {
+  // E6 — a way back after skipping: skipping keeps the audio position so
+  // `← the voice` can return to where it was left. Natural completion
+  // spends the moment (position resets) and never shows the way back.
+  const [arrivedBySkip, setArrivedBySkip] = useState(false);
+  const toCapture = (skipped = false) => {
     try {
       player.pause();
     } catch {}
-    if (mode === "sequence") {
-      // Reaching the ⟡ means the audio moment is spent; position resets.
+    if (mode === "sequence" && !skipped) {
+      // Reaching the ⟡ naturally means the audio moment is spent.
       saveAudioPosition(uid, encounter.id, turn, 0).catch(() => {});
     }
+    setArrivedBySkip(skipped);
     setStage("capture");
+  };
+  const backToVoice = () => {
+    setArrivedBySkip(false);
+    setStage("listen");
   };
 
   // ── ⟡ Capture (§1c) ──
@@ -690,9 +702,16 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
               <Text style={styles.playPauseText}>{status.playing ? "pause" : "play"}</Text>
             </Pressable>
             <View style={styles.listenSide}>
-              <LinkWhisper label="skip →" onPress={toCapture} testID="listen-skip" />
+              <LinkWhisper label="skip →" onPress={() => toCapture(true)} testID="listen-skip" />
             </View>
           </View>
+        </View>
+      )}
+
+      {/* E6 — a way back, only when the audio was skipped */}
+      {stage === "capture" && arrivedBySkip && (
+        <View style={[styles.voiceBack, { top: insets.top + 16 }]}>
+          <LinkWhisper label="← the voice" onPress={backToVoice} testID="capture-back-to-voice" />
         </View>
       )}
 
@@ -910,19 +929,6 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             </>
           )}
 
-          {block.type === "carry" && (
-            <>
-              {block.intro ? <Text style={styles.carryIntro}>{block.intro}</Text> : null}
-              <Text style={styles.carryClosing}>{block.closing}</Text>
-              <LinkPrimary
-                label="return to the map →"
-                onPress={advanceBlock}
-                style={styles.advance}
-                testID="block-advance"
-              />
-            </>
-          )}
-
           {block.type === "reflection" && (
             <ReflectionBlockBody block={block} onAdvance={advanceBlock} />
           )}
@@ -932,11 +938,19 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       {/* ── Close ── */}
       {stage === "close" && (
         <View
-          style={[styles.fill, styles.closeContent, { paddingBottom: insets.bottom + 64 }]}
+          style={[
+            styles.fill,
+            styles.closeContent,
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 64 },
+          ]}
           testID="close-screen"
           {...pan.panHandlers}
         >
-          <Text style={styles.epigraph}>{encounter.mapEpigraph ?? encounter.subtitle}</Text>
+          {/* E5 — the canonical close: the epigraph centered in the upper
+              third, fully visible above the single CTA. */}
+          <View style={styles.epigraphZone}>
+            <Text style={styles.epigraph}>{encounter.mapEpigraph ?? encounter.subtitle}</Text>
+          </View>
           {/* §5 — said once, on the way out */}
           <Text style={styles.returnLine}>
             you can return to this day from the map, anytime.
@@ -1294,15 +1308,11 @@ const styles = StyleSheet.create({
   deepDiveWrap: {
     marginBottom: 8,
   },
-  carryIntro: {
-    ...TypeScale.body,
-    color: "rgba(255,255,255,0.5)",
-    marginBottom: 18,
-  },
-  carryClosing: {
-    ...TypeScale.serifMedium,
-    color: "rgba(255,255,255,0.92)",
-    marginBottom: 26,
+  // E6 — top-left whisper back to the audio, skip arrivals only
+  voiceBack: {
+    position: "absolute",
+    left: 28,
+    zIndex: 10,
   },
 
   advance: {
@@ -1337,14 +1347,20 @@ const styles = StyleSheet.create({
   // Close
   closeContent: {
     alignItems: "center",
-    justifyContent: "flex-end",
     paddingHorizontal: 36,
+  },
+  // E5 — the upper third holds the epigraph, vertically centered.
+  epigraphZone: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "34%",
+    marginBottom: 24,
   },
   epigraph: {
     ...TypeScale.serifLarge,
     color: "rgba(255,255,255,0.93)",
     textAlign: "center",
     maxWidth: 320,
-    marginBottom: 48,
   },
 });

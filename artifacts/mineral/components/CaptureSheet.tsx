@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { LinkPrimary } from "@/components/Links";
@@ -116,7 +116,7 @@ export function CaptureSheet({
       <KeyboardAwareScrollViewCompat
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
         <View style={styles.headRow}>
           <Text style={styles.eyebrow}>CAPTURE</Text>

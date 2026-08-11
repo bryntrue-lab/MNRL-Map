@@ -21,7 +21,9 @@
         "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
         "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes.",
         "NSLocationWhenInUseUsageDescription": "Mineral uses your approximate location only to time the morning call to sunrise.",
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -47,7 +49,8 @@
       "expo-font",
       "expo-web-browser",
       "expo-audio",
-      "expo-notifications"
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

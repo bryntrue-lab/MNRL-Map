@@ -68,22 +68,36 @@ export function SheetShell({
   // layer) so the backdrop stays tappable. iOS only: Android's window
   // resizes (softwareKeyboardLayoutMode default), web needs nothing.
   const kbRise = useRef(new Animated.Value(0)).current;
+  // E2 — the scrim's first tap only lowers the keyboard; the second
+  // closes the sheet. Tracked cross-platform.
+  const kbVisible = useRef(false);
+  const bottomPadRef = useRef(bottomPad);
+  bottomPadRef.current = bottomPad;
   useEffect(() => {
-    if (Platform.OS !== "ios") return;
-    const show = Keyboard.addListener("keyboardWillShow", (e) =>
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvt, (e) => {
+      kbVisible.current = true;
+      if (Platform.OS !== "ios") return;
+      // E2/E4 — the sheet already carries the safe-area bottom pad; the
+      // keyboard covers that zone, so rising the FULL keyboard height
+      // left the input floating too high. Rise by the difference only:
+      // the input sits directly above the keyboard, padding intact.
       Animated.timing(kbRise, {
-        toValue: -e.endCoordinates.height,
+        toValue: -Math.max(0, e.endCoordinates.height - bottomPadRef.current),
         duration: e.duration || 250,
         useNativeDriver: true,
-      }).start()
-    );
-    const hide = Keyboard.addListener("keyboardWillHide", (e) =>
+      }).start();
+    });
+    const hide = Keyboard.addListener(hideEvt, (e) => {
+      kbVisible.current = false;
+      if (Platform.OS !== "ios") return;
       Animated.timing(kbRise, {
         toValue: 0,
         duration: e.duration || 250,
         useNativeDriver: true,
-      }).start()
-    );
+      }).start();
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -137,8 +151,12 @@ export function SheetShell({
       <Pressable
         style={[StyleSheet.absoluteFill, modal && styles.dimBackdrop]}
         onPress={() => {
-          // §C.1 1e — tap outside: the keyboard leaves first, then the sheet.
-          Keyboard.dismiss();
+          // E2 — tap outside: the keyboard leaves on the first tap, the
+          // sheet on the second.
+          if (kbVisible.current) {
+            Keyboard.dismiss();
+            return;
+          }
           onClose();
         }}
         testID={`${testID}-backdrop`}

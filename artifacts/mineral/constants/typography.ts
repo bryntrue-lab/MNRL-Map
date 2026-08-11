@@ -83,10 +83,19 @@ export const TypeScale = {
   // Instructions and practice steps, prominent helper copy — the sans
   // "explaining" voice at reading size (Slice T-c §8).
   bodyLarge: {
+    // Slice E8 — founder ruling from the teaching-sheet QA: 16/24 → 15/22.
     fontFamily: FontFamily.sans400,
-    fontSize: 16,
+    fontSize: 15,
     letterSpacing: 0,
-    lineHeight: 24,
+    lineHeight: 22,
+  },
+
+  // Slice E3 — top-nav glyphs: 24pt inside a ≥44×44pt target, everywhere.
+  navGlyph: {
+    fontFamily: FontFamily.sans400,
+    fontSize: 24,
+    letterSpacing: 0,
+    lineHeight: 28,
   },
 
   // ── Serif — Cormorant Garamond italic (the ritual voice) ────

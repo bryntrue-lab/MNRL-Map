@@ -1,8 +1,11 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { router, useLocalSearchParams } from "expo-router";
 import { Timestamp } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   Dimensions,
+  Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
-import { LinkPrimary, LinkSecondary } from "@/components/Links";
+import { LinkPrimary, LinkSecondary, LinkWhisper } from "@/components/Links";
 import OnboardingFooter from "@/components/OnboardingFooter";
 import { useUser } from "@/context/UserContext";
 
@@ -27,7 +30,9 @@ const ONBOARDING_ROUTES = [
 
 const { height } = Dimensions.get("window");
 
-/** Digits → YYYY-MM-DD as the user types. */
+const isWeb = Platform.OS === "web";
+
+/** Digits → YYYY-MM-DD as the user types (web fallback only). */
 function formatDigits(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 4) return digits;
@@ -49,11 +54,24 @@ function parseBirthDate(value: string): Date | null {
   return date;
 }
 
+const toISODate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+
+const toHHmm = (d: Date) =>
+  `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
 /**
  * Slice 5 — the app's ONLY birth-date form, ever. Writes
- * users/{uid}.birthDate (+ optional time) directly: one source of truth.
- * Reached from onboarding step 3, and from the Origin tab's empty state
- * (from=origin), which returns there after saving.
+ * users/{uid}.birthDate (+ optional time/place) directly: one source of
+ * truth. Reached from onboarding step 3, and from the Origin tab's empty
+ * state (from=origin), which returns there after saving.
+ *
+ * Slice E1 — unlocks panel removed; "When did you arrive?" + subtitle;
+ * native date wheel (required) · native time picker (optional, one-tap
+ * skip) · free-text place (optional). Stored formats are what Human
+ * Design will need later: YYYY-MM-DD · HH:mm · string as typed.
  */
 export default function SignatureScreen() {
   const insets = useSafeAreaInsets();
@@ -61,13 +79,31 @@ export default function SignatureScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromOrigin = from === "origin";
 
-  const [birthDate, setBirthDate] = useState("");
-  const [birthTime, setBirthTime] = useState("");
-  const [birthLocation, setBirthLocation] = useState("");
+  // Native: Date objects from the wheels. Web fallback: text entry.
+  const [birthDateObj, setBirthDateObj] = useState<Date | null>(null);
+  const [birthTimeObj, setBirthTimeObj] = useState<Date | null>(null);
+  const [webDate, setWebDate] = useState("");
+  const [webTime, setWebTime] = useState("");
+  const [birthPlace, setBirthPlace] = useState("");
+  const [dateOpen, setDateOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [needsDate, setNeedsDate] = useState(false);
 
-  const parsed = parseBirthDate(birthDate);
+  const parsed: Date | null = isWeb
+    ? parseBirthDate(webDate)
+    : birthDateObj
+      ? new Date(birthDateObj.getFullYear(), birthDateObj.getMonth(), birthDateObj.getDate(), 12)
+      : null;
+
+  const timeString: string | null = isWeb
+    ? /^([01]\d|2[0-3]):[0-5]\d$/.test(webTime.trim())
+      ? webTime.trim()
+      : null
+    : birthTimeObj
+      ? toHHmm(birthTimeObj)
+      : null;
 
   const leave = () => {
     if (fromOrigin) {
@@ -80,18 +116,29 @@ export default function SignatureScreen() {
 
   const proceed = async (skip = false) => {
     if (saving) return;
-    if (skip || !parsed) {
+    if (skip) {
       leave();
       return;
     }
+    if (!parsed) {
+      // E1 — the date is required: Continue holds the screen. The only
+      // way past without a date is the explicit skip.
+      setNeedsDate(true);
+      if (!isWeb) {
+        setTimeOpen(false);
+        setDateOpen(true);
+      }
+      return;
+    }
+    setNeedsDate(false);
     setSaving(true);
     setFailed(false);
     try {
       await updateProfile({
         birthDate: Timestamp.fromDate(parsed),
-        ...(birthTime.trim() ? { birthTime: birthTime.trim() } : {}),
-        // birthLocation stays local-only until the structured schema
-        // ({ lat, lng, label }) is wired — a plain string doesn't map.
+        birthDateISO: toISODate(parsed),
+        ...(timeString ? { birthTime: timeString } : {}),
+        ...(birthPlace.trim() ? { birthPlace: birthPlace.trim() } : {}),
       });
       leave();
     } catch {
@@ -109,53 +156,133 @@ export default function SignatureScreen() {
       {/* Content cluster — vertically centered */}
       <View style={styles.contentWrap}>
         <Text style={styles.eyebrow}>YOUR SIGNATURE</Text>
-        <Text style={styles.title}>When were you born?</Text>
-        <Text style={styles.subtitle}>This anchors your spiral life map.</Text>
+        <Text style={styles.title}>When did you arrive?</Text>
+        <Text style={styles.subtitle}>
+          This anchors your timing map into your design.
+        </Text>
 
-        {/* Unlocks — minimal, no border or enclosing box */}
-        <View style={styles.unlocks}>
-          <Text style={styles.unlocksLabel}>UNLOCKS</Text>
-          <Text style={styles.unlockItem}>your 28-year cycle</Text>
-          <Text style={styles.unlockItem}>your bodygraph + type</Text>
-          <Text style={styles.unlockItem}>readings keyed to your design</Text>
-        </View>
-
-        {/* Form fields — thinner, lighter */}
         <View style={styles.fields}>
+          {/* Birth date — required. Native wheel; no free-text parsing. */}
+          {isWeb ? (
+            <TextInput
+              style={styles.input}
+              placeholder="birth date  (YYYY-MM-DD)"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={webDate}
+              onChangeText={(t) => setWebDate(formatDigits(t))}
+              keyboardType="number-pad"
+              maxLength={10}
+              returnKeyType="next"
+              testID="signature-birthdate"
+            />
+          ) : (
+            <>
+              <Pressable
+                style={styles.input}
+                onPress={() => {
+                  setTimeOpen(false);
+                  setDateOpen((v) => !v);
+                }}
+                testID="signature-birthdate"
+              >
+                <Text style={parsed ? styles.fieldValue : styles.fieldPlaceholder}>
+                  {parsed ? toISODate(parsed) : "birth date"}
+                </Text>
+              </Pressable>
+              {dateOpen && (
+                <DateTimePicker
+                  value={birthDateObj ?? new Date(1990, 0, 1, 12)}
+                  mode="date"
+                  display="spinner"
+                  maximumDate={new Date()}
+                  onChange={(event, d) => {
+                    if (Platform.OS === "android") setDateOpen(false);
+                    if (event.type === "set" && d) setBirthDateObj(d);
+                  }}
+                  testID="signature-birthdate-wheel"
+                />
+              )}
+            </>
+          )}
+
+          {/* Birth time — optional, one-tap skip. */}
+          <View style={styles.optionalRow}>
+            <Text style={styles.fieldLabel}>time, if you know it</Text>
+            {(timeOpen || timeString) && (
+              <LinkWhisper
+                label="skip"
+                onPress={() => {
+                  setTimeOpen(false);
+                  setBirthTimeObj(null);
+                  setWebTime("");
+                }}
+                testID="signature-time-skip"
+              />
+            )}
+          </View>
+          {isWeb ? (
+            <TextInput
+              style={styles.input}
+              placeholder="HH:mm  (optional)"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={webTime}
+              onChangeText={setWebTime}
+              keyboardType="numbers-and-punctuation"
+              maxLength={5}
+              returnKeyType="next"
+              testID="signature-birthtime"
+            />
+          ) : (
+            <>
+              <Pressable
+                style={styles.input}
+                onPress={() => {
+                  setDateOpen(false);
+                  setTimeOpen((v) => !v);
+                }}
+                testID="signature-birthtime"
+              >
+                <Text style={timeString ? styles.fieldValue : styles.fieldPlaceholder}>
+                  {timeString ?? "—"}
+                </Text>
+              </Pressable>
+              {timeOpen && (
+                <DateTimePicker
+                  value={birthTimeObj ?? new Date(1990, 0, 1, 12, 0)}
+                  mode="time"
+                  display="spinner"
+                  is24Hour
+                  onChange={(event, d) => {
+                    if (Platform.OS === "android") setTimeOpen(false);
+                    if (event.type === "set" && d) setBirthTimeObj(d);
+                  }}
+                  testID="signature-birthtime-wheel"
+                />
+              )}
+            </>
+          )}
+
+          {/* Birth place — optional, stored as typed. */}
+          <Text style={styles.fieldLabel}>place</Text>
           <TextInput
             style={styles.input}
-            placeholder="birth date  (YYYY-MM-DD)"
+            placeholder="birth place  (optional)"
             placeholderTextColor="rgba(255,255,255,0.5)"
-            value={birthDate}
-            onChangeText={(t) => setBirthDate(formatDigits(t))}
-            keyboardType="number-pad"
-            maxLength={10}
-            returnKeyType="next"
-            testID="signature-birthdate"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="birth time  (optional)"
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            value={birthTime}
-            onChangeText={setBirthTime}
-            keyboardType="numbers-and-punctuation"
-            returnKeyType="next"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="birth location"
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            value={birthLocation}
-            onChangeText={setBirthLocation}
+            value={birthPlace}
+            onChangeText={setBirthPlace}
             autoCapitalize="words"
             returnKeyType="done"
             onSubmitEditing={() => proceed()}
+            testID="signature-birthplace"
           />
         </View>
 
         {failed ? (
           <Text style={styles.failed}>not kept — try again</Text>
+        ) : needsDate && !parsed ? (
+          <Text style={styles.failed} testID="signature-needs-date">
+            the date anchors the map — or skip below
+          </Text>
         ) : null}
       </View>
 
@@ -204,7 +331,7 @@ const styles = StyleSheet.create({
   contentWrap: {
     flex: 1,
     paddingHorizontal: 36,
-    paddingTop: height * 0.10,
+    paddingTop: height * 0.1,
     paddingBottom: 140,
     justifyContent: "center",
   },
@@ -219,26 +346,27 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.96)",
     marginBottom: 10,
   },
+  // E1 — the sans subtitle that makes the poetic question legible.
   subtitle: {
-    ...TypeScale.body,
+    ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.58)",
     marginBottom: 28,
   },
-  unlocks: {
-    marginBottom: 28,
-  },
-  unlocksLabel: {
-    ...TypeScale.micro,
-    letterSpacing: 2.5,
-    color: "rgba(255,255,255,0.5)",
-    marginBottom: 10,
-  },
-  unlockItem: {
-    ...TypeScale.body,
-    color: "rgba(255,255,255,0.72)",
-  },
   fields: {
     gap: 12,
+  },
+  fieldLabel: {
+    ...TypeScale.metadata,
+    letterSpacing: 1,
+    color: "rgba(255,255,255,0.5)",
+    marginBottom: -4,
+  },
+  optionalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 6,
+    marginBottom: -4,
   },
   input: {
     height: 46,
@@ -247,8 +375,17 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(255,255,255,0.12)",
     borderRadius: 10,
+    justifyContent: "center",
     ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
+  },
+  fieldValue: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.92)",
+  },
+  fieldPlaceholder: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.5)",
   },
   failed: {
     marginTop: 12,

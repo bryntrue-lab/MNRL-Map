@@ -56,7 +56,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconText: {
-    ...TypeScale.screenTitle,
+    // E3 — standardized nav glyph token (24pt in the 44×44 target).
+    ...TypeScale.navGlyph,
     color: "rgba(255,255,255,0.6)",
   },
   eyebrow: {

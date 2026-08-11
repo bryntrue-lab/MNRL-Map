@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   exemplarBlock: {
-    marginTop: 18,
+    marginTop: 20, // E7 — ≥20pt between rows within a section
     paddingLeft: 14,
     borderLeftWidth: 1,
     borderLeftColor: "rgba(255,255,255,0.10)",
@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
 
   // B4 — gathering
   gatherRow: {
-    marginBottom: 14,
+    marginBottom: 20, // E7 — ≥20pt between rows within a section
   },
   gatherItem: {
     ...TypeScale.serifBody,
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "baseline",
-    marginTop: 18,
+    marginTop: 20, // E7 — ≥20pt between rows within a section
   },
   stillListening: {
     ...TypeScale.metadata,
