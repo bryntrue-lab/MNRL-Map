@@ -65,6 +65,12 @@ export interface UserDoc {
   /** Slice 5 — set at onboarding's terminal step (begin / save for later). */
   onboarded?: boolean;
 
+  // Morning call mirror — mode + hour ONLY; coordinates never leave the
+  // device. Additive; restored into device storage on sign-in.
+  morningCall?: { mode: "sunrise" | "hour"; hour?: number } | null;
+  // The permission moment fired once — mirrored so reinstalls never re-prompt.
+  morningCallOffered?: boolean;
+
   // Server-written only — never set or modified by the client.
   // Security rules enforce their initial values on create and immutability on update.
   membershipStatus: MembershipStatus;

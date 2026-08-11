@@ -105,46 +105,63 @@ let rescheduleChain: Promise<void> = Promise.resolve();
 
 export function rescheduleMorningCall(
   sequenceDay: number,
-  currentTurn: number
+  currentTurn: number,
+  opts?: { granted?: boolean }
 ): Promise<void> {
   rescheduleChain = rescheduleChain
     .catch(() => {})
-    .then(() => doReschedule(sequenceDay, currentTurn));
+    .then(() => doReschedule(sequenceDay, currentTurn, opts?.granted));
   return rescheduleChain;
 }
 
 /**
- * §4: cancel everything, reschedule the next 30 days from the CURRENT
- * pointer. Called on every foreground/background transition. OS permission
- * missing → total silence (queue stays empty).
+ * §4: rebuild the next 30 days from the CURRENT pointer — compute-then-swap:
+ * everything fallible (setting load, permission read, body fetch, date math)
+ * happens BEFORE the cancel, so an error or an iOS mid-background suspension
+ * can never leave a cancelled-but-empty queue. Called on cold start and on
+ * transitions to `active` only.
  */
 async function doReschedule(
   sequenceDay: number,
-  currentTurn: number
+  currentTurn: number,
+  granted?: boolean
 ): Promise<void> {
   if (Platform.OS === "web") return;
   const Notifications = await import("expo-notifications");
 
-  await Notifications.cancelAllScheduledNotificationsAsync();
-
+  // No choice was ever made on this device → leave any existing queue alone.
   const setting = await getMorningCall();
   if (!setting) return;
-  const perm = await Notifications.getPermissionsAsync();
-  if (!perm.granted) return; // §2: denied → total silence
+
+  // Permission: trust a status the caller just received from
+  // requestPermissionsAsync; otherwise read it fresh.
+  const isGranted =
+    granted ?? (await Notifications.getPermissionsAsync()).granted;
+  if (!isGranted) {
+    // §2: denied/revoked → total silence. Cancel is safe here — nothing
+    // would be rescheduled and the OS would not deliver anyway.
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    return;
+  }
   await ensureSilentChannel(Notifications);
 
+  // Everything network/fallible, BEFORE the cancel.
   const body = await bodyForPointer(sequenceDay, currentTurn);
   const now = new Date();
-
-  let scheduled = 0;
-  for (let i = 0; scheduled < 30 && i <= 30; i++) {
+  const fireDates: Date[] = [];
+  for (let i = 0; fireDates.length < 30 && i <= 30; i++) {
     const day = new Date(now);
     day.setDate(now.getDate() + i);
     const minutes = minutesForDay(day, setting);
     const when = new Date(day);
     when.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
     if (when <= now) continue; // today only if the call is still ahead
+    fireDates.push(when);
+  }
 
+  // Swap: the new set is fully built — now cancel and schedule.
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  for (const when of fireDates) {
     await Notifications.scheduleNotificationAsync({
       content: {
         // §2: no title — the OS shows only "Mineral" + the line.
@@ -160,7 +177,6 @@ async function doReschedule(
         channelId: CHANNEL_ID,
       },
     });
-    scheduled++;
   }
 
   if (__DEV__) {
@@ -185,5 +201,64 @@ export async function dumpMorningCallQueue(): Promise<void> {
     })
     .sort((a, b) => (a.when?.getTime() ?? 0) - (b.when?.getTime() ?? 0))
     .map((e, i) => `  ${String(i + 1).padStart(2)}. ${e.line}`);
-  console.log(`[morning call] ${queue.length} scheduled\n${lines.join("\n")}`);
+  const perm = await Notifications.getPermissionsAsync();
+  const setting = await getMorningCall();
+  console.log(
+    `[morning call] ${queue.length} scheduled · perm=${perm.status} granted=${perm.granted} · setting=${setting ? setting.mode : "none"}\n${lines.join("\n")}`
+  );
+}
+
+/**
+ * Restore the mirrored morning-call choice from the user doc into device
+ * storage (mode + hour only — coordinates NEVER leave the device, so a
+ * restored 'sunrise' re-fetches coords silently IF the OS location permission
+ * is already granted; otherwise it falls back to 8:00 and the Settings row
+ * remains the path back). Returns true when local state changed.
+ */
+export async function restoreMorningCallFromProfile(mirror: {
+  morningCall?: { mode: "sunrise" | "hour"; hour?: number } | null;
+  morningCallOffered?: boolean;
+}): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  let changed = false;
+
+  if (mirror.morningCallOffered && !(await wasMorningCallOffered())) {
+    await markMorningCallOffered();
+    changed = true;
+  }
+
+  const remote = mirror.morningCall;
+  if (remote && !(await getMorningCall())) {
+    if (remote.mode === "hour") {
+      // Re-check at the moment of write — a fresh local choice made while
+      // this restore was in flight must never be overwritten.
+      if (await getMorningCall()) return changed;
+      await setMorningCall({ mode: "hour", hour: remote.hour ?? FALLBACK_HOUR });
+    } else {
+      let restored: MorningCallSetting = { mode: "hour", hour: FALLBACK_HOUR };
+      try {
+        const Location = await import("expo-location");
+        const perm = await Location.getForegroundPermissionsAsync();
+        if (perm.granted) {
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Lowest,
+          });
+          restored = {
+            mode: "sunrise",
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+          };
+        }
+      } catch {
+        // silent — the 8:00 fallback stands
+      }
+      // The location fetch above takes real time — if the user saved a
+      // local choice meanwhile, theirs wins; drop the restore.
+      if (await getMorningCall()) return changed;
+      await setMorningCall(restored);
+    }
+    changed = true;
+  }
+
+  return changed;
 }

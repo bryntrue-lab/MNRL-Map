@@ -41,7 +41,7 @@ export default function MorningCallScreen() {
   const insets = useSafeAreaInsets();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const fromSettings = from === "settings";
-  const { profile } = useUser();
+  const { profile, updateProfile } = useUser();
 
   const [mode, setMode] = useState<"hour" | "sunrise">("hour");
   const [hour, setHour] = useState(8);
@@ -91,21 +91,31 @@ export default function MorningCallScreen() {
     if (busy) return;
     setBusy(true);
     try {
+      let granted = false;
       if (Platform.OS !== "web") {
         const Notifications = await import("expo-notifications");
-        await Notifications.requestPermissionsAsync();
+        // Use the request's OWN result — never re-read and risk a misread.
         // Denied → total silence: the setting is kept, the queue stays
-        // empty (reschedule checks the OS permission itself). No nagging.
+        // empty. No nagging.
+        granted = (await Notifications.requestPermissionsAsync()).granted;
       }
       const coords = coordsRef.current;
+      const sunrise = mode === "sunrise" && coords != null;
       await setMorningCall(
-        mode === "sunrise" && coords
+        sunrise
           ? { mode: "sunrise", lat: coords.lat, lon: coords.lon }
           : { mode: "hour", hour }
       );
+      // Mirror mode + hour ONLY to the user doc — coordinates never leave
+      // the device. Fire-and-forget; the local choice is the source here.
+      updateProfile({
+        morningCall: sunrise ? { mode: "sunrise" } : { mode: "hour", hour },
+        morningCallOffered: true,
+      }).catch(() => {});
       await rescheduleMorningCall(
         profile?.sequenceDay ?? 1,
-        profile?.currentTurn ?? 1
+        profile?.currentTurn ?? 1,
+        { granted }
       );
     } catch {
       // the map stays quiet; the Settings row remains the path back

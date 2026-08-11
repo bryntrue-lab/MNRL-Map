@@ -8,4 +8,5 @@
 - [Web e2e limits](web-e2e-limits.md) — tester has no fake-mic flags; voice = quiet fallback on web; verify pipeline server-side and rules via REST probes.
 - [Expo Router routing gotchas](expo-router-routing.md) — /(tabs) replace lands on index not initialRouteName; per-uid profile cache required for entry routing.
 - [Exemplar-capped proof](exemplar-capped-proof.md) — never prove a whole-note-set claim from capped exemplars; phrase merges need full coverage gate.
+- [Expo Go dev storage + notifications](expo-go-dev-storage.md) — per-experience AsyncStorage wipes each dev session; compute-then-swap rescheduling; coords never leave device.
 - [Shell quirks](shell-quirks.md) — pkill -f self-match kills your own script (bracket trick); nohup background procs die when the ShellExec call returns.
