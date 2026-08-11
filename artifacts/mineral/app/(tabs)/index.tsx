@@ -191,7 +191,7 @@ export default function TodayScreen() {
   const Atmosphere = ATMOSPHERE[phase];
   const accent = PHASE_ACCENT[phase];
   const eyebrow = visiting
-    ? `VISITING · DAY ${word(dayInTurn(day)).toUpperCase()}`
+    ? `VISITING · ENCOUNTER ${word(dayInTurn(day)).toUpperCase()}`
     : "TODAY'S ENCOUNTER";
   const turnWord = TURN_WORDS[practiceTurnOf(sequenceDay) - 1] ?? "first";
 

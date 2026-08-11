@@ -189,6 +189,9 @@ export default function SettingsScreen() {
             testID="settings-delete"
           />
         ) : (
+          <>
+            {/* CS §1 — confirm headline */}
+            <Text style={styles.confirmHeadline}>release this field.</Text>
           <View style={styles.confirmRow}>
             {deleting ? (
               <Pressable style={styles.actionLine} disabled testID="settings-delete-confirm">
@@ -212,6 +215,7 @@ export default function SettingsScreen() {
               />
             )}
           </View>
+          </>
         )}
         {deleteError && <Text style={styles.errorLine}>{deleteError}</Text>}
       </ScrollView>
@@ -271,6 +275,11 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: "center",
     alignSelf: "flex-start",
+  },
+  confirmHeadline: {
+    ...TypeScale.serifSmall,
+    color: "#ffffff",
+    marginBottom: 10,
   },
   confirmRow: {
     flexDirection: "row",

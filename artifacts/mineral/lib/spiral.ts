@@ -343,8 +343,8 @@ export interface Companion {
 /** Missing companions are omitted, never greyed. Descriptors verbatim (§5). */
 export function companionsFor(age: number): Companion[] {
   const defs: Companion[] = [
-    { key: "echo",    name: "THE ECHO",    desc: "the same season, one turn behind",  age: age - 28 },
-    { key: "horizon", name: "THE HORIZON", desc: "the same season, one turn ahead",   age: age + 28 },
+    { key: "echo",    name: "THE ECHO",    desc: "the same season, one cycle behind",  age: age - 28 },
+    { key: "horizon", name: "THE HORIZON", desc: "the same season, one cycle ahead",   age: age + 28 },
     { key: "ballast", name: "THE BALLAST", desc: "what was gathering then, lived",    age: age - 14 },
     { key: "answer",  name: "THE ANSWER",  desc: "the counterweight still to come",   age: age + 14 },
   ];

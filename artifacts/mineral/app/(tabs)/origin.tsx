@@ -862,7 +862,7 @@ export default function OriginScreen() {
             {hasBirth && !turnOpen && (
               <>
                 <View style={{ opacity: 1 - wanderFade }}>
-                  <Text style={styles.hudCycle}>turn {word(r.turn)}</Text>
+                  <Text style={styles.hudCycle}>cycle {word(r.turn)}</Text>
                   <Text style={styles.hudCycle}>year {yearWordOf(r)}</Text>
                 </View>
                 <Pressable
@@ -881,7 +881,7 @@ export default function OriginScreen() {
               </>
             )}
             {turnOpen && (
-              <Text style={styles.hudCycle}>day {word(wheelDay)}</Text>
+              <Text style={styles.hudCycle}>encounter {word(wheelDay)}</Text>
             )}
           </View>
         </View>
@@ -1027,7 +1027,7 @@ export default function OriginScreen() {
                 <Text style={styles.captionStation}>{r.station.name}</Text>
                 <Text style={styles.captionMeta}>
                   {birthDate ? monthYearLabel(dateAtAge(birthDate, displayAge)) : ""} · age{" "}
-                  {displayAge.toFixed(1)} · turn {word(r.turn)} · year {yearWordOf(r)}
+                  {displayAge.toFixed(1)} · cycle {word(r.turn)} · year {yearWordOf(r)}
                 </Text>
               </View>
               {hintDone === false && (
