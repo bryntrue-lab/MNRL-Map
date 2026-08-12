@@ -371,13 +371,6 @@ export default function MapScreen() {
       )}
 
       <View style={[styles.footerZone, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}>
-        {/* QA — the map is the invitation: one line that stays after the
-            whisper does its work, pointing at where the spiral lives. */}
-        {hasBirth && (
-          <Text style={[styles.mapInvite, { opacity: captionFade }]} testID="map-hold-invite">
-            every year you&apos;ve lived is on this map. it waits in origin.
-          </Text>
-        )}
         <Text style={[styles.whisper, { opacity: whisperFade }]} testID="map-hold-whisper">
           drag anywhere — the map answers →
         </Text>
@@ -428,13 +421,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignSelf: "center",
     paddingHorizontal: 24,
-  },
-  mapInvite: {
-    ...TypeScale.metadata,
-    letterSpacing: 0.4,
-    color: colors.light.textTertiary,
-    textAlign: "center",
-    paddingHorizontal: 32,
   },
 
   // ── Slice I — the held beat ───────────────────────────────

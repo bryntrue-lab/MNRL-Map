@@ -11,4 +11,5 @@
 - [Expo Go dev storage + notifications](expo-go-dev-storage.md) — per-experience AsyncStorage wipes each dev session; compute-then-swap rescheduling; coords never leave device.
 - [practitionerContent rules gate](practitioner-content-rules.md) — new content kinds need a rules whitelist + deploy; client fallbacks hide permission-denied reads; blank screens can be unrenderable block *types*.
 - [Firestore RN transport](firestore-rn-transport.md) — web SDK streaming hangs minutes on native; force experimentalForceLongPolling on non-web.
+- [Copy canon rules](copy-canon.md) — never invent user-facing strings; unspecified copy → ask founder first; never name tabs/navigation in ritual copy.
 - [Shell quirks](shell-quirks.md) — pkill -f self-match kills your own script (bracket trick); nohup background procs die when the ShellExec call returns.
