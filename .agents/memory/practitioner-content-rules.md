@@ -10,3 +10,5 @@ description: New practitionerContent doc kinds are unreadable by clients until f
 **How to apply:** When adding a practitionerContent doc kind: update the rules whitelist, deploy rules (recipe in firebase-deploy-limits.md), and remember client fallbacks hide rule failures — verify the read path, not just the seed.
 
 Related F3 lesson: a post-⟡ block whose *type* the flow can't render (e.g. `practice` in "the-soul-has-a-posture") produced the blank screen — content can be non-empty yet unrenderable; filter by renderability, not just empty text. Stray empty encounter doc `UcjoYHDHmv3wPB70edEb` exists in live `encounters` (no title/blocks).
+
+**Seed coverage gotcha:** `teachings.json` in the seed repo holds ONLY `teaching_map`. The lens teachings (`teaching_consciousness`, etc.) exist only in live Firestore — copy edits to them must be made via targeted admin update, and are NOT protected by a reseed.
