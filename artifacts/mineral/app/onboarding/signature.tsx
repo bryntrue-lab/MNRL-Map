@@ -62,6 +62,11 @@ const toISODate = (d: Date) =>
     d.getDate()
   ).padStart(2, "0")}`;
 
+// QA (2026-08-12) — founder call: hide birth time / city / country for now.
+// All plumbing (pickers, geocoded autocomplete, country modal, save paths)
+// stays intact behind this flag.
+const SHOW_EXTENDED_BIRTH_FIELDS = false;
+
 const toHHmm = (d: Date) =>
   `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -312,6 +317,10 @@ export default function SignatureScreen() {
             </>
           )}
 
+          {/* QA — founder call: only the birth date ships for now. The time
+              and place fields are hidden, not removed — flip the flag to
+              bring them back. */}
+          {SHOW_EXTENDED_BIRTH_FIELDS && (<>
           {/* Birth time — optional, one-tap skip. */}
           <View style={styles.optionalRow}>
             <Text style={styles.fieldLabel}>Birth time, if you know it</Text>
@@ -435,6 +444,7 @@ export default function SignatureScreen() {
               {country ? country.name : "—"}
             </Text>
           </Pressable>
+          </>)}
         </View>
 
         {failed ? (

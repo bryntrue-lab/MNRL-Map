@@ -11,7 +11,6 @@ import {
   INTRO_TOTAL,
   introVisual,
 } from "@/app/(tabs)/origin";
-import { LinkPrimary } from "@/components/Links";
 import { OriginMap, type OriginMapVisual } from "@/components/SpiralComponents";
 import colors from "@/constants/colors";
 import { LinkType, TypeScale } from "@/constants/typography";
@@ -150,6 +149,16 @@ export default function MapScreen() {
     };
   }, [hasBirth, holding, enterHold]);
 
+  // QA — the still-point variant never enters the hold, so it gets its own
+  // quiet readiness beat before the CTA fades in. (Tap-anywhere-to-skip is
+  // gone: stray taps during the draw were skipping the whole screen.)
+  const [stillReady, setStillReady] = useState(false);
+  useEffect(() => {
+    if (hasBirth) return;
+    const id = setTimeout(() => setStillReady(true), 3500);
+    return () => clearTimeout(id);
+  }, [hasBirth]);
+
   // Whisper — two seconds into the hold, unless the hands moved first.
   useEffect(() => {
     if (!holding || wandered) return;
@@ -204,6 +213,10 @@ export default function MapScreen() {
   // eased register as the wander fade.
   const captionFade = useEasedValue(holding ? 1 : 0, 700);
   const whisperFade = useEasedValue(whisperOn && !wandered ? 1 : 0, 700);
+  // QA — one CTA, lowercase, fading in only once the spiral has finished
+  // drawing (or the still point has settled). No second control to overlap.
+  const ready = holding || stillReady;
+  const ctaFade = useEasedValue(ready ? 1 : 0, 700);
 
   // ── Zone geometry (px ↔ viewBox; no zoom here) ────────────
   const [zone, setZone] = useState({ w: 0, h: 0 });
@@ -358,34 +371,29 @@ export default function MapScreen() {
       )}
 
       <View style={[styles.footerZone, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}>
+        {/* QA — the map is the invitation: one line that stays after the
+            whisper does its work, pointing at where the spiral lives. */}
+        {hasBirth && (
+          <Text style={[styles.mapInvite, { opacity: captionFade }]} testID="map-hold-invite">
+            every year you&apos;ve lived is on this map. it waits in origin.
+          </Text>
+        )}
         <Text style={[styles.whisper, { opacity: whisperFade }]} testID="map-hold-whisper">
           drag anywhere — the map answers →
         </Text>
-        <LinkPrimary
-          label="continue →"
-          onPress={advance}
-          disabled={!holding}
-          style={{ alignSelf: "center", opacity: captionFade }}
-          testID="map-hold-continue"
-        />
-      </View>
-
-      {/* The draw (or the still-point variant) — tap skips, as ever. */}
-      {!holding && (
         <Pressable
-          style={StyleSheet.absoluteFill}
           onPress={advance}
-          testID="onboarding-map"
-        />
-      )}
-      {!holding && (
-        <Text
-          style={[styles.hint, { bottom: Math.max(insets.bottom, 20) + 44 }]}
-          pointerEvents="none"
+          disabled={!ready}
+          hitSlop={12}
+          style={({ pressed }) => [
+            styles.ctaTarget,
+            { opacity: ctaFade * (pressed ? 0.5 : 1) },
+          ]}
+          testID="map-hold-continue"
         >
-          tap to continue
-        </Text>
-      )}
+          <Text style={styles.hint}>tap to continue</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -410,13 +418,23 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.72)",
   },
   hint: {
-    position: "absolute",
-    left: 0,
-    right: 0,
     textAlign: "center",
     ...TypeScale.metadata,
     letterSpacing: 2,
     color: "rgba(255,255,255,0.5)",
+  },
+  ctaTarget: {
+    minHeight: 44,
+    justifyContent: "center",
+    alignSelf: "center",
+    paddingHorizontal: 24,
+  },
+  mapInvite: {
+    ...TypeScale.metadata,
+    letterSpacing: 0.4,
+    color: colors.light.textTertiary,
+    textAlign: "center",
+    paddingHorizontal: 32,
   },
 
   // ── Slice I — the held beat ───────────────────────────────
