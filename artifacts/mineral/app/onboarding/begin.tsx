@@ -86,7 +86,7 @@ export default function BeginScreen() {
         <Text style={styles.eyebrow}>YOUR FIRST ENCOUNTER</Text>
         <Text style={styles.title}>The Threshold</Text>
         <Text style={styles.subtitle}>
-          something is calling — what comes when you stop naming it?
+          saying yes to not knowing
         </Text>
 
         <BeginButton onPress={begin} />

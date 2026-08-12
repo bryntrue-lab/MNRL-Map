@@ -59,7 +59,7 @@ export default function HelloScreen() {
       {/* Wordmark + tagline — vertically centered with footer offset */}
       <View style={styles.centerContent}>
         <MineralWordmark w={width * 0.72} />
-        <Text style={styles.tagline}>a companion for the creative psyche</Text>
+        <Text style={styles.tagline}>a practice for the creative psyche</Text>
       </View>
 
       {/* C.1 §1h — the way back into an existing field */}

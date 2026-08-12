@@ -34,7 +34,7 @@ export default function EntryScreen() {
         {/* Phase label cluster between spiral and body */}
         <View style={styles.labelCluster}>
           <Text style={styles.phaseName}>in The Signal</Text>
-          <Text style={styles.turnLabel}>FIRST TURN OF THE SPIRAL</Text>
+          <Text style={styles.turnLabel}>YOUR FIRST TURN</Text>
         </View>
 
         {/* Body copy — only "The Signal" highlighted in phase pink */}

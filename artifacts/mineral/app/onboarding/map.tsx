@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,6 +12,7 @@ import {
   introVisual,
 } from "@/app/(tabs)/origin";
 import { OriginMap, type OriginMapVisual } from "@/components/SpiralComponents";
+import { LinkWhisper } from "@/components/Links";
 import colors from "@/constants/colors";
 import { LinkType, TypeScale } from "@/constants/typography";
 import { useUser } from "@/context/UserContext";
@@ -374,18 +375,22 @@ export default function MapScreen() {
         <Text style={[styles.whisper, { opacity: whisperFade }]} testID="map-hold-whisper">
           drag anywhere — the map answers →
         </Text>
-        <Pressable
-          onPress={advance}
-          disabled={!ready}
-          hitSlop={12}
-          style={({ pressed }) => [
-            styles.ctaTarget,
-            { opacity: ctaFade * (pressed ? 0.5 : 1) },
-          ]}
-          testID="map-hold-continue"
-        >
-          <Text style={styles.hint}>tap to continue</Text>
-        </Pressable>
+        {/* Canon §4 — the CTA does not exist until the choreography
+            settles: mounted only once ready, fading in via the wrapper
+            (LinkWhisper's own pressed-opacity would override a direct
+            style opacity, same trap as LinkPrimary). */}
+        {ready ? (
+          <View style={{ opacity: ctaFade }}>
+            <LinkWhisper
+              label="continue →"
+              onPress={advance}
+              style={{ alignSelf: "center" }}
+              testID="map-hold-continue"
+            />
+          </View>
+        ) : (
+          <View style={styles.ctaPlaceholder} />
+        )}
       </View>
     </View>
   );
@@ -410,17 +415,10 @@ const styles = StyleSheet.create({
     ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.72)",
   },
-  hint: {
-    textAlign: "center",
-    ...TypeScale.metadata,
-    letterSpacing: 2,
-    color: "rgba(255,255,255,0.5)",
-  },
-  ctaTarget: {
-    minHeight: 44,
-    justifyContent: "center",
-    alignSelf: "center",
-    paddingHorizontal: 24,
+  // Same height as LinkWhisper's ≥44pt target — the footer never reflows
+  // when the CTA mounts.
+  ctaPlaceholder: {
+    height: 44,
   },
 
   // ── Slice I — the held beat ───────────────────────────────
