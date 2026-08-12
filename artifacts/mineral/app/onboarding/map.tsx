@@ -26,6 +26,7 @@ import {
   dateAtAge,
   monthYearLabel,
   resolve,
+  seasonFor,
   word,
   type Quarter,
 } from "@/lib/spiral";
@@ -292,6 +293,12 @@ export default function MapScreen() {
   const metaLine = birthDate
     ? `${monthYearLabel(dateAtAge(birthDate, displayAge))} · age ${displayAge.toFixed(1)}`
     : "";
+  const season = seasonFor(r);
+
+  // QA — one continuous surface: the map draws slightly over-scale, then
+  // eases down (with the caption fading in above) as the hold opens. The
+  // zones are in the layout from the start, so nothing jumps.
+  const mapScaleNow = hasBirth ? 1 + 0.1 * (1 - captionFade) : 1;
 
   const mapBody = (
     <View
@@ -314,14 +321,17 @@ export default function MapScreen() {
     </View>
   );
 
-  // ── The held beat — live map, open hand ───────────────────
-  if (holding) {
-    return (
-      <View style={styles.container} testID="onboarding-map-hold">
-        {/* Caption above the map — "you are here." until the first drag,
-            then the normal wander caption (station leads, fades with rest). */}
-        <View style={[styles.captionZone, { marginTop: insets.top + 24 }]}>
-          {!wandered ? (
+  // ── One continuous surface: draw → hold, no remount, no jump ──
+  return (
+    <View style={styles.container} testID={holding ? "onboarding-map-hold" : "onboarding-map-draw"}>
+      {/* Caption above the map — "you are here." until the first drag,
+          then the normal wander caption (station leads, fades with rest). */}
+      <View
+        style={[styles.captionZone, { marginTop: insets.top + 24 }]}
+        pointerEvents="none"
+      >
+        {holding &&
+          (!wandered ? (
             <View style={{ alignItems: "center", opacity: captionFade }}>
               <Text style={styles.hereLine}>you are here.</Text>
               <Text style={styles.captionMeta}>{metaLine}</Text>
@@ -332,34 +342,14 @@ export default function MapScreen() {
               <Text style={styles.captionMeta}>
                 {metaLine} · cycle {word(r.turn)} · year {yearWord}
               </Text>
+              {season && <Text style={styles.captionMeta}>{season.title}</Text>}
             </View>
-          )}
-        </View>
-
-        <GestureDetector gesture={pan}>{mapBody}</GestureDetector>
-
-        <View style={[styles.footerZone, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}>
-          <Text
-            style={[styles.whisper, { opacity: whisperFade }]}
-            testID="map-hold-whisper"
-          >
-            drag anywhere — the map answers →
-          </Text>
-          <LinkPrimary
-            label="continue →"
-            onPress={advance}
-            style={{ alignSelf: "center" }}
-            testID="map-hold-continue"
-          />
-        </View>
+          ))}
       </View>
-    );
-  }
 
-  // ── The draw (or the still-point variant) — tap skips, as ever ──
-  return (
-    <Pressable style={styles.container} onPress={advance} testID="onboarding-map">
-      {mapBody}
+      <GestureDetector gesture={pan}>
+        <View style={{ flex: 1, transform: [{ scale: mapScaleNow }] }}>{mapBody}</View>
+      </GestureDetector>
 
       {!hasBirth && (
         <View style={[styles.stillWrap, { bottom: insets.bottom + 120 }]}>
@@ -367,10 +357,36 @@ export default function MapScreen() {
         </View>
       )}
 
-      <Text style={[styles.hint, { bottom: Math.max(insets.bottom, 20) + 44 }]}>
-        tap to continue
-      </Text>
-    </Pressable>
+      <View style={[styles.footerZone, { paddingBottom: Math.max(insets.bottom, 20) + 24 }]}>
+        <Text style={[styles.whisper, { opacity: whisperFade }]} testID="map-hold-whisper">
+          drag anywhere — the map answers →
+        </Text>
+        <LinkPrimary
+          label="continue →"
+          onPress={advance}
+          disabled={!holding}
+          style={{ alignSelf: "center", opacity: captionFade }}
+          testID="map-hold-continue"
+        />
+      </View>
+
+      {/* The draw (or the still-point variant) — tap skips, as ever. */}
+      {!holding && (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={advance}
+          testID="onboarding-map"
+        />
+      )}
+      {!holding && (
+        <Text
+          style={[styles.hint, { bottom: Math.max(insets.bottom, 20) + 44 }]}
+          pointerEvents="none"
+        >
+          tap to continue
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -405,7 +421,7 @@ const styles = StyleSheet.create({
 
   // ── Slice I — the held beat ───────────────────────────────
   captionZone: {
-    height: 64,
+    height: 84,
     alignItems: "center",
     justifyContent: "center",
   },

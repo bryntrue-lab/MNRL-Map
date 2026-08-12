@@ -1,7 +1,7 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router, useLocalSearchParams } from "expo-router";
 import { Timestamp } from "firebase/firestore";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Modal,
@@ -65,6 +65,53 @@ const toISODate = (d: Date) =>
 const toHHmm = (d: Date) =>
   `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
+interface CitySuggestion {
+  label: string; // "City, Region"
+  countryCode: string; // ISO-2, uppercase ("" when absent)
+  countryName: string;
+}
+
+/** Photon (OpenStreetMap) place autocomplete — free, keyless, HTTPS. */
+async function fetchCitySuggestions(
+  q: string,
+  signal: AbortSignal
+): Promise<CitySuggestion[]> {
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=en`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) return [];
+  const json = (await res.json()) as {
+    features?: {
+      properties?: {
+        name?: string;
+        state?: string;
+        country?: string;
+        countrycode?: string;
+        osm_key?: string;
+        osm_value?: string;
+      };
+    }[];
+  };
+  const seen = new Set<string>();
+  const out: CitySuggestion[] = [];
+  for (const f of json.features ?? []) {
+    const p = f.properties;
+    if (!p?.name || p.osm_key !== "place") continue;
+    if (!["city", "town", "village", "hamlet", "municipality", "borough"].includes(p.osm_value ?? ""))
+      continue;
+    const label = p.state && p.state !== p.name ? `${p.name}, ${p.state}` : p.name;
+    const key = `${label}|${p.countrycode ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      label,
+      countryCode: (p.countrycode ?? "").toUpperCase(),
+      countryName: p.country ?? "",
+    });
+    if (out.length >= 5) break;
+  }
+  return out;
+}
+
 /**
  * Slice 5 — the app's ONLY birth-date form, ever. Writes
  * users/{uid}.birthDate (+ optional time/place) directly: one source of
@@ -88,9 +135,16 @@ export default function SignatureScreen() {
   const [webDate, setWebDate] = useState("");
   const [webTime, setWebTime] = useState("");
   // F1 — structured birth place: city text + country from the static ISO
-  // list. No network, no geocoding.
+  // list.
   const [birthCity, setBirthCity] = useState("");
   const [country, setCountry] = useState<Country | null>(null);
+  // QA — geolocated city suggestions (Photon/OpenStreetMap, no key). Typed
+  // queries go to the public geocoder over HTTPS; picking a row fills the
+  // city as "City, Region" and sets the country. Typing free-text still
+  // works exactly as before — the suggestions are an offer, not a gate.
+  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
+  const cityPickedRef = useRef(false);
+  const cityReqRef = useRef(0); // only the newest query may commit results
   const [countryOpen, setCountryOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState("");
   const [dateOpen, setDateOpen] = useState(false);
@@ -112,6 +166,43 @@ export default function SignatureScreen() {
     : birthTimeObj
       ? toHHmm(birthTimeObj)
       : null;
+
+  // Debounced suggestion fetch — quiet on any failure (typing still works).
+  useEffect(() => {
+    if (cityPickedRef.current) {
+      cityPickedRef.current = false;
+      return;
+    }
+    const q = birthCity.trim();
+    // Stale offers are worse than none: clear immediately on every change.
+    setCitySuggestions([]);
+    if (q.length < 3) return;
+    const reqId = ++cityReqRef.current;
+    const ctrl = new AbortController();
+    const id = setTimeout(() => {
+      fetchCitySuggestions(q, ctrl.signal)
+        .then((s) => {
+          if (cityReqRef.current === reqId) setCitySuggestions(s);
+        })
+        .catch(() => {
+          /* offline or blocked — the field stays a plain text input */
+        });
+    }, 350);
+    return () => {
+      clearTimeout(id);
+      ctrl.abort();
+    };
+  }, [birthCity]);
+
+  const pickCity = (s: CitySuggestion) => {
+    cityPickedRef.current = true;
+    setBirthCity(s.label);
+    setCitySuggestions([]);
+    if (s.countryCode) {
+      const match = COUNTRIES.find((c) => c.code === s.countryCode);
+      if (match) setCountry(match);
+    }
+  };
 
   const leave = () => {
     if (fromOrigin) {
@@ -254,7 +345,13 @@ export default function SignatureScreen() {
                 style={styles.input}
                 onPress={() => {
                   setDateOpen(false);
-                  setTimeOpen((v) => !v);
+                  setTimeOpen((v) => {
+                    const next = !v;
+                    // QA — the dial's resting value IS the selection: commit
+                    // it on open so the field always mirrors the wheel.
+                    if (next && !birthTimeObj) setBirthTimeObj(new Date(1990, 0, 1, 12, 0));
+                    return next;
+                  });
                 }}
                 testID="signature-birthtime"
               >
@@ -269,8 +366,15 @@ export default function SignatureScreen() {
                   display="spinner"
                   is24Hour
                   onChange={(event, d) => {
-                    if (Platform.OS === "android") setTimeOpen(false);
-                    if (event.type === "set" && d) setBirthTimeObj(d);
+                    // QA — iOS spinners report every tick; take the value as
+                    // it moves so the field transfers live. Android keeps the
+                    // set/dismiss contract.
+                    if (Platform.OS === "android") {
+                      setTimeOpen(false);
+                      if (event.type === "set" && d) setBirthTimeObj(d);
+                    } else if (d) {
+                      setBirthTimeObj(d);
+                    }
                   }}
                   testID="signature-birthtime-wheel"
                 />
@@ -282,6 +386,7 @@ export default function SignatureScreen() {
               optional; the one-tap skip below covers the whole screen. */}
           {/* H1 — final verbatim label; one field, users may type "Portland, Oregon". */}
           <Text style={styles.fieldLabel}>Birth city, State or Province</Text>
+          <View style={styles.cityAnchor}>
           <TextInput
             style={styles.input}
             placeholder="city or town"
@@ -293,6 +398,28 @@ export default function SignatureScreen() {
             onSubmitEditing={() => proceed()}
             testID="signature-birthcity"
           />
+          {/* Popover, not in-flow: the form never shifts; it covers the
+              fields below only while an offer is open. */}
+          {citySuggestions.length > 0 && (
+            <View style={styles.suggestList} testID="signature-city-suggestions">
+              {citySuggestions.map((s, i) => (
+                <Pressable
+                  key={`${s.label}-${s.countryCode}-${i}`}
+                  style={styles.suggestRow}
+                  onPress={() => pickCity(s)}
+                  testID={`city-suggestion-${i}`}
+                >
+                  <Text style={styles.suggestText} numberOfLines={1}>
+                    {s.label}
+                    {s.countryName ? (
+                      <Text style={styles.suggestCountry}>  ·  {s.countryName}</Text>
+                    ) : null}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          </View>
 
           <Text style={styles.fieldLabel}>country</Text>
           <Pressable
@@ -515,6 +642,39 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+
+  // QA — geolocated city suggestions (absolute popover under the city input)
+  cityAnchor: {
+    position: "relative",
+    zIndex: 10,
+  },
+  suggestList: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.18)",
+    borderRadius: 10,
+    backgroundColor: "rgba(10,6,18,0.97)",
+    overflow: "hidden",
+    zIndex: 10,
+    elevation: 10,
+  },
+  suggestRow: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  suggestText: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.85)",
+  },
+  suggestCountry: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.45)",
   },
 
   // F1 — country picker
