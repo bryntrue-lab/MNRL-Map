@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import React from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import OnboardingFooter from "@/components/OnboardingFooter";
@@ -59,6 +60,12 @@ export default function PracticeScreen() {
           {"Your reflections become field notes.\n"}
           {"Patterns become a guide."}
         </Text>
+
+        {/* Slice I2 — the one line tying the map beat to the practice */}
+        <Text style={styles.mapLine}>
+          one encounter keeps each morning. the map holds all of it — wander
+          whenever you want.
+        </Text>
       </View>
 
       <OnboardingFooter
@@ -115,5 +122,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 0.1,
     paddingHorizontal: 16,
+  },
+  // Slice I2 — bodyLarge · textSecondary, verbatim copy
+  mapLine: {
+    ...TypeScale.bodyLarge,
+    color: colors.light.textSecondary,
+    textAlign: "center",
+    paddingHorizontal: 16,
+    marginTop: 28,
   },
 });
