@@ -245,10 +245,11 @@ export default function GuideScreen() {
   // ── Field arithmetic ─────────────────────────────────────────────
   const hasField = notes.length > 0;
 
-  // ── Empty-state held lines (fetched once; skipped once the field lives) ──
+  // ── Held lines (fetched once, every field state — quiet rows carry
+  // their held line as subtitle; single source: the seeded teaching docs) ──
   const heldLinesFetched = useRef(false);
   useEffect(() => {
-    if (!user || hasField || heldLinesFetched.current) return;
+    if (!user || heldLinesFetched.current) return;
     heldLinesFetched.current = true; // one attempt per mount — empty or
     // failed reads render name-only rows rather than refetching forever.
     let cancelled = false;
@@ -272,7 +273,7 @@ export default function GuideScreen() {
     return () => {
       cancelled = true;
     };
-  }, [user, hasField]);
+  }, [user]);
   const noteDates = notes
     .map((n) => n.createdAt?.toDate?.())
     .filter(Boolean) as Date[];
@@ -686,20 +687,29 @@ export default function GuideScreen() {
                 <Text style={styles.lensArrow}>→</Text>
               </Pressable>
             ))}
+            {/* Quiet rows — held line as subtitle, from the seeded teaching
+                docs (never hardcoded). Serif never sits inside a pressable
+                (T-c): the held line renders beneath, outside the press row. */}
             {quietRows.map(({ lens }) => (
-              <Pressable
-                key={lens.id}
-                style={({ pressed }) => [styles.lensRow, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => router.push(`/lens/${lens.id}`)}
-                testID={`quiet-lens-${lens.id}`}
-              >
+              <View key={lens.id} style={styles.lensRow} testID={`quiet-lens-${lens.id}`}>
                 <View
                   style={[styles.lensDot, { backgroundColor: lens.color, opacity: 0.5 }]}
                 />
-                <Text style={styles.quietLensName}>{lens.label}</Text>
-                <Text style={styles.lensCount}>listening</Text>
-                <Text style={styles.lensArrow}>→</Text>
-              </Pressable>
+                <View style={styles.lensBody}>
+                  <Pressable
+                    style={({ pressed }) => [styles.emptyLensPress, { opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => router.push(`/lens/${lens.id}`)}
+                    hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                    testID={`quiet-lens-press-${lens.id}`}
+                  >
+                    <Text style={styles.quietLensName}>{lens.label}</Text>
+                    <Text style={styles.lensArrow}>→</Text>
+                  </Pressable>
+                  {heldLines[lens.id] ? (
+                    <Text style={styles.lensHeld}>{heldLines[lens.id]}</Text>
+                  ) : null}
+                </View>
+              </View>
             ))}
           </View>
         )}
@@ -955,7 +965,7 @@ const styles = StyleSheet.create({
   },
   lensHeld: {
     ...TypeScale.serifSmall,
-    color: "rgba(255,255,255,0.58)",
+    color: colors.light.textSecondary,
     marginTop: 5,
   },
   quietLensName: {
