@@ -411,7 +411,11 @@ export default function GuideScreen() {
   // ── Lens rows — live only; COUNT PHRASE only, no prose (D.3d §1g) ──
   const resistanceNotes = notes.filter((n) => n.type === "resistance");
 
-  function lensStatus(lensId: string): { phrase: string | null; live: boolean } {
+  function lensStatus(lensId: string): {
+    phrase: string | null;
+    live: boolean;
+    weight: number;
+  } {
     if (lensId === "threads") {
       const threadItems = visibleItems.filter(
         (i) => i.type === "thread" && i.count >= 2
@@ -421,13 +425,13 @@ export default function GuideScreen() {
       const pieces: string[] = [];
       if (words) pieces.push(`${spellNumber(words)} ${words === 1 ? "word" : "words"}`);
       if (phrases) pieces.push(`${spellNumber(phrases)} ${phrases === 1 ? "phrase" : "phrases"}`);
-      if (pieces.length === 0) return { phrase: null, live: false };
-      return { phrase: pieces.join(" · "), live: true };
+      if (pieces.length === 0) return { phrase: null, live: false, weight: 0 };
+      return { phrase: pieces.join(" · "), live: true, weight: threadItems.length };
     }
     if (lensId === "motifs") {
       const n = visibleItems.filter((i) => i.type === "motif" && i.count >= 2).length;
-      if (n === 0) return { phrase: null, live: false };
-      return { phrase: `${spellNumber(n)} returning`, live: true };
+      if (n === 0) return { phrase: null, live: false, weight: 0 };
+      return { phrase: `${spellNumber(n)} returning`, live: true, weight: n };
     }
     if (lensId === "resistance") {
       const items = visibleItems
@@ -437,6 +441,7 @@ export default function GuideScreen() {
         return {
           phrase: `the same wall, ${spellNumber(items[0].count)} times`,
           live: true,
+          weight: items[0].count,
         };
       }
       const n = Math.max(items.length, resistanceNotes.length);
@@ -444,15 +449,21 @@ export default function GuideScreen() {
         return {
           phrase: n === 1 ? "one wall named" : `${spellNumber(n)} walls named`,
           live: true,
+          weight: n,
         };
       }
-      return { phrase: null, live: false };
+      return { phrase: null, live: false, weight: 0 };
     }
-    return { phrase: null, live: false };
+    return { phrase: null, live: false, weight: 0 };
   }
 
+  // Final ruling — all five rows, always: live first (by activity),
+  // then quiet in canonical order. Array#sort is stable, so equal
+  // weights keep canonical order among themselves.
   const lensRows = LENSES.map((l) => ({ lens: l, status: lensStatus(l.id) }));
-  const liveRows = lensRows.filter((r) => r.status.live);
+  const liveRows = lensRows
+    .filter((r) => r.status.live)
+    .sort((a, b) => b.status.weight - a.status.weight);
   const quietRows = lensRows.filter((r) => !r.status.live);
 
   // ── Footer signature, one line (D.3d §1h) ────────────────────────
@@ -575,7 +586,9 @@ export default function GuideScreen() {
 
             {hero.count > 1 && (
               <LinkWhisper
-                label={`all ${spellNumber(hero.count)} notes`}
+                label={
+                  hero.count === 2 ? "both notes" : `all ${spellNumber(hero.count)} notes`
+                }
                 onPress={() => router.push(`/lens/${heroLensId}`)}
                 style={styles.heroWhisper}
                 testID="hero-all-notes"
@@ -654,7 +667,9 @@ export default function GuideScreen() {
           </View>
         )}
 
-        {/* §1g — THE LENSES: live rows, count phrase only + listening line */}
+        {/* §1g — THE LENSES (final ruling): all five rows, always.
+            Live first (by activity), then quiet in canonical order.
+            Every row is a door to its detail view. */}
         {hasField && (
           <View style={styles.section}>
             <Text style={styles.eyebrow}>the lenses</Text>
@@ -671,23 +686,21 @@ export default function GuideScreen() {
                 <Text style={styles.lensArrow}>→</Text>
               </Pressable>
             ))}
-            {quietRows.length > 0 && (
-              <View style={styles.stillListeningRow} testID="lenses-listening">
-                {quietRows.map((r, i) => (
-                  <React.Fragment key={r.lens.id}>
-                    {i > 0 && <Text style={styles.stillListening}> · </Text>}
-                    <Pressable
-                      onPress={() => router.push(`/lens/${r.lens.id}`)}
-                      hitSlop={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                      testID={`quiet-lens-${r.lens.id}`}
-                    >
-                      <Text style={styles.stillListening}>{r.lens.label}</Text>
-                    </Pressable>
-                  </React.Fragment>
-                ))}
-                <Text style={styles.stillListening}> — listening.</Text>
-              </View>
-            )}
+            {quietRows.map(({ lens }) => (
+              <Pressable
+                key={lens.id}
+                style={({ pressed }) => [styles.lensRow, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => router.push(`/lens/${lens.id}`)}
+                testID={`quiet-lens-${lens.id}`}
+              >
+                <View
+                  style={[styles.lensDot, { backgroundColor: lens.color, opacity: 0.5 }]}
+                />
+                <Text style={styles.quietLensName}>{lens.label}</Text>
+                <Text style={styles.lensCount}>listening</Text>
+                <Text style={styles.lensArrow}>→</Text>
+              </Pressable>
+            ))}
           </View>
         )}
 
@@ -945,15 +958,10 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.58)",
     marginTop: 5,
   },
-  stillListeningRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "baseline",
-    paddingTop: 10,
-  },
-  stillListening: {
-    ...TypeScale.metadata,
-    color: colors.light.textMuted,
+  quietLensName: {
+    ...TypeScale.body,
+    color: colors.light.textSecondary,
+    flex: 1,
   },
 
   // §1h — footer signature, one line, hairline above
