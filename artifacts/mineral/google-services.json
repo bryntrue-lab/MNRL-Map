@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "190347227688",
+    "project_id": "mineral-resonance",
+    "storage_bucket": "mineral-resonance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:190347227688:android:d6050dbed17459e5dcbb1d",
+        "android_client_info": {
+          "package_name": "com.madebymineral.quartz"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "190347227688-4nreejecpfgk019mkj8es0nvgjks8dhh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChP9d-RobA7BJhKuLyh8qGOVv3Ss19OI0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "190347227688-4nreejecpfgk019mkj8es0nvgjks8dhh.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "190347227688-16cntg0713gset3udg7mbdp3k69q2fut.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mineral.resonance"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

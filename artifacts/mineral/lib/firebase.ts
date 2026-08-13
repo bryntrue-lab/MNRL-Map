@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import {
+  CustomProvider,
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+} from "firebase/app-check";
 import {
   Auth,
   browserLocalPersistence,
@@ -27,6 +31,11 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
+// Slice AC — App Check initializes immediately after initializeApp, before
+// any service getter below runs, so the first Firestore/Storage/Functions
+// call already carries attestation. (Function declaration is hoisted.)
+initAppCheck();
+
 // §9 — Restore AsyncStorage persistence so sessions survive cold start on native.
 // The previous inMemoryPersistence caused a log-out on every cold start — fatal
 // for a daily-return practice. getReactNativePersistence is present at runtime;
@@ -45,16 +54,28 @@ function initAuth(): Auth {
   }
 }
 
-// §3a — App Check: wired here, enforcement disabled in the Firebase console
-// until ≥99% of legitimate requests are attesting successfully. Flip the
-// enforcement toggle in the console — no code change required.
+// §3a / Slice AC — App Check: wired here, enforcement disabled in the
+// Firebase console until ≥99% of legitimate requests are attesting
+// successfully. Flip the enforcement toggle in the console — no code change.
 //
-// Web: reCAPTCHA v3 (free, sufficient for v1).
-// Native: App Attest (iOS) / Play Integrity (Android) with the Firebase JS SDK
-// requires expo-firebase-app-check or a custom provider backed by native modules.
-// That setup is deferred; enforcement stays off until native attestation ships.
+// Web: reCAPTCHA v3 (free, sufficient for v1) — unchanged.
+// Native: App Attest (iOS; DeviceCheck fallback automatic) / Play Integrity
+// (Android) via @react-native-firebase/app-check as a pure token source,
+// bridged into the JS SDK through a CustomProvider (lib/appCheckNative.ts).
+// Dev/simulator builds run the debug provider; Expo Go (no native module)
+// skips attestation entirely and the app functions as before.
 function initAppCheck(): void {
-  if (Platform.OS !== "web") return;
+  if (Platform.OS !== "web") {
+    // Lazy import keeps web bundles free of the native bridge module.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getNativeAppCheckToken } = require("./appCheckNative") as
+      typeof import("./appCheckNative");
+    initializeAppCheck(app, {
+      provider: new CustomProvider({ getToken: getNativeAppCheckToken }),
+      isTokenAutoRefreshEnabled: true,
+    });
+    return;
+  }
 
   const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
   if (!siteKey) return;
@@ -84,7 +105,5 @@ export const db = initDb();
 export const storage = getStorage(app);
 // C §3 — the deleteAccount callable lives in us-central1 with the rest.
 export const functions = getFunctions(app, "us-central1");
-
-initAppCheck();
 
 export default app;

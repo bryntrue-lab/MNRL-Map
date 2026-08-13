@@ -58,9 +58,12 @@
   "dependencies": {
     "@expo-google-fonts/cormorant-garamond": "^0.4.1",
     "@react-native-community/datetimepicker": "8.4.4",
+    "@react-native-firebase/app": "^26.2.0",
+    "@react-native-firebase/app-check": "^26.2.0",
     "@types/suncalc": "^1.9.2",
     "assert": "^2.1.0",
     "expo-audio": "~1.1.1",
+    "expo-build-properties": "~1.0.10",
     "expo-notifications": "~0.32.17",
     "firebase": "^12.13.0",
     "suncalc": "^2.0.1"

@@ -12,4 +12,5 @@
 - [practitionerContent rules gate](practitioner-content-rules.md) — new content kinds need a rules whitelist + deploy; client fallbacks hide permission-denied reads; blank screens can be unrenderable block *types*.
 - [Firestore RN transport](firestore-rn-transport.md) — web SDK streaming hangs minutes on native; force experimentalForceLongPolling on non-web.
 - [Copy canon rules](copy-canon.md) — never invent user-facing strings; unspecified copy → ask founder first; never name tabs/navigation in ritual copy.
+- [Native App Check](app-check-native.md) — RNFirebase app-check as token source only, CustomProvider into JS SDK; App Check admin API enable + appAttestConfig via service account; quartz iOS app id noted.
 - [Shell quirks](shell-quirks.md) — pkill -f self-match kills your own script (bracket trick); nohup background procs die when the ShellExec call returns.

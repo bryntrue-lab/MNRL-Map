@@ -17,6 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.madebymineral.quartz",
       "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
         "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes.",
@@ -30,6 +31,7 @@
     "android": {
       "package": "com.madebymineral.quartz",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
         "backgroundImage": "./assets/images/adaptive-icon-background.png"
@@ -50,7 +52,17 @@
       "expo-web-browser",
       "expo-audio",
       "expo-notifications",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@react-native-firebase/app",
+      "@react-native-firebase/app-check",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
