@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { LinkPrimary, LinkSecondary } from "@/components/Links";
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useUser } from "@/context/UserContext";
 import {
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     ...TypeScale.body,
     fontSize: 17,
     lineHeight: 22,
-    color: "rgba(255,255,255,0.45)",
+    color: colors.light.textMuted,
   },
   chosen: {
     color: "rgba(255,255,255,0.95)",

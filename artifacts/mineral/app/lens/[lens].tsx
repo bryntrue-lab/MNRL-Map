@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { LinkSecondary, LinkWhisper } from "@/components/Links";
 import { SheetShell } from "@/components/OriginSheets";
+import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -360,10 +361,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   offeringText: {
-    ...TypeScale.metadata,
-    fontSize: 13,
-    lineHeight: 19,
-    color: "rgba(255,255,255,0.6)",
+    ...TypeScale.body,
+    color: colors.light.textTertiary,
   },
 
   // B9 AMENDED — teaching presence
