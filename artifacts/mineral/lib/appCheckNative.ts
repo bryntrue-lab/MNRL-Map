@@ -26,6 +26,17 @@ function setup(): Promise<RnfbAppCheck | null> {
   if (setupPromise) return setupPromise;
   setupPromise = (async () => {
     try {
+      // Expo Go check FIRST: merely requiring @react-native-firebase/* in
+      // Expo Go throws asynchronously ("Native module NativeRNFBTurboApp is
+      // not registered") outside this try/catch, surfacing as an uncaught
+      // error. Skip the require entirely when running in the store client.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Constants = require("expo-constants").default;
+      if (Constants?.executionEnvironment === "storeClient") {
+        console.log("[app-check] Expo Go detected; attestation skipped.");
+        return null;
+      }
+
       // Lazy require: must not crash Expo Go at import time.
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const rnfbAppCheckModule = require("@react-native-firebase/app-check");
