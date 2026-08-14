@@ -25,7 +25,7 @@ export default function EntryScreen() {
 
       {/* Content cluster — flex:1 + justifyContent:center lands it at optical center */}
       <View style={styles.contentWrap}>
-        <Text style={styles.eyebrow}>WHERE YOU'RE BEGINNING</Text>
+        <Text style={styles.eyebrow}>WHERE THE PRACTICE FINDS YOU</Text>
 
         <View style={styles.spiralWrap}>
           <OnboardingSpiral />

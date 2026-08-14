@@ -171,17 +171,6 @@ export function OnboardingSpiral() {
       {/* Still point center */}
       <Circle cx="80" cy="80" r="6"  fill="none" stroke="rgba(168,156,220,0.3)" strokeWidth="0.5" />
       <Circle cx="80" cy="80" r="3"  fill="rgba(168,156,220,0.6)" />
-
-      <SvgText
-        x="80" y="9"
-        textAnchor="middle"
-        fill="#c44a8a"
-        fontSize="6"
-        letterSpacing="1.5"
-        fontFamily="sans-serif"
-      >
-        PHASE I
-      </SvgText>
     </Svg>
   );
 }
