@@ -7,6 +7,10 @@ description: How Mineral does App Attest with the Firebase JS SDK, and the admin
 
 **Why:** Slice AC ruling: no eject, JS SDK stays the only data SDK; enforcement is a console/API toggle taken later (enforce-day checklist lives in the slice doc).
 
+**Status (2026-08-14):** native attestation is DISARMED by a kill switch — `setup()` returns null unless `EXPO_PUBLIC_NATIVE_APPCHECK === "1"` (set via eas.json production env when re-enabling, never Replit Secrets). Reason: TestFlight build 4 crashed ~200ms post-launch with an uncaught native ObjC exception on the TurboModule queue; JS try/catch cannot contain native-queue throws in release builds. Root-cause fix pending; re-enable is an enforce-day prerequisite.
+
+**iOS build gotchas:** RNFB's SPM mode breaks EAS builds both ways (static: "SPM + static linkage not supported"; dynamic: app target never links FirebaseCore → `_OBJC_CLASS_$_FIRApp` link failure). Fix: static frameworks + `plugins/withRnfbNoSpm.js` prepending `$RNFirebaseDisableSPM = true` to the Podfile. Also: `expo prebuild` side-effects package.json (run scripts + duplicate deps) — revert it and delete ios/ after scratch prebuilds. Expo Go additionally throws *async* ("NativeRNFBTurboApp is not registered") on mere require — guard with expo-constants `executionEnvironment === "storeClient"` before requiring.
+
 **How to apply:**
 - Dev builds use the debug provider (`__DEV__`), optional `EXPO_PUBLIC_APPCHECK_DEBUG_TOKEN`; native SDK logs the token on first run — founder registers it in console.
 - `initAppCheck()` must run immediately after `initializeApp`, before service getters.

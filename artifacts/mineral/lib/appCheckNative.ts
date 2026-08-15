@@ -25,6 +25,14 @@ let setupPromise: Promise<RnfbAppCheck | null> | null = null;
 function setup(): Promise<RnfbAppCheck | null> {
   if (setupPromise) return setupPromise;
   setupPromise = (async () => {
+    // ACX kill switch: native attestation is explicit opt-in. Default OFF —
+    // no RNFB JS or native code executes (the module is never required, so
+    // the TurboModule is never instantiated). Re-enable via eas.json
+    // production env when the root cause is fixed (enforce-day prerequisite).
+    if (process.env.EXPO_PUBLIC_NATIVE_APPCHECK !== "1") {
+      console.log("[app-check] native attestation disabled by flag; skipped.");
+      return null;
+    }
     try {
       // Expo Go check FIRST: merely requiring @react-native-firebase/* in
       // Expo Go throws asynchronously ("Native module NativeRNFBTurboApp is
