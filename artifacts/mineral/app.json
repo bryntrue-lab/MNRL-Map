@@ -35,7 +35,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
         "backgroundImage": "./assets/images/adaptive-icon-background.png"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png",
@@ -59,7 +63,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "dynamic"
           }
         }
       ]
@@ -67,6 +71,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f5f2ec50-20af-4072-a48f-6d7668c5e7c8"
+      }
     }
   }
 }
