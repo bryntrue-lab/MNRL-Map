@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { CaptureSheet } from "@/components/CaptureSheet";
+import { NoteDetailSheet } from "@/components/NoteDetailSheet";
 import { QuietToast } from "@/components/OriginSheets";
 import TabTopBar from "@/components/TabTopBar";
 import colors from "@/constants/colors";
@@ -80,6 +81,11 @@ export default function NotesScreen() {
   const { profile } = useUser();
 
   const [captureType, setCaptureType] = useState<FieldNoteType | null>(null);
+  // Slice J — tapped-open note. Held as a copy that live snapshot updates
+  // refresh while the note is still in the feed window, so an edit flows
+  // straight into the open sheet — but the sheet does NOT close if newer
+  // notes push it past RECENT_LIMIT; only closing or releasing closes it.
+  const [openNote, setOpenNote] = useState<FieldNoteWithId | null>(null);
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
 
   // Chronological fieldNotes, createdAt DESC — live, so the feed
@@ -102,6 +108,17 @@ export default function NotesScreen() {
     );
     return unsub;
   }, [user]);
+
+  // Keep the open sheet's copy fresh while the note is still in the feed
+  // window (an edit's snapshot update flows in). Eviction past RECENT_LIMIT
+  // leaves the held copy as-is — deliberately not a dismissal.
+  useEffect(() => {
+    setOpenNote((prev) => {
+      if (!prev) return prev;
+      const live = recentNotes.find((n) => n.id === prev.id);
+      return live ?? prev;
+    });
+  }, [recentNotes]);
 
   const tabBarHeight = Platform.OS === "web" ? 84 : 60 + insets.bottom;
 
@@ -175,7 +192,12 @@ export default function NotesScreen() {
             </View>
           ) : (
             recentNotes.map((n) => (
-              <View key={n.id} style={styles.noteItem} testID={`recent-note-${n.id}`}>
+              <Pressable
+                key={n.id}
+                style={styles.noteItem}
+                onPress={() => setOpenNote(n)}
+                testID={`recent-note-${n.id}`}
+              >
                 <Text style={styles.noteLine} numberOfLines={2}>
                   {noteOpeningLine(n)}
                 </Text>
@@ -183,7 +205,7 @@ export default function NotesScreen() {
                   {NOTE_TYPE_LABEL[n.type] ?? n.type}
                   {noteWhenLabel(n) ? ` · ${noteWhenLabel(n)}` : ""}
                 </Text>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -198,6 +220,13 @@ export default function NotesScreen() {
         bottomPad={tabBarHeight}
         initialType={captureType}
         onSaved={() => setToast({ key: Date.now(), text: "kept." })}
+      />
+
+      <NoteDetailSheet
+        note={openNote}
+        uid={user?.uid ?? null}
+        onClose={() => setOpenNote(null)}
+        bottomPad={tabBarHeight}
       />
 
       <QuietToast

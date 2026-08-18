@@ -9,16 +9,12 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "env": {
-    "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic"
-      }
+      "distribution": "internal"
     },
     "production": {
       "autoIncrement": true,
       "env": {
-    "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic",
-    "EXPO_PUBLIC_NATIVE_APPCHECK": "1"
+    "EXPO_PUBLIC_FIREBASE_API_KEY": "<copy the exact value from .env>"
       }   
     }
   },

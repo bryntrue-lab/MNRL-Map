@@ -12,6 +12,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -431,6 +432,36 @@ export async function findCrystallizingNote(
 // The note remains visible. The reverse failure (doc gone, audio orphaned)
 // is unrecoverable because nothing points at an orphaned recording.
 // ─────────────────────────────────────────────────────────────
+
+/**
+ * Slice J2 — note attribution. A note's `encounterRef` holds the encounter
+ * instance id (`${encounterId}_t${turn}`); the display title lives on the
+ * public encounter doc. Returns null when the ref doesn't resolve — the
+ * meta line simply omits the attribution.
+ */
+export async function fetchEncounterTitle(
+  encounterRef: string
+): Promise<string | null> {
+  const encounterId = encounterRef.replace(/_t\d+$/, "");
+  if (!encounterId) return null;
+  const snap = await getDoc(doc(db, "encounters", encounterId));
+  if (!snap.exists()) return null;
+  return (snap.data() as EncounterDoc).title ?? null;
+}
+
+/**
+ * Slice J3 — edit a note's words. Writes `content` ONLY: never any engine
+ * field (`charge` is rules-guarded), never `transcriptStatus` (editing a
+ * voice note edits its transcript; the recording stays playable and no
+ * re-transcription is triggered).
+ */
+export async function updateFieldNoteContent(
+  uid: string,
+  noteId: string,
+  content: string
+): Promise<void> {
+  await updateDoc(fieldNoteRef(uid, noteId), { content });
+}
 
 export async function deleteFieldNote(
   uid: string,
