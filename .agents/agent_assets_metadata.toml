@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "1coCQ2Rcnxm43KVPMLA5m"
@@ -12,3 +11,10 @@ id = "T9QP-SapXXj2pnrpV5fyj"
 uri = "file://artifacts/mineral/assets/images/splash.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "ncJZJYVyS6xr67cmLSF38"
+uri = "file://ENCOUNTERS_AS_SEEDED.md"
+type = "text"
+title = "ENCOUNTERS_AS_SEEDED.md"
+description = "Read-only export of all live Firestore encounter documents, in sequence order, with seed-content drift comparison."

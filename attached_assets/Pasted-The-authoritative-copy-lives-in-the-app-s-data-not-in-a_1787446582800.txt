@@ -1,0 +1,17 @@
+The authoritative copy lives in the app's data, not in any doc you and I wrote together — encounter scripts were never part of our slice-spec work this session (we authored notification copy, teachings, counterweight pools, onboarding canon, field passages — the encounters themselves predate that and went in through Replit's seeding). So I've verified the plumbing exists, but I've never actually held the prose. Two places to see it right now:
+
+1. **Firebase console → Firestore** → the encounters collection — the live truth, what the app actually plays. Each doc has the script text and its audio pointer.
+2. **Replit workspace → `seed-content/`** — the source files the seeding script wrote from. These *should* match Firestore, but nothing currently guarantees they've stayed in sync.
+
+As for "did we have more" — everything on our board has consistently said **seven seeded encounters** (the first week), with 8 onward as the open content work. But I'd rather prove it than recite it, and get the text into your hands in one move. Add this to the Replit paste (or send it alone):Paste for Replit:
+
+---
+**Export the live encounter content — read-only pass, no changes.**
+
+1. Using the service account, read EVERY doc in the encounters collection in Firestore (the live database, not the seed files) and write the full contents verbatim into a new doc `ENCOUNTERS_AS_SEEDED.md` at repo root: for each encounter — id, sequence number, title, subtitle/serif line, the complete guide script text, the reflection prompt, the integration practice, the Storage audio path, and any status/flag fields. In sequence order.
+2. At the top of the doc, state: the total count of encounter docs found, and whether any doc exists beyond sequence 7 (even drafts or placeholders).
+3. Then diff against `seed-content/`: note any encounter where the seed file and the live Firestore doc differ, and any doc that exists in one but not the other.
+4. File list: `ENCOUNTERS_AS_SEEDED.md` only. Do not modify seed files, Firestore, or Storage.
+---That gives you three answers at once: exactly what encounters 1–7 say (the final, live versions), a definitive yes/no on whether anything beyond 7 exists anywhere, and whether the seed files have drifted from the database — worth knowing before we treat either as canon.
+
+Then paste `ENCOUNTERS_AS_SEEDED.md` back to me (or attach it). It becomes two things: the canonical scripts doc going forward — so encounter content finally has the same single-source-of-truth treatment your onboarding copy got — and my style reference for the voice, cadence, and length of the first seven, which is what I need to draft 8 onward in a register you'll recognize rather than one I'd be guessing at.
