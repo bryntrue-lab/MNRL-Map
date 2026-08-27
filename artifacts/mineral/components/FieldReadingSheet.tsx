@@ -176,10 +176,12 @@ export function FieldReadingSheet({
           {state.resting ? (
             <Text style={styles.resting}>the field rests until tomorrow.</Text>
           ) : null}
-          <Text style={styles.eyebrow}>A READING</Text>
-          <Text style={styles.date}>{readingDate(state.reading)}</Text>
+          <View style={styles.header}>
+            <Text style={styles.eyebrow}>A READING</Text>
+            <Text style={styles.date}>{readingDate(state.reading)}</Text>
+          </View>
 
-          <View style={styles.paragraphs}>
+          <View>
             {state.reading.paragraphs.map((paragraph, paragraphIndex) => (
               <Text key={paragraphIndex} style={styles.paragraph}>
                 {paragraph.spans.map((span, spanIndex) => (
@@ -216,7 +218,10 @@ const styles = StyleSheet.create({
   resting: {
     ...TypeScale.metadata,
     color: colors.light.textMuted,
-    marginBottom: 18,
+    marginBottom: 20,
+  },
+  header: {
+    marginBottom: 24,
   },
   eyebrow: {
     ...TypeScale.eyebrow,
@@ -227,13 +232,10 @@ const styles = StyleSheet.create({
     color: colors.light.textMuted,
     marginTop: 5,
   },
-  paragraphs: {
-    marginTop: 24,
-    gap: 16,
-  },
   paragraph: {
     ...TypeScale.bodyLarge,
-    color: colors.light.textSecondary,
+    color: "rgba(255,255,255,0.72)",
+    marginBottom: 16,
   },
   quote: {
     ...TypeScale.serifSmall,
@@ -242,6 +244,7 @@ const styles = StyleSheet.create({
   question: {
     ...TypeScale.serifMedium,
     color: "rgba(255,255,255,0.85)",
-    marginTop: 34,
+    marginTop: 18,
+    marginBottom: 8,
   },
 });
