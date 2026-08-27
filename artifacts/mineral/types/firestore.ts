@@ -82,6 +82,10 @@ export interface UserDoc {
   membershipExpiresAt: Timestamp | null;
   membershipProductId: string | null;
   completedEncounterCount: number;
+
+  // Slice L — server-controlled founder gate. Absent/false for everyone
+  // unless set by an administrator; Firestore rules forbid client changes.
+  readingsEnabled?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────

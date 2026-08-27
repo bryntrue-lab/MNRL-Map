@@ -27,6 +27,7 @@ const {
   onDocumentWritten,
 } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { getAuth } = require("firebase-admin/auth");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp } = require("firebase-admin/app");
@@ -36,6 +37,80 @@ const speech = require("@google-cloud/speech");
 
 initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
+
+const openAiApiKey = defineSecret("OPENAI_API_KEY");
+
+const DEFAULT_READING_PROMPT = `You are the voice of Mineral's Field Guide — an old, kind, unhurried practice companion. You are given a person's recent field notes (their private reflections, dated and typed) and the patterns the guide has counted. Write them a reading.
+
+Rules, absolute: Work only from what is in the notes — never invent events, feelings, or facts. Quote their exact words often; quoted spans must appear verbatim in a note. Never advise, prescribe, diagnose, flatter, or predict. Never mention being an AI, a model, or a system. No therapy language, no productivity language, no exclamation marks. Do not summarize note by note — read across them: name what returns, what has shifted since the earliest notes, what sits next to what. It is enough to notice; you do not need to resolve.
+
+Form: three short paragraphs at most, under 180 words total, then exactly one quiet question the notes themselves seem to be asking. Lowercase-comfortable, present tense, plain words.`;
+
+function readingUserMessage(notes, patterns, noteCount, dayCount) {
+  const noteLines = notes.map((note) => {
+    const createdAt = note.createdAt?.toDate?.();
+    const date = createdAt ? createdAt.toISOString().slice(0, 10) : "date unknown";
+    return [
+      `[${date} · ${note.type ?? "note"}${note.encounterRef ? ` · ${note.encounterRef}` : ""}]`,
+      note.content,
+    ].join("\n");
+  });
+  const patternLines = patterns.map(({ id, data }) => {
+    const counts = Object.entries(data?.itemCounts ?? {})
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([item, count]) => `${item} (${count})`)
+      .join(", ");
+    return `${id}: ${counts || "nothing counted yet"}`;
+  });
+  return [
+    `FIELD: ${noteCount} notes across ${dayCount} day${dayCount === 1 ? "" : "s"}.`,
+    "",
+    "RECENT NOTES (newest first):",
+    noteLines.join("\n\n"),
+    "",
+    "COUNTED PATTERNS:",
+    patternLines.join("\n"),
+    "",
+    'Return JSON only in this shape: {"paragraphs":[{"spans":[{"text":"...","quote":false}]}],"question":"..."}',
+  ].join("\n");
+}
+
+function normalizeReading(rawText, noteTexts) {
+  let parsed;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    return {
+      paragraphs: [{ spans: [{ text: rawText.trim(), quote: false }] }],
+      question: "",
+    };
+  }
+
+  const paragraphs = Array.isArray(parsed?.paragraphs)
+    ? parsed.paragraphs.slice(0, 3).map((paragraph) => ({
+        spans: Array.isArray(paragraph?.spans)
+          ? paragraph.spans
+              .filter((span) => typeof span?.text === "string" && span.text.length > 0)
+              .map((span) => {
+                const isVerbatim =
+                  span.quote === true && noteTexts.some((text) => text.includes(span.text));
+                return { text: span.text, quote: isVerbatim };
+              })
+          : [],
+      })).filter((paragraph) => paragraph.spans.length > 0)
+    : [];
+
+  if (paragraphs.length === 0) {
+    return {
+      paragraphs: [{ spans: [{ text: rawText.trim(), quote: false }] }],
+      question: "",
+    };
+  }
+  return {
+    paragraphs,
+    question: typeof parsed.question === "string" ? parsed.question.trim() : "",
+  };
+}
 
 exports.transcribeFieldNote = onDocumentCreated(
   {
@@ -221,6 +296,119 @@ exports.backfillPatterns = onCall(
     return await backfillPatternsForUser(uid, {
       rebuild: request.data?.rebuild === true,
     });
+  }
+);
+
+/**
+ * requestReading (Slice L): founder-gated, user-initiated synthesis across
+ * the caller's own field. The user-doc gate is checked before notes,
+ * patterns, or the generation service are touched.
+ */
+exports.requestReading = onCall(
+  {
+    memory: "512MiB",
+    timeoutSeconds: 120,
+    secrets: [openAiApiKey],
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "sign in to ask the field.");
+    }
+
+    const db = getFirestore();
+    const userRef = db.doc(`users/${uid}`);
+    const userSnap = await userRef.get();
+
+    // Privacy boundary: no client-supplied identity and no data gathering
+    // before the server-controlled founder flag is proven true.
+    if (!userSnap.exists || userSnap.data()?.readingsEnabled !== true) {
+      throw new HttpsError("permission-denied", "readings are not enabled.");
+    }
+
+    const readingsRef = userRef.collection("readings");
+    const latestSnap = await readingsRef
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+    const latest = latestSnap.docs[0]?.data();
+    const latestMs = latest?.createdAt?.toMillis?.() ?? 0;
+    if (latestMs && Date.now() - latestMs < 20 * 60 * 60 * 1000) {
+      throw new HttpsError("resource-exhausted", "the field rests until tomorrow.");
+    }
+
+    const notesRef = userRef.collection("fieldNotes");
+    const [notesSnap, countSnap, earliestSnap, patternSnaps, promptSnap] =
+      await Promise.all([
+        notesRef.orderBy("createdAt", "desc").limit(40).get(),
+        notesRef.count().get(),
+        notesRef.orderBy("createdAt", "asc").limit(1).get(),
+        Promise.all(
+          ["thread", "motif", "resistance"].map(async (id) => ({
+            id,
+            data: (await userRef.collection("patterns").doc(id).get()).data() ?? {},
+          }))
+        ),
+        db.doc("practitionerContent/reading_prompt").get(),
+      ]);
+
+    const notes = notesSnap.docs
+      .map((doc) => doc.data())
+      .filter((note) => typeof note.content === "string" && note.content.trim().length > 0);
+    if (notes.length < 7) {
+      throw new HttpsError("failed-precondition", "the field needs seven notes.");
+    }
+
+    const noteCount = countSnap.data().count;
+    const earliest = earliestSnap.docs[0]?.data()?.createdAt?.toMillis?.();
+    const dayCount = earliest
+      ? Math.floor((Date.now() - earliest) / 86400000) + 1
+      : 1;
+    const systemPrompt =
+      promptSnap.exists &&
+      promptSnap.data()?.kind === "reading_prompt" &&
+      typeof promptSnap.data()?.text === "string"
+        ? promptSnap.data().text
+        : DEFAULT_READING_PROMPT;
+    const userMessage = readingUserMessage(notes, patternSnaps, noteCount, dayCount);
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openAiApiKey.value()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        temperature: 0.5,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      console.error("reading generation failed", response.status, detail.slice(0, 500));
+      throw new HttpsError("internal", "the reading did not arrive.");
+    }
+    const completion = await response.json();
+    const rawText = completion?.choices?.[0]?.message?.content;
+    if (typeof rawText !== "string" || rawText.trim().length === 0) {
+      throw new HttpsError("internal", "the reading did not arrive.");
+    }
+
+    const reading = normalizeReading(
+      rawText,
+      notes.map((note) => note.content)
+    );
+    const created = await readingsRef.add({
+      ...reading,
+      createdAt: FieldValue.serverTimestamp(),
+      noteCount,
+    });
+    return { id: created.id };
   }
 );
 

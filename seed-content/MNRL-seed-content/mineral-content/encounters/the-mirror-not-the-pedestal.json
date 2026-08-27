@@ -1,0 +1,49 @@
+{
+  "title": "The Mirror, Not the Pedestal",
+  "subtitle": "recognition, not imitation",
+  "mapEpigraph": "Recognition is closer than imitation.",
+  "phase": "signal",
+  "order": 9,
+  "minTurn": 1,
+  "audioPath": "encounters/the-mirror-not-the-pedestal/audio.mp3",
+  "audioFile": "enc9_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r9-expanders",
+          "text": "Who are your expanders?"
+        },
+        {
+          "id": "r9-quality",
+          "text": "What exact quality — not achievement — draws you?"
+        },
+        {
+          "id": "r9-already-in-you",
+          "text": "Where does that quality already appear quietly in you?"
+        },
+        {
+          "id": "r9-crystallizing",
+          "text": "The part of me that recognizes this is…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The letter of recognition",
+      "instruction": "Write a short letter telling one expander what you see in them. Then address one paragraph of the same recognition to yourself.",
+      "durationLabel": "5–10 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Recognition is closer than imitation."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

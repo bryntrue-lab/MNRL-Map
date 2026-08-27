@@ -1,0 +1,49 @@
+{
+  "title": "The Lineage",
+  "subtitle": "inheritance as witness",
+  "mapEpigraph": "The line did not end before you.",
+  "phase": "signal",
+  "order": 10,
+  "minTurn": 1,
+  "audioPath": "encounters/the-lineage/audio.mp3",
+  "audioFile": "enc10_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r10-admire",
+          "text": "Who in your lineage do you admire?"
+        },
+        {
+          "id": "r10-stood-for",
+          "text": "What did they create, protect, or stand for?"
+        },
+        {
+          "id": "r10-inherited-gift",
+          "text": "What quality feels inherited as a gift rather than an obligation?"
+        },
+        {
+          "id": "r10-crystallizing",
+          "text": "What part of their courage lives in me?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The line behind you",
+      "instruction": "Stand or sit with a sense of the line behind you. Speak one ancestor's name, or name an unknown figure by their quality: “the builder,” “the one who crossed,” “the caretaker.”",
+      "durationLabel": "1–2 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Let yourself be witnessed."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

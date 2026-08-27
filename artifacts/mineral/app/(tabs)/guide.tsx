@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { FieldReadingSheet } from "@/components/FieldReadingSheet";
 import { LinkWhisper } from "@/components/Links";
 import { SheetShell } from "@/components/OriginSheets";
 import TabTopBar from "@/components/TabTopBar";
@@ -187,6 +188,7 @@ export default function GuideScreen() {
   const [patterns, setPatterns] = useState<Patterns>({});
   const [patternsLoaded, setPatternsLoaded] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [readingOpen, setReadingOpen] = useState(false);
   // Empty state only — each lens row carries its held line, verbatim
   // from the seeded teaching docs.
   const [heldLines, setHeldLines] = useState<Record<string, string>>({});
@@ -729,6 +731,14 @@ export default function GuideScreen() {
           style={styles.aboutLink}
           testID="guide-about-link"
         />
+        {profile?.readingsEnabled === true && notes.length >= 7 ? (
+          <LinkWhisper
+            label="ask for a reading"
+            onPress={() => setReadingOpen(true)}
+            style={styles.readingLink}
+            testID="guide-reading-link"
+          />
+        ) : null}
       </ScrollView>
 
       <SheetShell
@@ -749,6 +759,13 @@ export default function GuideScreen() {
           </Text>
         </ScrollView>
       </SheetShell>
+
+      <FieldReadingSheet
+        open={readingOpen}
+        uid={user?.uid ?? null}
+        onClose={() => setReadingOpen(false)}
+        bottomPad={insets.bottom}
+      />
     </View>
   );
 }
@@ -987,5 +1004,9 @@ const styles = StyleSheet.create({
   aboutLink: {
     alignSelf: "flex-start",
     marginTop: 44,
+  },
+  readingLink: {
+    alignSelf: "flex-start",
+    marginTop: 16,
   },
 });

@@ -1,0 +1,45 @@
+{
+  "title": "The Body's Yes",
+  "subtitle": "the trace before the verdict",
+  "mapEpigraph": "Your body answers before you have the words.",
+  "phase": "signal",
+  "order": 8,
+  "minTurn": 1,
+  "audioPath": "encounters/the-bodys-yes/audio.mp3",
+  "audioFile": "enc8_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r8-past-choice",
+          "text": "Recall one past choice your body registered before your mind did."
+        },
+        {
+          "id": "r8-signals",
+          "text": "What did the breath, shoulders, jaw, chest, or stomach do?"
+        },
+        {
+          "id": "r8-crystallizing",
+          "text": "What changed in my body when I imagined each path?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Two possibilities, one at a time",
+      "instruction": "Bring two real possibilities to mind, one at a time. Stay with each for thirty seconds. Record only the physical changes — no conclusion required.",
+      "durationLabel": "2 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Notice one lean and one brace before evening."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

@@ -25,7 +25,9 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if request.auth.uid == uid;
 
-      // Create: caller must be the owner AND all five server-controlled fields
+      // Create: caller must be the owner, all five membership/count fields
+      // must be at their initial defaults, and the founder-only reading gate
+      // must be absent. The gate is set only through the Admin console.
       // must be at their initial defaults — prevents forged membershipExpiresAt
       // or self-upgrade to 'member' on creation.
       allow create: if request.auth.uid == uid
@@ -33,16 +35,19 @@ service cloud.firestore {
         && request.resource.data.completedEncounterCount == 0
         && request.resource.data.membershipSince     == null
         && request.resource.data.membershipExpiresAt == null
-        && request.resource.data.membershipProductId == null;
+        && request.resource.data.membershipProductId == null
+        && !('readingsEnabled' in request.resource.data);
 
-      // Update: caller must be the owner AND all five server-controlled fields
-      // must be unchanged — prevents client self-upgrade after account creation.
+      // Update: server-controlled fields must be unchanged — prevents client
+      // self-upgrade and prevents enabling or disabling readings client-side.
       allow update: if request.auth.uid == uid
         && request.resource.data.membershipStatus        == resource.data.membershipStatus
         && request.resource.data.membershipSince         == resource.data.membershipSince
         && request.resource.data.membershipExpiresAt     == resource.data.membershipExpiresAt
         && request.resource.data.membershipProductId     == resource.data.membershipProductId
-        && request.resource.data.completedEncounterCount == resource.data.completedEncounterCount;
+        && request.resource.data.completedEncounterCount == resource.data.completedEncounterCount
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['readingsEnabled']);
 
       // ── Encounter instances ─────────────────────────────────────────────
       match /userEncounters/{encounterId} {
@@ -69,6 +74,12 @@ service cloud.firestore {
 
       // ── Derived pattern data — engine writes only ───────────────────────
       match /patterns/{patternType} {
+        allow read:  if request.auth.uid == uid;
+        allow write: if false;
+      }
+
+      // ── Founder-gated readings — callable writes, owner reads ─────────────
+      match /readings/{id} {
         allow read:  if request.auth.uid == uid;
         allow write: if false;
       }
