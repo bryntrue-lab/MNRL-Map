@@ -106,7 +106,7 @@ export function FieldReadingSheet({
         // Re-opening during the server's 20-hour rest window is read-only:
         // display the stored reading and never invoke generation.
         if (stored && isWithinReadingRest(stored)) {
-          setState({ kind: "reading", reading: stored, resting: false });
+          setState({ kind: "reading", reading: stored, resting: true });
           return;
         }
 

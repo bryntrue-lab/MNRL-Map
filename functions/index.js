@@ -112,6 +112,35 @@ function normalizeReading(rawText, noteTexts) {
   };
 }
 
+const READING_REST_MS = 20 * 60 * 60 * 1000;
+const READING_LEASE_MS = 3 * 60 * 1000;
+
+async function waitForConcurrentReading(readingsRef, startedAtMs) {
+  // A concurrent caller owns generation. Wait for its completed document
+  // rather than invoking OpenAI twice or exposing the private lease doc.
+  for (let attempt = 0; attempt < 95; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const latestSnap = await readingsRef
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+    const latestDoc = latestSnap.docs[0];
+    const createdMs = latestDoc?.data()?.createdAt?.toMillis?.() ?? 0;
+    if (latestDoc && createdMs >= startedAtMs) return { id: latestDoc.id };
+
+    const leaseSnap = await readingsRef.doc("_generation").get();
+    if (!leaseSnap.exists) break;
+  }
+  throw new HttpsError("internal", "the reading did not arrive.");
+}
+
+async function releaseReadingLease(db, leaseRef, leaseToken) {
+  await db.runTransaction(async (transaction) => {
+    const liveLease = await transaction.get(leaseRef);
+    if (liveLease.data()?.token === leaseToken) transaction.delete(leaseRef);
+  });
+}
+
 exports.transcribeFieldNote = onDocumentCreated(
   {
     document: "users/{uid}/fieldNotes/{noteId}",
@@ -327,88 +356,147 @@ exports.requestReading = onCall(
     }
 
     const readingsRef = userRef.collection("readings");
-    const latestSnap = await readingsRef
-      .orderBy("createdAt", "desc")
-      .limit(1)
-      .get();
-    const latest = latestSnap.docs[0]?.data();
-    const latestMs = latest?.createdAt?.toMillis?.() ?? 0;
-    if (latestMs && Date.now() - latestMs < 20 * 60 * 60 * 1000) {
-      throw new HttpsError("resource-exhausted", "the field rests until tomorrow.");
-    }
+    const leaseRef = readingsRef.doc("_generation");
+    const leaseToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const admission = await db.runTransaction(async (transaction) => {
+      const leaseSnap = await transaction.get(leaseRef);
+      const latestSnap = await transaction.get(
+        readingsRef.orderBy("createdAt", "desc").limit(1)
+      );
+      const latestMs =
+        latestSnap.docs[0]?.data()?.createdAt?.toMillis?.() ?? 0;
+      if (latestMs && Date.now() - latestMs < READING_REST_MS) {
+        throw new HttpsError(
+          "resource-exhausted",
+          "the field rests until tomorrow."
+        );
+      }
 
-    const notesRef = userRef.collection("fieldNotes");
-    const [notesSnap, countSnap, earliestSnap, patternSnaps, promptSnap] =
-      await Promise.all([
-        notesRef.orderBy("createdAt", "desc").limit(40).get(),
-        notesRef.count().get(),
-        notesRef.orderBy("createdAt", "asc").limit(1).get(),
-        Promise.all(
-          ["thread", "motif", "resistance"].map(async (id) => ({
-            id,
-            data: (await userRef.collection("patterns").doc(id).get()).data() ?? {},
-          }))
-        ),
-        db.doc("practitionerContent/reading_prompt").get(),
-      ]);
+      const leaseStartedAt = leaseSnap.data()?.startedAtMs;
+      if (
+        typeof leaseStartedAt === "number" &&
+        Date.now() - leaseStartedAt < READING_LEASE_MS
+      ) {
+        return { acquired: false, startedAtMs: leaseStartedAt };
+      }
 
-    const notes = notesSnap.docs
-      .map((doc) => doc.data())
-      .filter((note) => typeof note.content === "string" && note.content.trim().length > 0);
-    if (notes.length < 7) {
-      throw new HttpsError("failed-precondition", "the field needs seven notes.");
-    }
-
-    const noteCount = countSnap.data().count;
-    const earliest = earliestSnap.docs[0]?.data()?.createdAt?.toMillis?.();
-    const dayCount = earliest
-      ? Math.floor((Date.now() - earliest) / 86400000) + 1
-      : 1;
-    const systemPrompt =
-      promptSnap.exists &&
-      promptSnap.data()?.kind === "reading_prompt" &&
-      typeof promptSnap.data()?.text === "string"
-        ? promptSnap.data().text
-        : DEFAULT_READING_PROMPT;
-    const userMessage = readingUserMessage(notes, patternSnaps, noteCount, dayCount);
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openAiApiKey.value()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.5,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-      }),
+      const startedAtMs = Date.now();
+      transaction.set(leaseRef, { token: leaseToken, startedAtMs });
+      return { acquired: true, startedAtMs };
     });
-    if (!response.ok) {
-      const detail = await response.text();
-      console.error("reading generation failed", response.status, detail.slice(0, 500));
-      throw new HttpsError("internal", "the reading did not arrive.");
-    }
-    const completion = await response.json();
-    const rawText = completion?.choices?.[0]?.message?.content;
-    if (typeof rawText !== "string" || rawText.trim().length === 0) {
-      throw new HttpsError("internal", "the reading did not arrive.");
+
+    if (!admission.acquired) {
+      return await waitForConcurrentReading(
+        readingsRef,
+        admission.startedAtMs
+      );
     }
 
-    const reading = normalizeReading(
-      rawText,
-      notes.map((note) => note.content)
-    );
-    const created = await readingsRef.add({
-      ...reading,
-      createdAt: FieldValue.serverTimestamp(),
-      noteCount,
-    });
-    return { id: created.id };
+    try {
+      const notesRef = userRef.collection("fieldNotes");
+      const [notesSnap, countSnap, earliestSnap, patternSnaps, promptSnap] =
+        await Promise.all([
+          notesRef.orderBy("createdAt", "desc").limit(40).get(),
+          notesRef.count().get(),
+          notesRef.orderBy("createdAt", "asc").limit(1).get(),
+          Promise.all(
+            ["thread", "motif", "resistance"].map(async (id) => ({
+              id,
+              data:
+                (await userRef.collection("patterns").doc(id).get()).data() ??
+                {},
+            }))
+          ),
+          db.doc("practitionerContent/reading_prompt").get(),
+        ]);
+
+      if (notesSnap.size < 7) {
+        throw new HttpsError(
+          "failed-precondition",
+          "the field needs seven notes."
+        );
+      }
+      const notes = notesSnap.docs
+        .map((doc) => doc.data())
+        .filter(
+          (note) =>
+            typeof note.content === "string" &&
+            note.content.trim().length > 0
+        );
+
+      const noteCount = countSnap.data().count;
+      const earliest = earliestSnap.docs[0]?.data()?.createdAt?.toMillis?.();
+      const dayCount = earliest
+        ? Math.floor((Date.now() - earliest) / 86400000) + 1
+        : 1;
+      const systemPrompt =
+        promptSnap.exists &&
+        promptSnap.data()?.kind === "reading_prompt" &&
+        typeof promptSnap.data()?.text === "string"
+          ? promptSnap.data().text
+          : DEFAULT_READING_PROMPT;
+      const userMessage = readingUserMessage(
+        notes,
+        patternSnaps,
+        noteCount,
+        dayCount
+      );
+
+      const response = await fetch(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openAiApiKey.value()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            temperature: 0.5,
+            response_format: { type: "json_object" },
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessage },
+            ],
+          }),
+        }
+      );
+      if (!response.ok) {
+        const detail = await response.text();
+        console.error(
+          "reading generation failed",
+          response.status,
+          detail.slice(0, 500)
+        );
+        throw new HttpsError("internal", "the reading did not arrive.");
+      }
+      const completion = await response.json();
+      const rawText = completion?.choices?.[0]?.message?.content;
+      if (typeof rawText !== "string" || rawText.trim().length === 0) {
+        throw new HttpsError("internal", "the reading did not arrive.");
+      }
+
+      const reading = normalizeReading(
+        rawText,
+        notes.map((note) => note.content)
+      );
+      const created = await readingsRef.add({
+        ...reading,
+        createdAt: FieldValue.serverTimestamp(),
+        noteCount,
+      });
+      return { id: created.id };
+    } catch (error) {
+      console.error("requestReading failed", {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+      });
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("internal", "the reading did not arrive.");
+    } finally {
+      await releaseReadingLease(db, leaseRef, leaseToken);
+    }
   }
 );
 
