@@ -8,12 +8,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Practitioner offering library — locked, except teaching docs
-    //    (D.3 B9: lens-detail teaching renders client-side) ───────────────
+    // ── Practitioner library — authenticated clients may read teachings
+    //    and offerings; prompts remain server-only by kind. ───────────────
     match /practitionerContent/{contentId} {
       allow read: if request.auth != null
-        && (resource.data.kind == 'teaching' || resource.data.kind == 'counterweight_pools');
+        && (resource.data.kind == 'teaching'
+          || resource.data.kind == 'counterweight_pools'
+          || resource.data.kind == 'offering');
       allow write: if false;
+    }
+
+    // ── Trigger Email outbox — Admin SDK / extension only ─────────────────
+    match /mail/{mailId} {
+      allow read, write: if false;
     }
 
     // ── Motif lexicon — engine-only (Admin SDK bypasses rules) ────────────

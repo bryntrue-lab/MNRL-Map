@@ -27,7 +27,7 @@ const {
   onDocumentWritten,
 } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const { getAuth } = require("firebase-admin/auth");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { initializeApp } = require("firebase-admin/app");
@@ -39,6 +39,20 @@ initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const openAiApiKey = defineSecret("OPENAI_API_KEY");
+const founderDigestEmail = defineString("FOUNDER_DIGEST_EMAIL");
+const { createFieldPassageQueue } = require("./fieldQueue");
+const { createFounderDigest } = require("./founderDigest");
+
+exports.fieldPassageQueue = createFieldPassageQueue({
+  db: getFirestore(),
+  openAiApiKey,
+  founderEmail: founderDigestEmail,
+});
+exports.founderDigest = createFounderDigest({
+  db: getFirestore(),
+  auth: getAuth(),
+  founderEmail: founderDigestEmail,
+});
 
 const DEFAULT_READING_PROMPT = `You are the voice of Mineral's Field Guide — an old, kind, unhurried practice companion. You are given a person's recent field notes (their private reflections, dated and typed) and the patterns the guide has counted. Write them a reading.
 

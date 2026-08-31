@@ -2,51 +2,74 @@
   {
     "key": "seed",
     "keyType": "motif",
-    "text": "In many Indigenous traditions, the soul has been understood to arrive already carrying a purpose — like a seed encoded with an original intention. Life, in these traditions, is less about inventing a direction than about listening, remembering, and unfolding what was already planted. The seed is often said to be drawn out not alone, but by community and land together."
+    "passages": [{ "text": "In many Indigenous traditions, the soul has been understood to arrive already carrying a purpose — like a seed encoded with an original intention. Life, in these traditions, is less about inventing a direction than about listening, remembering, and unfolding what was already planted. The seed is often said to be drawn out not alone, but by community and land together.", "locator": null }]
   },
   {
     "key": "flame",
     "keyType": "motif",
-    "text": "In Vedic and yogic traditions, the soul has been described as a spark of a universal fire — not separate from the divine, but a small flame of it. Purpose, in this frame, is dharma: the full expression of one's nature in right relationship to the world. Suffering has often been read there as a nudge back into alignment, and desire — purified by discernment — as one of the flame's ways of speaking."
+    "passages": [{ "text": "In Vedic and yogic traditions, the soul has been described as a spark of a universal fire — not separate from the divine, but a small flame of it. Purpose, in this frame, is dharma: the full expression of one's nature in right relationship to the world. Suffering has often been read there as a nudge back into alignment, and desire — purified by discernment — as one of the flame's ways of speaking.", "locator": null }]
   },
   {
     "key": "fire",
     "keyType": "motif",
-    "text": "Fire appears across traditions as both destroyer and clarifier — the element that ends one form so another can begin. In alchemical imagery, burning is a stage of the work, not its failure. What goes into the fire is often read as what was already finished."
+    "passages": [{ "text": "Fire appears across traditions as both destroyer and clarifier — the element that ends one form so another can begin. In alchemical imagery, burning is a stage of the work, not its failure. What goes into the fire is often read as what was already finished.", "locator": null }]
   },
   {
     "key": "animal",
     "keyType": "motif",
-    "text": "In shamanic and animist traditions from Siberia to the Amazon, the soul has been understood as a living, many-parted force that can speak through animal forms — allies, visions, creatures that arrive in dreams. The animal is often read as the instinctual self appearing in a shape the thinking mind can meet."
+    "passages": [{ "text": "In shamanic and animist traditions from Siberia to the Amazon, the soul has been understood as a living, many-parted force that can speak through animal forms — allies, visions, creatures that arrive in dreams. The animal is often read as the instinctual self appearing in a shape the thinking mind can meet.", "locator": null }]
   },
   {
     "key": "mirror",
     "keyType": "motif",
-    "text": "In Taoist thought, the soul has been described in two aspects — one turned toward spirit, one toward the body — and the cultivated mind as a still mirror that reflects without grasping. Disharmony, in this tradition, tends to show up first as imbalance in the body and its surroundings; clarity returns through stillness, breath, and observation rather than force."
+    "passages": [{ "text": "In Taoist thought, the soul has been described in two aspects — one turned toward spirit, one toward the body — and the cultivated mind as a still mirror that reflects without grasping. Disharmony, in this tradition, tends to show up first as imbalance in the body and its surroundings; clarity returns through stillness, breath, and observation rather than force.", "locator": null }]
   },
   {
     "key": "star",
     "keyType": "motif",
-    "text": "In Egyptian and Hermetic systems, the soul was mapped as many-parted and eternal, its purpose tied to maat — the universal order. To live one's purpose, in these systems, was to bring heaven and earth into alignment through the life one builds. Signs were read in dreams, in fate, in the stars."
+    "passages": [{ "text": "In Egyptian and Hermetic systems, the soul was mapped as many-parted and eternal, its purpose tied to maat — the universal order. To live one's purpose, in these systems, was to bring heaven and earth into alignment through the life one builds. Signs were read in dreams, in fate, in the stars.", "locator": null }]
   },
   {
     "key": "water",
     "keyType": "motif",
-    "text": "Water has long been read as the element of the unconscious — the depth under the surface of the day. In Taoist imagery it is the teacher of non-forcing: the soft thing that shapes stone. Dreams of water have often been taken as reports from the deep well rather than messages to decode."
+    "passages": [
+      { "text": "Water has long been read as the element of the unconscious — the depth under the surface of the day. In Taoist imagery it is the teacher of non-forcing: the soft thing that shapes stone. Dreams of water have often been taken as reports from the deep well rather than messages to decode.", "locator": null },
+      { "text": "The alchemists called it solutio — the stage in which what has hardened is permitted to dissolve. It was never read as ruin. It was read as the necessary softening before a truer form.", "locator": "as the alchemists read it" },
+      { "text": "In the dream traditions, water has been read as what moves beneath the daylight mind — feeling, memory, the unlived. Deep or shallow, still or breaking: each state of it was read as news from below.", "locator": "in the dream traditions" },
+      { "text": "The oldest Chinese texts honored water as the softest thing that overcomes the hardest. It takes the low place, asks no permission, and arrives everywhere. Patience of that kind has been read as a form of power.", "locator": "in the Taoist reading" }
+    ]
   },
   {
     "key": "dream",
     "keyType": "motif",
-    "text": "Depth psychology has treated dreams as the psyche imagining itself forward — old and abandoned material returning to live again in the dreamer. Across older traditions, dreams were read as one of the soul's native languages: not puzzles to solve, but visits to receive."
+    "passages": [{ "text": "Depth psychology has treated dreams as the psyche imagining itself forward — old and abandoned material returning to live again in the dreamer. Across older traditions, dreams were read as one of the soul's native languages: not puzzles to solve, but visits to receive.", "locator": null }]
   },
   {
     "key": "longing",
     "keyType": "motif",
-    "text": "Longing has been read in contemplative traditions as more than a private ache — sometimes as something collective moving through an individual life. In these readings, the pull toward what does not yet exist is not a lack to fix but a signal of what is trying to arrive."
+    "passages": [{ "text": "Longing has been read in contemplative traditions as more than a private ache — sometimes as something collective moving through an individual life. In these readings, the pull toward what does not yet exist is not a lack to fix but a signal of what is trying to arrive.", "locator": null }]
   },
   {
     "key": "threshold",
     "keyType": "motif",
-    "text": "In mythic literature, the threshold has been read as the moment of crossing — where one identity ends and another begins. It appears in initiation stories across cultures, often guarded, and the guardian has been understood less as an obstacle than as part of the crossing itself."
+    "passages": [{ "text": "In mythic literature, the threshold has been read as the moment of crossing — where one identity ends and another begins. It appears in initiation stories across cultures, often guarded, and the guardian has been understood less as an obstacle than as part of the crossing itself.", "locator": null }]
+  },
+  {
+    "key": "support",
+    "keyType": "motif",
+    "passages": [
+      { "text": "The old builders understood that nothing rises without bearing. An arch stands because every stone in it leans — each one held exactly where it presses hardest. What carries weight has been read, again and again, as a thing that is itself carried.", "locator": "as the cathedral builders knew" },
+      { "text": "In the old ragas, the soloist never sang into silence. Behind every improvisation a drone held one unbroken tone — and the melody's whole freedom rested on something that never stopped sounding beneath it.", "locator": "from the raga tradition" },
+      { "text": "The foresters have found that the woods feeds its own: the tall trees pass sugar down through the dark to the seedlings in their shade. Asking for nourishment has been read there not as weakness but as how a forest flourishes.", "locator": "as the foresters read it" }
+    ]
+  },
+  {
+    "key": "door",
+    "keyType": "motif",
+    "passages": [
+      { "text": "The Romans set a two-faced god at the doorway — one face on what ends, one on what begins. A threshold was never neutral ground; standing in one was understood as standing in both lives at once.", "locator": "in the Roman houses" },
+      { "text": "The monastic rule ordered that every knock be answered as if the stranger were the awaited one. A door, in that reading, is not a barrier that sometimes opens — it is a question that keeps being asked from the other side.", "locator": "in the monastic rule" },
+      { "text": "In folktale after folktale there is a door that keeps appearing until it is opened. The traditions did not read the recurring door as a warning. They read it as an invitation that has not yet been taken at its word.", "locator": "in the dream traditions" }
+    ]
   }
 ]

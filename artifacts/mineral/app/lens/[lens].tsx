@@ -2,22 +2,25 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { collection, doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { FieldPassageSheet } from "@/components/FieldPassageSheet";
 import { LinkSecondary, LinkWhisper } from "@/components/Links";
 import { SheetShell } from "@/components/OriginSheets";
 import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
+import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import { fieldNotesQuery } from "@/lib/firestore";
 import type {
   ExemplarEntry,
   FieldNoteDoc,
   PatternDoc,
   PatternType,
+  PractitionerContentDoc,
 } from "@/types/firestore";
 
 // Task D §2 — full lens views. The engine's counts, quoted verbatim,
@@ -67,6 +70,10 @@ export default function LensScreen() {
     closingParagraphIndex?: number;
   } | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [fieldPassageItem, setFieldPassageItem] = useState<string | null>(null);
+  const [motifPassageContent, setMotifPassageContent] = useState<
+    Record<string, PractitionerContentDoc | null>
+  >({});
   const firstVisitLens = useRef<string | null>(null);
 
   // B9 AMENDED — teachings render as a sheet, not inline. Doc:
@@ -161,6 +168,49 @@ export default function LensScreen() {
     return entries.sort((a, b) => b[1] - a[1]);
   }, [doc, lens]);
 
+  // G2 — only the currently visible mythic motifs are observed. This keeps
+  // founder approvals live while never asking clients to read the prompt doc.
+  const motifKeys = useMemo(
+    () => (lens === "motifs" ? rows.map(([item]) => item) : []),
+    [lens, rows]
+  );
+  useEffect(() => {
+    if (lens !== "motifs") {
+      setMotifPassageContent({});
+      setFieldPassageItem(null);
+      return;
+    }
+    setMotifPassageContent(
+      Object.fromEntries(motifKeys.map((key) => [key, null])) as Record<
+        string,
+        PractitionerContentDoc | null
+      >
+    );
+    return () => {};
+  }, [lens, motifKeys]);
+  useEffect(() => {
+    if (lens !== "motifs") return;
+    const unsubscribes = motifKeys.map((key) =>
+      onSnapshot(
+        fsDoc(db, "practitionerContent", `motif_${key}`),
+        (snap) =>
+          setMotifPassageContent((current) => ({
+            ...current,
+            [key]: snap.exists() ? (snap.data() as PractitionerContentDoc) : null,
+          })),
+        () =>
+          setMotifPassageContent((current) => ({
+            ...current,
+            [key]: null,
+          }))
+      )
+    );
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [lens, motifKeys]);
+  const selectedPassageContent = fieldPassageItem
+    ? motifPassageContent[fieldPassageItem] ?? null
+    : null;
+
   if (!meta) return null;
 
   return (
@@ -219,6 +269,8 @@ export default function LensScreen() {
           rows.map(([item, count]) => {
             const exemplars = doc?.exemplars?.[item] ?? [];
             const offering = doc?.offerings?.[item];
+            const fieldContent = motifPassageContent[item] ?? null;
+            const approvedPassage = firstApprovedFieldPassage(fieldContent);
             return (
               <View key={item} style={styles.itemBlock} testID={`lens-item-${item}`}>
                 <Text style={styles.itemLine}>
@@ -230,12 +282,24 @@ export default function LensScreen() {
                     <Text style={styles.exemplarMeta}>{attribution(e)}</Text>
                   </View>
                 ))}
-                {offering && (
+                {approvedPassage ? (
+                  <Pressable
+                    style={({ pressed }) => [styles.offeringWrap, pressed && styles.offeringPressDim]}
+                    onPress={() => setFieldPassageItem(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`More from the field: ${item}`}
+                    testID={`field-passage-card-${item}`}
+                  >
+                    <Text style={styles.offeringLabel}>FROM THE FIELD</Text>
+                    <Text style={styles.offeringText}>{approvedPassage.text}</Text>
+                    <Text style={styles.offeringMore}>more from the field →</Text>
+                  </Pressable>
+                ) : offering ? (
                   <View style={styles.offeringWrap} testID={`offering-${item}`}>
                     <Text style={styles.offeringLabel}>FROM THE FIELD</Text>
                     <Text style={styles.offeringText}>{offering.text}</Text>
                   </View>
-                )}
+                ) : null}
               </View>
             );
           })
@@ -276,6 +340,16 @@ export default function LensScreen() {
           </ScrollView>
         </SheetShell>
       )}
+      <FieldPassageSheet
+        open={fieldPassageItem !== null}
+        onClose={() => setFieldPassageItem(null)}
+        bottomPad={insets.bottom}
+        motifName={fieldPassageItem ?? ""}
+        content={selectedPassageContent}
+        exemplars={fieldPassageItem ? doc?.exemplars?.[fieldPassageItem] ?? [] : []}
+        attribution={attribution}
+        testID="lens-field-passage-sheet"
+      />
     </View>
   );
 }
@@ -363,6 +437,14 @@ const styles = StyleSheet.create({
   offeringText: {
     ...TypeScale.body,
     color: colors.light.textTertiary,
+  },
+  offeringMore: {
+    ...TypeScale.metadata,
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 8,
+  },
+  offeringPressDim: {
+    opacity: 0.72,
   },
 
   // B9 AMENDED — teaching presence

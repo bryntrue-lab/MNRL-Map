@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
+import { FieldPassageSheet } from "@/components/FieldPassageSheet";
 import { FieldReadingSheet } from "@/components/FieldReadingSheet";
 import { LinkWhisper } from "@/components/Links";
 import { SheetShell } from "@/components/OriginSheets";
@@ -24,6 +25,7 @@ import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import { db, functions } from "@/lib/firebase";
+import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
 import {
   contentWords,
@@ -38,6 +40,7 @@ import type {
   FieldNoteDoc,
   PatternDoc,
   PatternType,
+  PractitionerContentDoc,
 } from "@/types/firestore";
 
 // Slice D.3 §B — the Guide speaks first. The engine counts; the Guide
@@ -189,6 +192,9 @@ export default function GuideScreen() {
   const [patternsLoaded, setPatternsLoaded] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [readingOpen, setReadingOpen] = useState(false);
+  const [fieldPassageOpen, setFieldPassageOpen] = useState(false);
+  const [heroPassageContent, setHeroPassageContent] =
+    useState<PractitionerContentDoc | null>(null);
   // Empty state only — each lens row carries its held line, verbatim
   // from the seeded teaching docs.
   const [heldLines, setHeldLines] = useState<Record<string, string>>({});
@@ -335,6 +341,25 @@ export default function GuideScreen() {
   }, [hero, patterns]);
   const freshestId = heroExemplars[heroExemplars.length - 1]?.fieldNoteId;
   const heroOffering = hero ? patterns[hero.type]?.offerings?.[hero.key] : null;
+
+  // G2 — passage availability is live, so a founder approval can open this
+  // door without a client deploy. Only motif content has a field passage sheet.
+  useEffect(() => {
+    if (!hero || hero.type !== "motif") {
+      setHeroPassageContent(null);
+      setFieldPassageOpen(false);
+      return;
+    }
+    return onSnapshot(
+      fsDoc(db, "practitionerContent", `motif_${hero.key}`),
+      (snap) =>
+        setHeroPassageContent(
+          snap.exists() ? (snap.data() as PractitionerContentDoc) : null
+        ),
+      () => setHeroPassageContent(null)
+    );
+  }, [hero?.key, hero?.type]);
+  const heroApprovedPassage = firstApprovedFieldPassage(heroPassageContent);
 
   const heroSpan = useMemo(() => {
     if (!hero) return "";
@@ -598,7 +623,19 @@ export default function GuideScreen() {
               />
             )}
 
-            {heroOffering?.text ? (
+            {heroApprovedPassage ? (
+              <Pressable
+                style={({ pressed }) => [styles.offeringBox, pressed && styles.offeringPressDim]}
+                onPress={() => setFieldPassageOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`More from the field: ${displayItem(hero.key)}`}
+                testID="hero-field-passage-card"
+              >
+                <Text style={styles.offeringText}>{heroApprovedPassage.text}</Text>
+                <Text style={styles.offeringFrom}>FROM THE FIELD</Text>
+                <Text style={styles.offeringMore}>more from the field →</Text>
+              </Pressable>
+            ) : heroOffering?.text ? (
               <View style={styles.offeringBox} testID="hero-offering">
                 <Text style={styles.offeringText}>{heroOffering.text}</Text>
                 <Text style={styles.offeringFrom}>FROM THE FIELD</Text>
@@ -766,6 +803,16 @@ export default function GuideScreen() {
         onClose={() => setReadingOpen(false)}
         bottomPad={insets.bottom}
       />
+      <FieldPassageSheet
+        open={fieldPassageOpen}
+        onClose={() => setFieldPassageOpen(false)}
+        bottomPad={insets.bottom}
+        motifName={hero ? displayItem(hero.key) : ""}
+        content={heroPassageContent}
+        exemplars={heroExemplars}
+        attribution={attribution}
+        testID="guide-field-passage-sheet"
+      />
     </View>
   );
 }
@@ -890,6 +937,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
     color: "rgba(255,255,255,0.5)",
     marginTop: 6,
+  },
+  offeringMore: {
+    ...TypeScale.metadata,
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 8,
+  },
+  offeringPressDim: {
+    opacity: 0.72,
   },
 
   // §1d — gathering: collapsed rows, item left, count word right, hairline

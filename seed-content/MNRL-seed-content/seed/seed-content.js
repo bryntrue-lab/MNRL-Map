@@ -28,7 +28,7 @@
  *   mineral-content/
  *   ├── encounters/{slug}.json     (Encounter shape from schema v1.6)
  *   ├── practitioner-content/
- *   │   └── offerings.json         (array of { key, keyType, text })
+ *   │   └── offerings.json         (array of { key, keyType, passages })
  *   └── audio/{audioFile}.mp3      (referenced by each encounter's audioFile)
  *
  * The Admin SDK bypasses Firestore security rules. This is by design —
@@ -50,6 +50,7 @@ const AUDIO_DIR = path.join(CONTENT_ROOT, 'audio');
 const OFFERINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'offerings.json');
 const TEACHINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'teachings.json');
 const COUNTERWEIGHT_POOLS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'counterweight-pools.json');
+const PASSAGE_PROMPT_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'passage-prompt.json');
 const MOTIF_LEXICON_FILE = path.join(CONTENT_ROOT, 'motif-lexicon', 'lexicon.json');
 
 const VALID_PHASES = new Set(['signal', 'field', 'friction', 'voice']);
@@ -151,8 +152,48 @@ function validateOffering(entry, i) {
   if (entry.keyType && !VALID_KEY_TYPES.has(entry.keyType)) {
     errors.push(`offerings[${i}]: invalid keyType "${entry.keyType}"`);
   }
-  if (!entry.text) errors.push(`offerings[${i}]: missing text`);
+  if (!Array.isArray(entry.passages) || entry.passages.length === 0) {
+    errors.push(`offerings[${i}]: passages must be a non-empty array`);
+  } else {
+    entry.passages.forEach((passage, j) => {
+      if (!passage || typeof passage.text !== 'string' || !passage.text.trim()) {
+        errors.push(`offerings[${i}].passages[${j}]: text required`);
+      }
+      if (passage && passage.locator !== null && typeof passage.locator !== 'string') {
+        errors.push(`offerings[${i}].passages[${j}]: locator must be a string or null`);
+      }
+    });
+  }
   return errors;
+}
+
+function migrateOffering(entry, existingData = {}, exists = false, now = admin.firestore.Timestamp.now()) {
+  const existingPassages = Array.isArray(existingData.passages)
+    ? existingData.passages
+    : null;
+  const passages = existingPassages ?? entry.passages.map((passage, index) => ({
+    text:
+      index === 0 &&
+      exists &&
+      typeof existingData.text === 'string' &&
+      existingData.text.trim()
+        ? existingData.text
+        : passage.text,
+    locator: passage.locator ?? null,
+    status: 'approved',
+    source: 'founder',
+    createdAt: now,
+  }));
+  const firstApproved = passages.find(
+    passage => passage && passage.status === 'approved' && typeof passage.text === 'string'
+  );
+  return {
+    key: entry.key,
+    keyType: entry.keyType,
+    kind: 'offering',
+    passages,
+    text: firstApproved?.text ?? existingData.text ?? entry.passages[0].text,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -304,7 +345,12 @@ async function seedPractitionerContent(db) {
     const ref = db.collection('practitionerContent').doc(docId);
     const existing = await ref.get();
     try {
-      await ref.set(entry);
+      const existingData = existing.exists ? existing.data() : {};
+      // First migration only: preserve the LIVE legacy text as passages[0],
+      // then append any new canonical passages from the source file. Once a
+      // passages array exists, it is founder-managed and repeat seeds must
+      // never rewrite it, reorder it, or refresh its timestamps.
+      await ref.set(migrateOffering(entry, existingData, existing.exists), { merge: true });
       if (existing.exists) {
         console.log(`  ↻ ${docId} — updated`);
         updated++;
@@ -508,6 +554,34 @@ async function seedCounterweightPools(db) {
   }
 }
 
+async function seedPassagePrompt(db) {
+  console.log('\n─── Passage prompt ───────────────────────────');
+  if (!fs.existsSync(PASSAGE_PROMPT_FILE)) {
+    console.log('  no passage-prompt.json; skipping.');
+    return;
+  }
+  let prompt;
+  try {
+    prompt = JSON.parse(fs.readFileSync(PASSAGE_PROMPT_FILE, 'utf8'));
+  } catch (e) {
+    console.log(`  ✗ passage-prompt.json parse error — ${e.message}`);
+    return;
+  }
+  if (prompt?.kind !== 'passage_prompt' || typeof prompt.text !== 'string' || !prompt.text.trim()) {
+    console.log('  ✗ passage-prompt.json requires kind "passage_prompt" and non-empty text');
+    return;
+  }
+  const ref = db.collection('practitionerContent').doc('passage_prompt');
+  const existing = await ref.get();
+  // The founder edits this prompt in Firestore. Seed it on first install only.
+  if (existing.exists) {
+    console.log('  ↻ passage_prompt — retained founder edit');
+    return;
+  }
+  await ref.set(prompt);
+  console.log('  ✓ passage_prompt — created');
+}
+
 // ─────────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────────
@@ -523,13 +597,18 @@ async function main() {
   await seedPractitionerContent(db);
   await seedTeachings(db);
   await seedCounterweightPools(db);
+  await seedPassagePrompt(db);
   await seedMotifLexicon(db);
 
   console.log('\nDone.\n');
   process.exit(0);
 }
 
-main().catch(err => {
-  console.error('\nFATAL:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('\nFATAL:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = { migrateOffering, validateOffering };

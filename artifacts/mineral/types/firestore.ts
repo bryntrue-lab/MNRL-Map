@@ -222,4 +222,17 @@ export interface PractitionerContentDoc {
   key: string;
   keyType: "motif" | "resistance" | "condition";
   text: string;
+  /** G2 — only approved passages are ever shown to a member. */
+  passages?: FieldPassage[];
+}
+
+export type FieldPassageStatus = "approved" | "draft";
+export type FieldPassageSource = "founder" | "generated";
+
+export interface FieldPassage {
+  text: string;
+  locator: string | null;
+  status: FieldPassageStatus;
+  source: FieldPassageSource;
+  createdAt: Timestamp;
 }
