@@ -1,0 +1,45 @@
+{
+  "title": "Collective Longing",
+  "subtitle": "the river larger than one life",
+  "mapEpigraph": "You are not required to own the river.",
+  "phase": "signal",
+  "order": 11,
+  "minTurn": 1,
+  "audioPath": "encounters/collective-longing/audio.mp3",
+  "audioFile": "enc11_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r11-without-your-name",
+          "text": "What would still matter if your name were never attached?"
+        },
+        {
+          "id": "r11-carried",
+          "text": "Where have you felt carried by a larger current rather than driving alone?"
+        },
+        {
+          "id": "r11-crystallizing",
+          "text": "The longing moving through me that feels larger than me is…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "For the larger longing",
+      "instruction": "Do one small thing for the larger longing without attaching your name to it.",
+      "durationLabel": "today"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Notice the difference between wanting and being carried."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

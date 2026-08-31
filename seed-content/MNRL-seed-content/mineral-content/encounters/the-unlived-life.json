@@ -1,0 +1,46 @@
+{
+  "title": "The Unlived Life",
+  "subtitle": "what the other road still carries",
+  "mapEpigraph": "They return carrying something.",
+  "phase": "signal",
+  "order": 12,
+  "minTurn": 1,
+  "audioPath": "encounters/the-unlived-life/audio.mp3",
+  "audioFile": "enc12_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r12-still-glow",
+          "text": "Which roads not taken still glow?"
+        },
+        {
+          "id": "r12-felt-quality",
+          "text": "What was the felt quality of being alive there?",
+          "subtext": "Avoid solving how to recreate it."
+        },
+        {
+          "id": "r12-crystallizing",
+          "text": "The unlived life that still glows is…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Borrow one element",
+      "instruction": "Borrow one element from that life today: an hour of its rhythm, its music, its attention, or its way of moving.",
+      "durationLabel": "today"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Notice when this life briefly carries the temperature of that one."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

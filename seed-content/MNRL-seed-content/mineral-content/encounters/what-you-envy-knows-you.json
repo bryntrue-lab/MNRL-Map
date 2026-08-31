@@ -1,0 +1,45 @@
+{
+  "title": "What You Envy Knows You",
+  "subtitle": "the sting as informant",
+  "mapEpigraph": "Envy is an honest messenger with terrible manners.",
+  "phase": "signal",
+  "order": 13,
+  "minTurn": 1,
+  "audioPath": "encounters/what-you-envy-knows-you/audio.mp3",
+  "audioFile": "enc13_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r13-whose-news",
+          "text": "Whose news carries a particular sting?"
+        },
+        {
+          "id": "r13-exact-quality",
+          "text": "What exact quality, permission, freedom, or form of visibility does it make visible?"
+        },
+        {
+          "id": "r13-crystallizing",
+          "text": "What my envy may be pointing toward is…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Without their name",
+      "instruction": "Write the person's name. Beneath it, name the exact quality or permission their life makes visible. Then rewrite the sentence without their name.",
+      "durationLabel": "5 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Informant, not rival."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}
