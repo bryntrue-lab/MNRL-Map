@@ -69,7 +69,11 @@ async function acquireDailyLease(db) {
       data.day === day && Number.isFinite(data.draftedCount)
         ? data.draftedCount
         : 0;
-    if (draftedCount >= DAILY_LIMIT) return { acquired: false };
+    const attemptedCount =
+      data.day === day && Number.isFinite(data.attemptedCount)
+        ? data.attemptedCount
+        : draftedCount;
+    if (attemptedCount >= DAILY_LIMIT) return { acquired: false };
     if (
       data.day === day &&
       Number.isFinite(data.leaseUntilMs) &&
@@ -82,6 +86,11 @@ async function acquireDailyLease(db) {
       {
         day,
         draftedCount,
+        attemptedCount,
+        attemptedKeys:
+          data.day === day && Array.isArray(data.attemptedKeys)
+            ? data.attemptedKeys
+            : [],
         leaseToken: token,
         leaseUntilMs: now + RUN_LEASE_MS,
         updatedAt: FieldValue.serverTimestamp(),
@@ -92,8 +101,43 @@ async function acquireDailyLease(db) {
       acquired: true,
       ref,
       token,
-      remaining: DAILY_LIMIT - draftedCount,
+      remainingAttempts: DAILY_LIMIT - attemptedCount,
     };
+  });
+}
+
+async function reserveCandidate(db, run, candidate) {
+  const ref = db.doc(
+    `practitionerContent/${contentId(candidate.keyType, candidate.key)}`
+  );
+  return db.runTransaction(async (tx) => {
+    const [current, state] = await Promise.all([
+      tx.get(ref),
+      tx.get(run.ref),
+    ]);
+    const stateData = state.data() || {};
+    if (
+      stateData.leaseToken !== run.token ||
+      stateData.day !== utcDayKey(Date.now()) ||
+      stateData.attemptedCount >= DAILY_LIMIT
+    ) {
+      return false;
+    }
+    if (
+      Array.isArray(current.data()?.passages) &&
+      current.data().passages.length > 0
+    ) {
+      return false;
+    }
+    tx.update(run.ref, {
+      attemptedCount: FieldValue.increment(1),
+      attemptedKeys: FieldValue.arrayUnion(
+        `${candidate.keyType}:${candidate.key}`
+      ),
+      leaseUntilMs: Date.now() + RUN_LEASE_MS,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return true;
   });
 }
 
@@ -169,6 +213,7 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
       if (!run.acquired) return;
 
       const drafted = [];
+      let attempted = 0;
       try {
         const promptSnap = await db
           .doc("practitionerContent/passage_prompt")
@@ -183,20 +228,9 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
 
         const candidates = await establishedCandidates(db);
         for (const candidate of candidates) {
-          if (drafted.length >= run.remaining) break;
-          const ref = db.doc(
-            `practitionerContent/${contentId(
-              candidate.keyType,
-              candidate.key
-            )}`
-          );
-          const live = await ref.get();
-          if (
-            Array.isArray(live.data()?.passages) &&
-            live.data().passages.length > 0
-          ) {
-            continue;
-          }
+          if (attempted >= run.remainingAttempts) break;
+          if (!(await reserveCandidate(db, run, candidate))) continue;
+          attempted += 1;
 
           // Privacy checkpoint: this is the complete dynamic prompt. It
           // contains a shared single-word key and no field/account data.
@@ -215,7 +249,35 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
                 body: JSON.stringify({
                   model: "gpt-4o-mini",
                   temperature: 0.6,
-                  response_format: { type: "json_object" },
+                  max_tokens: 900,
+                  response_format: {
+                    type: "json_schema",
+                    json_schema: {
+                      name: "field_passages",
+                      strict: true,
+                      schema: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["passages"],
+                        properties: {
+                          passages: {
+                            type: "array",
+                            minItems: 3,
+                            maxItems: 3,
+                            items: {
+                              type: "object",
+                              additionalProperties: false,
+                              required: ["text", "locator"],
+                              properties: {
+                                text: { type: "string", minLength: 1 },
+                                locator: { type: "string", minLength: 1 },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
                   messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: candidate.key },

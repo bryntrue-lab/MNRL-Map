@@ -14,3 +14,4 @@
 - [Copy canon rules](copy-canon.md) — never invent user-facing strings; unspecified copy → ask founder first; never name tabs/navigation in ritual copy.
 - [Native App Check](app-check-native.md) — RNFirebase app-check as token source only, CustomProvider into JS SDK; App Check admin API enable + appAttestConfig via service account; quartz iOS app id noted.
 - [Shell quirks](shell-quirks.md) — pkill -f self-match kills your own script (bracket trick); nohup background procs die when the ShellExec call returns.
+- [Firebase function parameters](firebase-function-parameters.md) — noninteractive deploys need defineString values in a project dotenv; shell exports are ignored.

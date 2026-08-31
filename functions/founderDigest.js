@@ -132,11 +132,17 @@ function createFounderDigest({ db, auth, founderEmail }) {
 
       const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(now)).toLowerCase();
       const subject = cleanQueue && healthClean ? `mineral · ${weekday} — a quiet day` : `mineral · ${weekday} — ${awaiting} awaiting you`;
-      await db.collection("mail").add({
-        to: recipient,
-        message: { subject, text: lines.join("\n") },
-        createdAt: FieldValue.serverTimestamp(),
-      });
+      const digestId = `founder-digest-${new Date(now).toISOString().slice(0, 10)}`;
+      try {
+        await db.doc(`mail/${digestId}`).create({
+          to: recipient,
+          message: { subject, text: lines.join("\n") },
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      } catch (error) {
+        if (error?.code !== 6 && error?.code !== "already-exists") throw error;
+        console.info("founder digest already queued", { digestId });
+      }
     }
   );
 }

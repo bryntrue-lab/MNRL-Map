@@ -167,14 +167,18 @@ function validateOffering(entry, i) {
   return errors;
 }
 
+const G2_SEED_VERSION = 'g2-final';
+const G2_NEW_CANON_KEYS = new Set(['support', 'door']);
+
 function migrateOffering(entry, existingData = {}, exists = false, now = admin.firestore.Timestamp.now()) {
   const existingPassages = Array.isArray(existingData.passages)
     ? existingData.passages
     : null;
-  const passages = existingPassages ?? entry.passages.map((passage, index) => ({
+  const seededPassages = entry.passages.map((passage, index) => ({
     text:
       index === 0 &&
       exists &&
+      !G2_NEW_CANON_KEYS.has(entry.key) &&
       typeof existingData.text === 'string' &&
       existingData.text.trim()
         ? existingData.text
@@ -184,6 +188,17 @@ function migrateOffering(entry, existingData = {}, exists = false, now = admin.f
     source: 'founder',
     createdAt: now,
   }));
+  const generatedPassages = existingPassages?.filter(
+    passage =>
+      passage &&
+      (passage.status === 'draft' || passage.source === 'generated')
+  ) ?? [];
+  const passages =
+    existingData.g2SeedVersion === G2_SEED_VERSION
+      ? existingPassages ?? seededPassages
+      : G2_NEW_CANON_KEYS.has(entry.key)
+        ? [...seededPassages, ...generatedPassages]
+        : existingPassages ?? seededPassages;
   const firstApproved = passages.find(
     passage => passage && passage.status === 'approved' && typeof passage.text === 'string'
   );
@@ -193,6 +208,7 @@ function migrateOffering(entry, existingData = {}, exists = false, now = admin.f
     kind: 'offering',
     passages,
     text: firstApproved?.text ?? existingData.text ?? entry.passages[0].text,
+    g2SeedVersion: G2_SEED_VERSION,
   };
 }
 
@@ -592,6 +608,14 @@ async function main() {
   console.log(`  storage bucket: ${process.env.FIREBASE_STORAGE_BUCKET}`);
 
   const { db, bucket } = initFirebase();
+  const practitionerOnly = process.argv.includes('--practitioner-content-only');
+
+  if (practitionerOnly) {
+    await seedPractitionerContent(db);
+    await seedPassagePrompt(db);
+    console.log('\nDone.\n');
+    process.exit(0);
+  }
 
   await seedEncounters(db, bucket);
   await seedPractitionerContent(db);
