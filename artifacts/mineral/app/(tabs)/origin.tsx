@@ -61,6 +61,11 @@ import {
   word,
   type Quarter,
 } from "@/lib/spiral";
+import {
+  buildEncounterSession,
+  encounterRouteParams,
+  setEncounterSession,
+} from "@/lib/encounter";
 import { setVisitDay } from "@/lib/visitStore";
 import type { PhaseId, UserEncounterDoc } from "@/types/firestore";
 
@@ -591,9 +596,38 @@ export default function OriginScreen() {
     }
   }, [clampedCurrent, hintDone]);
 
-  const goThreshold = useCallback(() => {
-    router.navigate("/(tabs)");
-  }, []);
+  // The pill says CONTINUE when today's instance is in-progress — so it must
+  // continue, not switch tabs. (`router.navigate("/(tabs)")` resolves to the
+  // group's index route, Today, regardless of initialRouteName — see
+  // .agents/memory/expo-router-routing.md.)
+  //
+  // Only a genuine in-progress instance deep-links back into the held space.
+  // "today" and "complete" still route to Today, which owns the F5
+  // one-completion-per-local-day gate — that rule stays in exactly one place.
+  const continuing = useRef(false);
+  const goThreshold = useCallback(async () => {
+    if (ctaState !== "continue" || !user || !encounter) {
+      router.navigate("/(tabs)");
+      return;
+    }
+    if (continuing.current) return;
+    continuing.current = true;
+    try {
+      const session = await buildEncounterSession(user.uid, encounter, practiceTurn);
+      setEncounterSession(session);
+      router.push({
+        pathname: "/encounter",
+        params: encounterRouteParams(session),
+      });
+    } catch (err) {
+      // Offline or missing audio — never a dead end. Today owns the soft
+      // refusal (§4), so hand the moment back to it.
+      console.warn("[origin] continue failed", err);
+      router.navigate("/(tabs)");
+    } finally {
+      continuing.current = false;
+    }
+  }, [ctaState, user, encounter, practiceTurn]);
 
   const visitPastDay = useCallback((d: number) => {
     setVisitDay(d);

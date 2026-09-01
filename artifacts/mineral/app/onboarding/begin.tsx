@@ -7,7 +7,11 @@ import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { LinkSecondary, LinkWhisper } from "@/components/Links";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
-import { setEncounterSession } from "@/lib/encounter";
+import {
+  encounterRouteParams,
+  setEncounterSession,
+  type EncounterSession,
+} from "@/lib/encounter";
 import {
   beginSequenceEncounter,
   fetchEncounterLibrary,
@@ -53,14 +57,19 @@ export default function BeginScreen() {
       const url = await resolveAudioUrl(encounter.audioPath);
       await beginSequenceEncounter(user.uid, encounter.id, 1);
       await markOnboarded();
-      setEncounterSession({
+      const session: EncounterSession = {
         encounter,
         turn: 1,
         mode: "sequence",
         audioUrl: url,
         resume: null,
+      };
+      setEncounterSession(session);
+      // Params so the very first encounter survives being backgrounded too.
+      router.replace({
+        pathname: "/encounter",
+        params: encounterRouteParams(session),
       });
-      router.replace("/encounter");
     } catch (err) {
       console.warn("first threshold not ready", err);
       busy.current = false;

@@ -1,5 +1,11 @@
 import type { EncounterBlock, ReflectionPrompt } from "@/types/firestore";
-import type { EncounterWithId } from "@/lib/firestore";
+import {
+  beginSequenceEncounter,
+  findCrystallizingNote,
+  resolveAudioUrl,
+  userEncounterId,
+  type EncounterWithId,
+} from "@/lib/firestore";
 
 // ─────────────────────────────────────────────────────────────
 // Encounter session — hand-off between the Threshold and the
@@ -35,6 +41,69 @@ export function consumeEncounterSession(): EncounterSession | null {
   const s = session;
   session = null;
   return s;
+}
+
+/**
+ * Build a session from durable state — the one place that knows how to turn
+ * (encounter, turn) into a playable session with its resume position.
+ *
+ * The module store above is a hand-off, not a record: it does not survive the
+ * JS context being reclaimed while the app is backgrounded, nor any remount of
+ * the encounter screen. Everything needed to reconstitute a session already
+ * lives in Firestore (the userEncounters instance doc) and Storage, so the
+ * screen can rebuild itself rather than dropping the practitioner back at the
+ * tabs mid-practice.
+ *
+ * Safe to call again on an instance already in progress: beginSequenceEncounter
+ * returns the existing doc with its ORIGINAL status, so a resume rebuilds as a
+ * resume.
+ */
+export async function buildEncounterSession(
+  uid: string,
+  encounter: EncounterWithId,
+  turn: number,
+  opts: { visiting?: boolean } = {}
+): Promise<EncounterSession> {
+  // Resolve the Storage URL first — a missing file surfaces to the caller and
+  // ends in the quiet return, never inside the held space (§11, §4).
+  const audioUrl = await resolveAudioUrl(encounter.audioPath);
+
+  let mode: EncounterMode = opts.visiting ? "visit" : "sequence";
+  let resume: EncounterSession["resume"] = null;
+
+  if (!opts.visiting) {
+    const existing = await beginSequenceEncounter(uid, encounter.id, turn);
+    if (existing?.status === "completed") {
+      // The door already closed this turn — entering again is a visit: full
+      // flow, no completion writes (§2).
+      mode = "visit";
+    } else if (existing?.status === "in-progress") {
+      // Only a genuine mid-flow doc resumes; a visited→in-progress upgrade
+      // starts fresh (its old positions belong to the visit).
+      const blockIndex = existing.blockIndex ?? 0;
+      const audioPosition = existing.audioPosition ?? 0;
+      let crystallizing: { content: string | null } | null = null;
+      if (blockIndex === 0) {
+        // Capture already kept but no block reached → resume lands on the
+        // counterweight, not a second ⟡ (§4 resume rules).
+        const note = await findCrystallizingNote(
+          uid,
+          userEncounterId(encounter.id, turn)
+        );
+        if (note) crystallizing = { content: note.content ?? null };
+      }
+      if (blockIndex > 0 || audioPosition > 0 || crystallizing) {
+        resume = { audioPosition, blockIndex, crystallizing };
+      }
+    }
+  }
+
+  return { encounter, turn, mode, audioUrl, resume };
+}
+
+/** Route params carrying the durable identity of an encounter screen. */
+export function encounterRouteParams(s: EncounterSession) {
+  return { e: s.encounter.id, t: String(s.turn), m: s.mode };
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -43,6 +43,7 @@ import { useUser } from "@/context/UserContext";
 import {
   HELD_SILENCE_MS,
   HOLD_TIMEOUT_MS,
+  buildEncounterSession,
   consumeEncounterSession,
   crystallizingPrompt,
   renderablePostBlocks,
@@ -53,6 +54,7 @@ import {
 import {
   completeEncounter,
   createFieldNote,
+  fetchEncounterLibrary,
   fieldNoteRef,
   newFieldNoteId,
   saveAudioPosition,
@@ -96,17 +98,61 @@ type Stage = "listen" | "capture" | "hold" | "counterweight" | "block" | "close"
  * reload) returns quietly to the tabs.
  */
 export default function EncounterScreen() {
-  const { user } = useAuth();
-  // Consume exactly once, before first render commits.
-  const sessionRef = useRef<EncounterSession | null | undefined>(undefined);
-  if (sessionRef.current === undefined) {
-    sessionRef.current = consumeEncounterSession();
+  const { user, loading: authLoading } = useAuth();
+  const params = useLocalSearchParams<{ e?: string; t?: string; m?: string }>();
+
+  // Consume the hand-off exactly once, before first render commits.
+  const handedRef = useRef<EncounterSession | null | undefined>(undefined);
+  if (handedRef.current === undefined) {
+    handedRef.current = consumeEncounterSession();
   }
-  const session = sessionRef.current;
+
+  // The hand-off is a module variable: it does not survive the JS context
+  // being reclaimed while backgrounded (leaving to check Photos mid-encounter),
+  // nor any remount. The route params are the durable record of WHICH
+  // encounter this screen is, so when the hand-off is gone we rebuild from
+  // Firestore rather than quietly restarting the practitioner's day.
+  const [rebuilt, setRebuilt] = useState<EncounterSession | null>(null);
+  const [unrecoverable, setUnrecoverable] = useState(false);
+  const session = handedRef.current ?? rebuilt;
+
+  const encounterId = typeof params.e === "string" ? params.e : null;
+  const turn = Number(params.t);
+  const visiting = params.m === "visit";
 
   useEffect(() => {
-    if (!session || !user) router.replace("/(tabs)");
-  }, [session, user]);
+    if (session || authLoading || !user) return;
+    if (!encounterId || !Number.isFinite(turn)) {
+      // A genuine deep link with nothing to resume — the old behavior.
+      setUnrecoverable(true);
+      return;
+    }
+    let on = true;
+    (async () => {
+      try {
+        const library = await fetchEncounterLibrary();
+        const encounter = library.find((e) => e.id === encounterId);
+        if (!encounter) throw new Error(`encounter ${encounterId} not in library`);
+        const s = await buildEncounterSession(user.uid, encounter, turn, { visiting });
+        if (on) setRebuilt(s);
+      } catch (err) {
+        console.warn("[encounter] session rebuild failed", err);
+        if (on) setUnrecoverable(true);
+      }
+    })();
+    return () => {
+      on = false;
+    };
+  }, [session, authLoading, user, encounterId, turn, visiting]);
+
+  // Leave only when there is genuinely nothing to return to. Auth rehydrating
+  // on a cold start is NOT that: `user` is null for a beat while the anonymous
+  // session restores, and bouncing during that beat is the second path by
+  // which a backgrounded morning looked like it had started over.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user || unrecoverable) router.replace("/(tabs)");
+  }, [authLoading, user, unrecoverable]);
 
   if (!session || !user) {
     return <View style={styles.container} />;

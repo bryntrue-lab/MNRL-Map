@@ -17,21 +17,17 @@ import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import {
+  buildEncounterSession,
+  encounterRouteParams,
   setEncounterSession,
-  type EncounterMode,
-  type EncounterSession,
 } from "@/lib/encounter";
 import { onSnapshot } from "firebase/firestore";
 
 import {
-  beginSequenceEncounter,
   fetchEncounterLibrary,
-  findCrystallizingNote,
   getUserEncounter,
   recordVisit,
-  resolveAudioUrl,
   selectEncounterForDay,
-  userEncounterId,
   userEncounterRef,
   type EncounterWithId,
 } from "@/lib/firestore";
@@ -265,53 +261,22 @@ export default function TodayScreen() {
     }
     busy.current = true;
     try {
-      // Resolve the Storage URL first — a missing file surfaces here and
-      // ends in the quiet return, never inside the held space (§11, §4).
-      const url = await resolveAudioUrl(encounter.audioPath);
-
-      let mode: EncounterMode = visiting ? "visit" : "sequence";
-      let resume: EncounterSession["resume"] = null;
-
-      if (!visiting) {
-        const existing = await beginSequenceEncounter(
-          user.uid,
-          encounter.id,
-          practiceTurn
-        );
-        if (existing?.status === "completed") {
-          // Today's door already closed this turn — entering again is a
-          // visit: full flow, no completion writes (§2).
-          mode = "visit";
-        } else if (existing?.status === "in-progress") {
-          // Only a genuine mid-flow doc resumes; a visited→in-progress
-          // upgrade starts fresh (its old positions belong to the visit).
-          const blockIndex = existing.blockIndex ?? 0;
-          const audioPosition = existing.audioPosition ?? 0;
-          let crystallizing: { content: string | null } | null = null;
-          if (blockIndex === 0) {
-            // Capture already kept but no block reached → resume lands on
-            // the counterweight, not a second ⟡ (§4 resume rules).
-            const note = await findCrystallizingNote(
-              user.uid,
-              userEncounterId(encounter.id, practiceTurn)
-            );
-            if (note) crystallizing = { content: note.content ?? null };
-          }
-          if (blockIndex > 0 || audioPosition > 0 || crystallizing) {
-            resume = { audioPosition, blockIndex, crystallizing };
-          }
-        }
-      }
-
-      setEncounterSession({
+      // The session build — Storage URL, mode, and resume position — lives in
+      // lib/encounter now, so this screen and Origin's continue cannot drift.
+      const session = await buildEncounterSession(
+        user.uid,
         encounter,
-        turn: practiceTurn,
-        mode,
-        audioUrl: url,
-        resume,
-      });
+        practiceTurn,
+        { visiting }
+      );
+      setEncounterSession(session);
       busy.current = false;
-      router.push("/encounter");
+      // The params are the durable record: they let the encounter screen
+      // rebuild itself if the module hand-off is lost to a backgrounded app.
+      router.push({
+        pathname: "/encounter",
+        params: encounterRouteParams(session),
+      });
     } catch (err) {
       console.warn("threshold begin failed", err);
       // Offline or missing audio — the soft refusal (§4). showNotReady's
