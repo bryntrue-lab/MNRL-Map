@@ -14,7 +14,7 @@
       "prompts": [
         {
           "id": "r9-expanders",
-          "text": "Who are your expanders?"
+          "text": "Who are the expansive people in your life?"
         },
         {
           "id": "r9-quality",
@@ -26,7 +26,7 @@
         },
         {
           "id": "r9-crystallizing",
-          "text": "The part of me that recognizes this is…",
+          "text": "Who is the part of you that recognizes this reflection?",
           "capturable": true,
           "crystallizing": true
         }
@@ -35,13 +35,13 @@
     {
       "type": "integration",
       "title": "The letter of recognition",
-      "instruction": "Write a short letter telling one expander what you see in them. Then address one paragraph of the same recognition to yourself.",
+      "instruction": "Write a short letter telling one of your expansive people what you see in them. Then address one paragraph of the same recognition to yourself.",
       "durationLabel": "5–10 min"
     },
     {
       "type": "carry",
       "intro": "Trace",
-      "closing": "Recognition is closer than imitation."
+      "closing": "The mirror was there all along. What you recognize in the reflection draws you closer. "
     }
   ],
   "deepDive": null,
