@@ -1,0 +1,379 @@
+diff --git a/artifacts/mineral/app/(tabs)/index.tsx b/artifacts/mineral/app/(tabs)/index.tsx
+index 4dbec44..ed59bda 100644
+--- a/artifacts/mineral/app/(tabs)/index.tsx
++++ b/artifacts/mineral/app/(tabs)/index.tsx
+@@ -17,21 +17,17 @@ import { TypeScale } from "@/constants/typography";
+ import { useAuth } from "@/context/AuthContext";
+ import { useUser } from "@/context/UserContext";
+ import {
++  buildEncounterSession,
++  encounterRouteParams,
+   setEncounterSession,
+-  type EncounterMode,
+-  type EncounterSession,
+ } from "@/lib/encounter";
+ import { onSnapshot } from "firebase/firestore";
+ 
+ import {
+-  beginSequenceEncounter,
+   fetchEncounterLibrary,
+-  findCrystallizingNote,
+   getUserEncounter,
+   recordVisit,
+-  resolveAudioUrl,
+   selectEncounterForDay,
+-  userEncounterId,
+   userEncounterRef,
+   type EncounterWithId,
+ } from "@/lib/firestore";
+@@ -265,53 +261,22 @@ export default function TodayScreen() {
+     }
+     busy.current = true;
+     try {
+-      // Resolve the Storage URL first — a missing file surfaces here and
+-      // ends in the quiet return, never inside the held space (§11, §4).
+-      const url = await resolveAudioUrl(encounter.audioPath);
+-
+-      let mode: EncounterMode = visiting ? "visit" : "sequence";
+-      let resume: EncounterSession["resume"] = null;
+-
+-      if (!visiting) {
+-        const existing = await beginSequenceEncounter(
+-          user.uid,
+-          encounter.id,
+-          practiceTurn
+-        );
+-        if (existing?.status === "completed") {
+-          // Today's door already closed this turn — entering again is a
+-          // visit: full flow, no completion writes (§2).
+-          mode = "visit";
+-        } else if (existing?.status === "in-progress") {
+-          // Only a genuine mid-flow doc resumes; a visited→in-progress
+-          // upgrade starts fresh (its old positions belong to the visit).
+-          const blockIndex = existing.blockIndex ?? 0;
+-          const audioPosition = existing.audioPosition ?? 0;
+-          let crystallizing: { content: string | null } | null = null;
+-          if (blockIndex === 0) {
+-            // Capture already kept but no block reached → resume lands on
+-            // the counterweight, not a second ⟡ (§4 resume rules).
+-            const note = await findCrystallizingNote(
+-              user.uid,
+-              userEncounterId(encounter.id, practiceTurn)
+-            );
+-            if (note) crystallizing = { content: note.content ?? null };
+-          }
+-          if (blockIndex > 0 || audioPosition > 0 || crystallizing) {
+-            resume = { audioPosition, blockIndex, crystallizing };
+-          }
+-        }
+-      }
+-
+-      setEncounterSession({
++      // The session build — Storage URL, mode, and resume position — lives in
++      // lib/encounter now, so this screen and Origin's continue cannot drift.
++      const session = await buildEncounterSession(
++        user.uid,
+         encounter,
+-        turn: practiceTurn,
+-        mode,
+-        audioUrl: url,
+-        resume,
+-      });
++        practiceTurn,
++        { visiting }
++      );
++      setEncounterSession(session);
+       busy.current = false;
+-      router.push("/encounter");
++      // The params are the durable record: they let the encounter screen
++      // rebuild itself if the module hand-off is lost to a backgrounded app.
++      router.push({
++        pathname: "/encounter",
++        params: encounterRouteParams(session),
++      });
+     } catch (err) {
+       console.warn("threshold begin failed", err);
+       // Offline or missing audio — the soft refusal (§4). showNotReady's
+diff --git a/artifacts/mineral/app/(tabs)/origin.tsx b/artifacts/mineral/app/(tabs)/origin.tsx
+index 36e5850..7744fcf 100644
+--- a/artifacts/mineral/app/(tabs)/origin.tsx
++++ b/artifacts/mineral/app/(tabs)/origin.tsx
+@@ -61,6 +61,11 @@ import {
+   word,
+   type Quarter,
+ } from "@/lib/spiral";
++import {
++  buildEncounterSession,
++  encounterRouteParams,
++  setEncounterSession,
++} from "@/lib/encounter";
+ import { setVisitDay } from "@/lib/visitStore";
+ import type { PhaseId, UserEncounterDoc } from "@/types/firestore";
+ 
+@@ -591,9 +596,38 @@ export default function OriginScreen() {
+     }
+   }, [clampedCurrent, hintDone]);
+ 
+-  const goThreshold = useCallback(() => {
+-    router.navigate("/(tabs)");
+-  }, []);
++  // The pill says CONTINUE when today's instance is in-progress — so it must
++  // continue, not switch tabs. (`router.navigate("/(tabs)")` resolves to the
++  // group's index route, Today, regardless of initialRouteName — see
++  // .agents/memory/expo-router-routing.md.)
++  //
++  // Only a genuine in-progress instance deep-links back into the held space.
++  // "today" and "complete" still route to Today, which owns the F5
++  // one-completion-per-local-day gate — that rule stays in exactly one place.
++  const continuing = useRef(false);
++  const goThreshold = useCallback(async () => {
++    if (ctaState !== "continue" || !user || !encounter) {
++      router.navigate("/(tabs)");
++      return;
++    }
++    if (continuing.current) return;
++    continuing.current = true;
++    try {
++      const session = await buildEncounterSession(user.uid, encounter, practiceTurn);
++      setEncounterSession(session);
++      router.push({
++        pathname: "/encounter",
++        params: encounterRouteParams(session),
++      });
++    } catch (err) {
++      // Offline or missing audio — never a dead end. Today owns the soft
++      // refusal (§4), so hand the moment back to it.
++      console.warn("[origin] continue failed", err);
++      router.navigate("/(tabs)");
++    } finally {
++      continuing.current = false;
++    }
++  }, [ctaState, user, encounter, practiceTurn]);
+ 
+   const visitPastDay = useCallback((d: number) => {
+     setVisitDay(d);
+diff --git a/artifacts/mineral/app/encounter.tsx b/artifacts/mineral/app/encounter.tsx
+index 862e506..d9123d5 100644
+--- a/artifacts/mineral/app/encounter.tsx
++++ b/artifacts/mineral/app/encounter.tsx
+@@ -7,7 +7,7 @@ import {
+   useAudioRecorder,
+   useAudioRecorderState,
+ } from "expo-audio";
+-import { router } from "expo-router";
++import { router, useLocalSearchParams } from "expo-router";
+ import { doc, getDoc, onSnapshot } from "firebase/firestore";
+ import React, { useEffect, useMemo, useRef, useState } from "react";
+ import {
+@@ -43,6 +43,7 @@ import { useUser } from "@/context/UserContext";
+ import {
+   HELD_SILENCE_MS,
+   HOLD_TIMEOUT_MS,
++  buildEncounterSession,
+   consumeEncounterSession,
+   crystallizingPrompt,
+   renderablePostBlocks,
+@@ -53,6 +54,7 @@ import {
+ import {
+   completeEncounter,
+   createFieldNote,
++  fetchEncounterLibrary,
+   fieldNoteRef,
+   newFieldNoteId,
+   saveAudioPosition,
+@@ -96,17 +98,61 @@ type Stage = "listen" | "capture" | "hold" | "counterweight" | "block" | "close"
+  * reload) returns quietly to the tabs.
+  */
+ export default function EncounterScreen() {
+-  const { user } = useAuth();
+-  // Consume exactly once, before first render commits.
+-  const sessionRef = useRef<EncounterSession | null | undefined>(undefined);
+-  if (sessionRef.current === undefined) {
+-    sessionRef.current = consumeEncounterSession();
++  const { user, loading: authLoading } = useAuth();
++  const params = useLocalSearchParams<{ e?: string; t?: string; m?: string }>();
++
++  // Consume the hand-off exactly once, before first render commits.
++  const handedRef = useRef<EncounterSession | null | undefined>(undefined);
++  if (handedRef.current === undefined) {
++    handedRef.current = consumeEncounterSession();
+   }
+-  const session = sessionRef.current;
+ 
++  // The hand-off is a module variable: it does not survive the JS context
++  // being reclaimed while backgrounded (leaving to check Photos mid-encounter),
++  // nor any remount. The route params are the durable record of WHICH
++  // encounter this screen is, so when the hand-off is gone we rebuild from
++  // Firestore rather than quietly restarting the practitioner's day.
++  const [rebuilt, setRebuilt] = useState<EncounterSession | null>(null);
++  const [unrecoverable, setUnrecoverable] = useState(false);
++  const session = handedRef.current ?? rebuilt;
++
++  const encounterId = typeof params.e === "string" ? params.e : null;
++  const turn = Number(params.t);
++  const visiting = params.m === "visit";
++
++  useEffect(() => {
++    if (session || authLoading || !user) return;
++    if (!encounterId || !Number.isFinite(turn)) {
++      // A genuine deep link with nothing to resume — the old behavior.
++      setUnrecoverable(true);
++      return;
++    }
++    let on = true;
++    (async () => {
++      try {
++        const library = await fetchEncounterLibrary();
++        const encounter = library.find((e) => e.id === encounterId);
++        if (!encounter) throw new Error(`encounter ${encounterId} not in library`);
++        const s = await buildEncounterSession(user.uid, encounter, turn, { visiting });
++        if (on) setRebuilt(s);
++      } catch (err) {
++        console.warn("[encounter] session rebuild failed", err);
++        if (on) setUnrecoverable(true);
++      }
++    })();
++    return () => {
++      on = false;
++    };
++  }, [session, authLoading, user, encounterId, turn, visiting]);
++
++  // Leave only when there is genuinely nothing to return to. Auth rehydrating
++  // on a cold start is NOT that: `user` is null for a beat while the anonymous
++  // session restores, and bouncing during that beat is the second path by
++  // which a backgrounded morning looked like it had started over.
+   useEffect(() => {
+-    if (!session || !user) router.replace("/(tabs)");
+-  }, [session, user]);
++    if (authLoading) return;
++    if (!user || unrecoverable) router.replace("/(tabs)");
++  }, [authLoading, user, unrecoverable]);
+ 
+   if (!session || !user) {
+     return <View style={styles.container} />;
+diff --git a/artifacts/mineral/app/onboarding/begin.tsx b/artifacts/mineral/app/onboarding/begin.tsx
+index 2c0d3e9..f31d672 100644
+--- a/artifacts/mineral/app/onboarding/begin.tsx
++++ b/artifacts/mineral/app/onboarding/begin.tsx
+@@ -7,7 +7,11 @@ import { ArchaicAtmosphere } from "@/components/Atmosphere";
+ import { LinkSecondary, LinkWhisper } from "@/components/Links";
+ import { useAuth } from "@/context/AuthContext";
+ import { useUser } from "@/context/UserContext";
+-import { setEncounterSession } from "@/lib/encounter";
++import {
++  encounterRouteParams,
++  setEncounterSession,
++  type EncounterSession,
++} from "@/lib/encounter";
+ import {
+   beginSequenceEncounter,
+   fetchEncounterLibrary,
+@@ -53,14 +57,19 @@ export default function BeginScreen() {
+       const url = await resolveAudioUrl(encounter.audioPath);
+       await beginSequenceEncounter(user.uid, encounter.id, 1);
+       await markOnboarded();
+-      setEncounterSession({
++      const session: EncounterSession = {
+         encounter,
+         turn: 1,
+         mode: "sequence",
+         audioUrl: url,
+         resume: null,
++      };
++      setEncounterSession(session);
++      // Params so the very first encounter survives being backgrounded too.
++      router.replace({
++        pathname: "/encounter",
++        params: encounterRouteParams(session),
+       });
+-      router.replace("/encounter");
+     } catch (err) {
+       console.warn("first threshold not ready", err);
+       busy.current = false;
+diff --git a/artifacts/mineral/lib/encounter.ts b/artifacts/mineral/lib/encounter.ts
+index 26e74eb..cbdef54 100644
+--- a/artifacts/mineral/lib/encounter.ts
++++ b/artifacts/mineral/lib/encounter.ts
+@@ -1,5 +1,11 @@
+ import type { EncounterBlock, ReflectionPrompt } from "@/types/firestore";
+-import type { EncounterWithId } from "@/lib/firestore";
++import {
++  beginSequenceEncounter,
++  findCrystallizingNote,
++  resolveAudioUrl,
++  userEncounterId,
++  type EncounterWithId,
++} from "@/lib/firestore";
+ 
+ // ─────────────────────────────────────────────────────────────
+ // Encounter session — hand-off between the Threshold and the
+@@ -37,6 +43,69 @@ export function consumeEncounterSession(): EncounterSession | null {
+   return s;
+ }
+ 
++/**
++ * Build a session from durable state — the one place that knows how to turn
++ * (encounter, turn) into a playable session with its resume position.
++ *
++ * The module store above is a hand-off, not a record: it does not survive the
++ * JS context being reclaimed while the app is backgrounded, nor any remount of
++ * the encounter screen. Everything needed to reconstitute a session already
++ * lives in Firestore (the userEncounters instance doc) and Storage, so the
++ * screen can rebuild itself rather than dropping the practitioner back at the
++ * tabs mid-practice.
++ *
++ * Safe to call again on an instance already in progress: beginSequenceEncounter
++ * returns the existing doc with its ORIGINAL status, so a resume rebuilds as a
++ * resume.
++ */
++export async function buildEncounterSession(
++  uid: string,
++  encounter: EncounterWithId,
++  turn: number,
++  opts: { visiting?: boolean } = {}
++): Promise<EncounterSession> {
++  // Resolve the Storage URL first — a missing file surfaces to the caller and
++  // ends in the quiet return, never inside the held space (§11, §4).
++  const audioUrl = await resolveAudioUrl(encounter.audioPath);
++
++  let mode: EncounterMode = opts.visiting ? "visit" : "sequence";
++  let resume: EncounterSession["resume"] = null;
++
++  if (!opts.visiting) {
++    const existing = await beginSequenceEncounter(uid, encounter.id, turn);
++    if (existing?.status === "completed") {
++      // The door already closed this turn — entering again is a visit: full
++      // flow, no completion writes (§2).
++      mode = "visit";
++    } else if (existing?.status === "in-progress") {
++      // Only a genuine mid-flow doc resumes; a visited→in-progress upgrade
++      // starts fresh (its old positions belong to the visit).
++      const blockIndex = existing.blockIndex ?? 0;
++      const audioPosition = existing.audioPosition ?? 0;
++      let crystallizing: { content: string | null } | null = null;
++      if (blockIndex === 0) {
++        // Capture already kept but no block reached → resume lands on the
++        // counterweight, not a second ⟡ (§4 resume rules).
++        const note = await findCrystallizingNote(
++          uid,
++          userEncounterId(encounter.id, turn)
++        );
++        if (note) crystallizing = { content: note.content ?? null };
++      }
++      if (blockIndex > 0 || audioPosition > 0 || crystallizing) {
++        resume = { audioPosition, blockIndex, crystallizing };
++      }
++    }
++  }
++
++  return { encounter, turn, mode, audioUrl, resume };
++}
++
++/** Route params carrying the durable identity of an encounter screen. */
++export function encounterRouteParams(s: EncounterSession) {
++  return { e: s.encounter.id, t: String(s.turn), m: s.mode };
++}
++
+ // ─────────────────────────────────────────────────────────────
+ // The beautiful hold (§1d) — transcription wait ceiling. At this
+ // point the ritual completes regardless; the transcript arrives
