@@ -42,6 +42,18 @@ interface CaptureSheetProps {
   lockedType?: FieldNoteType | null;
   /** §6 additive v1.8 — which map position provoked this capture. */
   mapRef?: CreateFieldNoteInput["mapRef"];
+  /** Header eyebrow. Defaults to CAPTURE; the counterweight names itself. */
+  eyebrow?: string;
+  /**
+   * What is being kept — held above the field and never scrolled away.
+   * Losing the date and the question behind the sheet was the substance of
+   * the first tester's complaint: "would have liked to still be able to see
+   * the date in question."
+   */
+  contextDate?: string | null;
+  promptText?: string | null;
+  /** Cover navigator siblings (the tab bar) while the sheet is up. */
+  modal?: boolean;
   onSaved?: () => void;
 }
 
@@ -56,6 +68,10 @@ export function CaptureSheet({
   initialType,
   lockedType,
   mapRef,
+  eyebrow = "CAPTURE",
+  contextDate,
+  promptText,
+  modal,
   onSaved,
 }: CaptureSheetProps) {
   const [type, setType] = useState<FieldNoteType | null>(lockedType ?? initialType ?? null);
@@ -111,20 +127,34 @@ export function CaptureSheet({
       onClose={onClose}
       bottomPad={bottomPad}
       swipeToDismiss
+      modal={modal}
       testID="capture-sheet"
     >
+      {/* 2.1.3 — the header sits OUTSIDE the scroll view. Inside it, the ✕
+          scrolled out of reach the moment the keyboard raised the field, so
+          the only visible ✕ was the encounter screen's own exit — which quit
+          the encounter rather than the sheet. That is the whole of the
+          tester's "the x is cut off" and "it took me back to Today". */}
+      <View style={styles.headRow}>
+        <Text style={styles.eyebrow}>{eyebrow}</Text>
+        <Pressable onPress={onClose} style={styles.closeTarget} hitSlop={8} testID="capture-close">
+          <Text style={styles.closeGlyph}>✕</Text>
+        </Pressable>
+      </View>
+
+      {/* What is being kept stays visible while it is being answered. */}
+      {(contextDate || promptText) && (
+        <View style={styles.context} testID="capture-context">
+          {contextDate ? <Text style={styles.contextDate}>{contextDate}</Text> : null}
+          {promptText ? <Text style={styles.contextPrompt}>{promptText}</Text> : null}
+        </View>
+      )}
+
       <KeyboardAwareScrollViewCompat
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
-        <View style={styles.headRow}>
-          <Text style={styles.eyebrow}>CAPTURE</Text>
-          <Pressable onPress={onClose} style={styles.closeTarget} hitSlop={4} testID="capture-close">
-            <Text style={styles.closeGlyph}>✕</Text>
-          </Pressable>
-        </View>
-
         {lockedType == null && (
         <View style={styles.chipRow}>
           {CAPTURE_CHIPS.map((chip) => {
@@ -174,14 +204,31 @@ export function CaptureSheet({
 }
 
 const styles = StyleSheet.create({
+  // The header and context now live outside this view, so the scroll only
+  // has to hold chips + field + keep. Lower than the old 440 so the sheet
+  // does not overrun the screen top once the keyboard raises it.
   scroll: {
-    maxHeight: 440,
+    maxHeight: 330,
   },
   headRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+
+  context: {
+    marginBottom: 18,
+  },
+  contextDate: {
+    ...TypeScale.body,
+    letterSpacing: 0.3,
+    color: "rgba(235,228,255,0.85)",
+    marginBottom: 6,
+  },
+  contextPrompt: {
+    ...TypeScale.serifSmall,
+    color: "rgba(235,228,255,0.58)",
   },
   eyebrow: {
     ...TypeScale.metadata,

@@ -428,7 +428,13 @@ export default function OriginScreen() {
 
   // §6 — counterweight capture: the position read when "keep what comes"
   // was offered. Non-null renders the standard capture sheet.
-  const [cwCapture, setCwCapture] = useState<{ date: string; phase: PhaseId } | null>(null);
+  const [cwCapture, setCwCapture] = useState<{
+    date: string;
+    phase: PhaseId;
+    /** Carried through so the sheet can show what is being answered. */
+    dateLabel: string;
+    question: string;
+  } | null>(null);
 
   const [turnOpen, setTurnOpen] = useState(false);
   const lifeOp = useRef(new Animated.Value(1)).current;
@@ -648,6 +654,9 @@ export default function OriginScreen() {
     introRunning,
     turnOpen,
     sheet,
+    // The counterweight capture is not one of the `sheet` values, so the map
+    // believed nothing was open and kept its gestures armed underneath it.
+    cwOpen: cwCapture != null,
     wandering,
     clampedCurrent,
     wheelDay,
@@ -660,6 +669,9 @@ export default function OriginScreen() {
     introRunning,
     turnOpen,
     sheet,
+    // The counterweight capture is not one of the `sheet` values, so the map
+    // believed nothing was open and kept its gestures armed underneath it.
+    cwOpen: cwCapture != null,
     wandering,
     clampedCurrent,
     wheelDay,
@@ -726,7 +738,7 @@ export default function OriginScreen() {
       .onUpdate((e) => {
         const st = stateRef.current;
         const act = actionsRef.current;
-        if (st.introRunning || st.turnOpen || st.sheet) return;
+        if (st.introRunning || st.turnOpen || st.sheet || st.cwOpen) return;
         const P = pinchStart.current;
         const cx = st.zoneW / 2;
         const cy = st.zoneH / 2;
@@ -766,7 +778,7 @@ export default function OriginScreen() {
       .onEnd((_e, success) => {
         if (!success) return;
         const st = stateRef.current;
-        if (st.introRunning || st.turnOpen || st.sheet) return;
+        if (st.introRunning || st.turnOpen || st.sheet || st.cwOpen) return;
         if (zoomRef.current.s > 1.001) actionsRef.current.animateZoomTo(ZOOM_HOME);
       });
 
@@ -787,7 +799,7 @@ export default function OriginScreen() {
       .onUpdate((e) => {
         const st = stateRef.current;
         const act = actionsRef.current;
-        if (st.introRunning || st.sheet) return;
+        if (st.introRunning || st.sheet || st.cwOpen) return;
         // H3 — turn mode: scrub-select. The nearest day highlights and the
         // floating label follows the finger; the wheel's geometry stays fixed.
         if (st.turnOpen) {
@@ -820,7 +832,7 @@ export default function OriginScreen() {
       .onEnd((e) => {
         const st = stateRef.current;
         const act = actionsRef.current;
-        if (st.introRunning || st.sheet) return;
+        if (st.introRunning || st.sheet || st.cwOpen) return;
         // H3 — release resolves the scrub: past → visit; future → quiet
         // toast; today or off-ring → cancel (a plain tap still opens today).
         if (st.turnOpen) {
@@ -869,7 +881,7 @@ export default function OriginScreen() {
           act.finishIntro();
           return;
         }
-        if (st.sheet) return; // the backdrop closes sheets
+        if (st.sheet || st.cwOpen) return; // the backdrop closes sheets
         const vb = act.toViewBox(e.x, e.y);
         if (st.turnOpen) {
           const d = wheelDayFromPoint(vb.x, vb.y);
@@ -1220,12 +1232,16 @@ export default function OriginScreen() {
             onClose={() => setSheet(null)}
             onCompanions={() => setSheet("companions")}
             onSwingTo={sheetSwingTo}
-            onKeepWhatComes={() => {
-              // §6 — the position read is the displayed position.
+            onKeepWhatComes={(ctx) => {
+              // §6 — the position read is the displayed position. The date
+              // label and question come from the sheet that computed them,
+              // so the counterweight logic stays in one place.
               setSheet(null);
               setCwCapture({
                 date: dateAtAge(birthDate, displayAge).toISOString().slice(0, 10),
                 phase: r.phase,
+                dateLabel: ctx.dateLabel,
+                question: ctx.question,
               });
             }}
             onHowToRead={mapTeaching ? () => setSheet("map") : undefined}
@@ -1249,7 +1265,10 @@ export default function OriginScreen() {
       )}
 
       {/* §6 — counterweight capture: the standard sheet, type fixed to
-          reflection, mapRef carrying the position that provoked it. */}
+          reflection, mapRef carrying the position that provoked it.
+          `modal` so the sheet covers the tab bar and the map beneath it —
+          without it the map's gestures and the tab bar stayed live under an
+          open sheet, and a stray touch navigated away mid-capture. */}
       <CaptureSheet
         open={cwCapture != null}
         onClose={() => setCwCapture(null)}
@@ -1258,7 +1277,11 @@ export default function OriginScreen() {
         atmosphere={cwCapture?.phase ?? r.phase}
         bottomPad={tabBarHeight}
         lockedType="reflection"
-        mapRef={cwCapture}
+        modal
+        eyebrow="KEEP WHAT COMES"
+        contextDate={cwCapture?.dateLabel ?? null}
+        promptText={cwCapture?.question ?? null}
+        mapRef={cwCapture ? { date: cwCapture.date, phase: cwCapture.phase } : null}
         onSaved={() => showToast("kept.")}
       />
 

@@ -263,7 +263,9 @@ interface ReadingSheetProps {
   onCompanions: () => void;
   onSwingTo: (age: number) => void;
   /** §6 — opens the standard capture sheet against this position's mapRef. */
-  onKeepWhatComes?: () => void;
+  /** Hands the capture the date and question it is answering, so the sheet
+   *  can keep them on screen instead of opening onto a bare field. */
+  onKeepWhatComes?: (ctx: { dateLabel: string; question: string }) => void;
   /** E9 — opens the map teaching sheet; hidden when the doc is absent. */
   onHowToRead?: () => void;
 }
@@ -328,7 +330,12 @@ export function ReadingSheet({
           {onKeepWhatComes && (
             <LinkWhisper
               label="keep what comes →"
-              onPress={onKeepWhatComes}
+              onPress={() =>
+                onKeepWhatComes({
+                  dateLabel: ritualDateLabel(cwDate),
+                  question: cwQuestion,
+                })
+              }
               style={styles.keepWhatComes}
               testID="counterweight-keep"
             />

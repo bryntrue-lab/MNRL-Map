@@ -1150,6 +1150,10 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         atmosphere={phase}
         bottomPad={insets.bottom + 8}
         lockedType={sheetMode === "counterweight" ? "reflection" : null}
+        eyebrow={sheetMode === "counterweight" ? "KEEP WHAT COMES" : "CAPTURE"}
+        // The date and question stay on screen while they are answered.
+        contextDate={sheetMode === "counterweight" ? (cw?.dateLabel ?? null) : null}
+        promptText={sheetMode === "counterweight" ? (cw?.question ?? null) : null}
         mapRef={
           sheetMode === "counterweight" && cw
             ? { date: cw.isoDate, phase: cw.phase }
