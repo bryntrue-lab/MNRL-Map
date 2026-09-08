@@ -142,19 +142,19 @@ export function CaptureSheet({
         </Pressable>
       </View>
 
-      {/* What is being kept stays visible while it is being answered. */}
-      {(contextDate || promptText) && (
-        <View style={styles.context} testID="capture-context">
-          {contextDate ? <Text style={styles.contextDate}>{contextDate}</Text> : null}
-          {promptText ? <Text style={styles.contextPrompt}>{promptText}</Text> : null}
-        </View>
-      )}
-
       <KeyboardAwareScrollViewCompat
-        style={styles.scroll}
+        style={[styles.scroll, lockedType != null && styles.lockedScroll]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
+        {/* Context yields vertical space first; the input dock below never does. */}
+        {(contextDate || promptText) && (
+          <View style={styles.context} testID="capture-context">
+            {contextDate ? <Text style={styles.contextDate}>{contextDate}</Text> : null}
+            {promptText ? <Text style={styles.contextPrompt}>{promptText}</Text> : null}
+          </View>
+        )}
+
         {lockedType == null && (
         <View style={styles.chipRow}>
           {CAPTURE_CHIPS.map((chip) => {
@@ -178,27 +178,29 @@ export function CaptureSheet({
         </View>
         )}
 
-        {type != null && (
-          <>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={text}
-              onChangeText={setText}
-              placeholder="when you're ready"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              multiline
-              testID="capture-input"
-            />
-            <LinkPrimary
-              label="keep this →"
-              onPress={keep}
-              style={[styles.keep, { opacity: canKeep ? 1 : 0.35 }]}
-              testID="capture-keep"
-            />
-          </>
-        )}
       </KeyboardAwareScrollViewCompat>
+
+      {type != null && (
+        <View style={styles.inputDock}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={text}
+            onChangeText={setText}
+            placeholder="when you're ready"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            multiline
+            scrollEnabled
+            testID="capture-input"
+          />
+          <LinkPrimary
+            label="keep this →"
+            onPress={keep}
+            style={[styles.keep, { opacity: canKeep ? 1 : 0.35 }]}
+            testID="capture-keep"
+          />
+        </View>
+      )}
     </SheetShell>
   );
 }
@@ -208,7 +210,11 @@ const styles = StyleSheet.create({
   // has to hold chips + field + keep. Lower than the old 440 so the sheet
   // does not overrun the screen top once the keyboard raises it.
   scroll: {
+    flexShrink: 1,
     maxHeight: 330,
+  },
+  lockedScroll: {
+    maxHeight: 112,
   },
   headRow: {
     flexDirection: "row",
@@ -285,8 +291,7 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    minHeight: 96,
-    maxHeight: 180,
+    height: 112,
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 14,
@@ -297,6 +302,10 @@ const styles = StyleSheet.create({
     ...TypeScale.body,
     color: "rgba(255,255,255,0.92)",
     textAlignVertical: "top",
+  },
+
+  inputDock: {
+    flexShrink: 0,
   },
 
   keep: {

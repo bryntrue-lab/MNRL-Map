@@ -127,6 +127,13 @@ function heroOrder(a: PoolItem, b: PoolItem): number {
   return rank(b) - rank(a) || b.count - a.count || b.latestMs - a.latestMs;
 }
 
+/** RETURNING hero only (Slice N): freshest contribution first. When two
+ * returns are equally fresh, count wins, then phrase > lexicon > word. */
+function heroFreshnessOrder(a: PoolItem, b: PoolItem): number {
+  const rank = (i: PoolItem) => (i.phrase ? 2 : i.lexicon ? 1 : 0);
+  return b.latestMs - a.latestMs || b.count - a.count || rank(b) - rank(a);
+}
+
 /** Age phrase for a span of days: one day · N days · N weeks. */
 function spanPhrase(days: number): string {
   if (days <= 1) return "one day";
@@ -310,10 +317,10 @@ export default function GuideScreen() {
     [visibleItems]
   );
 
-  // ── The hero: strongest current pattern — every-time guarantee ───
+  // ── The hero: freshest return within the current threshold tier ──
   const hero: PoolItem | null = useMemo(() => {
-    if (established.length > 0) return established[0];
-    if (gathering.length > 0) return gathering[0];
+    if (established.length > 0) return [...established].sort(heroFreshnessOrder)[0];
+    if (gathering.length > 0) return [...gathering].sort(heroFreshnessOrder)[0];
     if (arrivals.length > 0) {
       const stemKey = contentWords(arrivals[0].word)[0]?.stem ?? arrivals[0].word;
       const pooled = visibleItems.find((i) => i.key === stemKey);

@@ -745,7 +745,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       {stage === "counterweight" && <View style={styles.darken} />}
 
       {/* H2 — quiet back ←, top-left, whisper register, every step */}
-      {canGoBack && (
+      {canGoBack && sheetMode == null && (
         <Pressable
           onPress={goBack}
           hitSlop={14}
@@ -758,14 +758,16 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
       {/* F2 — the quiet exit ✕: every screen, top-right, no confirm.
           Exit only navigates; whatever is already kept stays kept. */}
-      <Pressable
-        onPress={() => router.replace("/(tabs)")}
-        hitSlop={14}
-        style={[styles.exitX, { top: insets.top + 14 }]}
-        testID="encounter-exit"
-      >
-        <Text style={styles.exitXText}>✕</Text>
-      </Pressable>
+      {sheetMode == null && (
+        <Pressable
+          onPress={() => router.replace("/(tabs)")}
+          hitSlop={14}
+          style={[styles.exitX, { top: insets.top + 14 }]}
+          testID="encounter-exit"
+        >
+          <Text style={styles.exitXText}>✕</Text>
+        </Pressable>
+      )}
 
       {/* Ambient + — block screens only, never the ⟡ (§1f). Shifted left
           of the ✕ since F2 gave the corner to the exit. */}
@@ -978,7 +980,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       )}
 
       {/* ── Counterweight resolution ── */}
-      {stage === "counterweight" && cw && (
+      {stage === "counterweight" && cw && sheetMode !== "counterweight" && (
         <View
           style={[
             styles.fill,

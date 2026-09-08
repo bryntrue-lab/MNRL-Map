@@ -1,0 +1,45 @@
+{
+  "title": "Attunement, Not Achievement",
+  "subtitle": "the note beneath the noise",
+  "mapEpigraph": "Attunement is how song begins.",
+  "phase": "signal",
+  "order": 16,
+  "minTurn": 1,
+  "audioPath": "encounters/attunement-not-achievement/audio.mp3",
+  "audioFile": "enc16_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r16-forcing",
+          "text": "Where have you been forcing what wanted adjustment?"
+        },
+        {
+          "id": "r16-in-tune",
+          "text": "What has “in tune” felt like in the body or the atmosphere around you?"
+        },
+        {
+          "id": "r16-crystallizing",
+          "text": "Right now, I am being tuned … what resonates?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "One act of tuning",
+      "instruction": "Choose one act of tuning instead of pushing. Adjust a space, schedule, sentence, or commitment until it sounds more true.",
+      "durationLabel": "today"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Hum once. Feel what resonance does in the body."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

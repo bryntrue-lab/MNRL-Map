@@ -1,0 +1,45 @@
+{
+  "title": "Permission",
+  "subtitle": "the door held from within",
+  "mapEpigraph": "The hand on the latch has been yours all along.",
+  "phase": "signal",
+  "order": 14,
+  "minTurn": 1,
+  "audioPath": "encounters/permission/audio.mp3",
+  "audioFile": "enc14_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r14-learned-to-wait",
+          "text": "Where did you learn to wait for permission?"
+        },
+        {
+          "id": "r14-untrimmed-want",
+          "text": "What does the want sound like before you trim it into something reasonable?"
+        },
+        {
+          "id": "r14-crystallizing",
+          "text": "What have I been waiting for permission to want?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "One inch of room",
+      "instruction": "Speak the desire, actually say it aloud privately. Then make one inch of room for it—a line in the calendar, a blank page, a name on a folder. Nothing public is required.",
+      "durationLabel": "5 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Let the desire enter at its original size."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

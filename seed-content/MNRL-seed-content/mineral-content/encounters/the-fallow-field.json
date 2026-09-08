@@ -1,0 +1,42 @@
+{
+  "title": "The Fallow Field",
+  "subtitle": "rest as part of listening",
+  "mapEpigraph": "Fallow is not empty.",
+  "phase": "signal",
+  "order": 15,
+  "minTurn": 1,
+  "audioPath": "encounters/the-fallow-field/audio.mp3",
+  "audioFile": "enc15_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r15-returned-unsummoned",
+          "text": "After a period without inputs, what returned without being summoned?",
+          "subtext": "Keep this reflection minimal."
+        },
+        {
+          "id": "r15-crystallizing",
+          "text": "What returns when I stop reaching?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The fallow hour",
+      "instruction": "Protect one real hour with no productivity, improvement, or incoming media. Walk, sit, look out a window, or do nothing useful. Capture only after the hour.",
+      "durationLabel": "1 hour"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Nothing to carry. That is the point."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}
