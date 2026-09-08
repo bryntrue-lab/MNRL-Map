@@ -206,6 +206,11 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
       secrets: [openAiApiKey],
     },
     async () => {
+      // Slice O rider: keep the scheduled function deployed but pause all
+      // generation until G2b replaces this guard with its new protections.
+      console.info("field passage queue is paused");
+      return;
+
       const recipient = founderEmail.value();
       if (!recipient) throw new Error("FOUNDER_DIGEST_EMAIL is not set");
 

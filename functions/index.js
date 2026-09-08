@@ -40,9 +40,11 @@ setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const openAiApiKey = defineSecret("OPENAI_API_KEY");
 const founderDigestEmail = defineString("FOUNDER_DIGEST_EMAIL");
+const { createBetaRequest } = require("./betaRequest");
 const { createFieldPassageQueue } = require("./fieldQueue");
 const { createFounderDigest } = require("./founderDigest");
 
+exports.betaRequest = createBetaRequest({ db: getFirestore() });
 exports.fieldPassageQueue = createFieldPassageQueue({
   db: getFirestore(),
   openAiApiKey,

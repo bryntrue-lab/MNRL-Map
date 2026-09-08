@@ -23,6 +23,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Landing-page beta requests — Admin SDK only ──────────────────────
+    match /betaRequests/{requestId} {
+      allow read, write: if false;
+    }
+
     // ── Motif lexicon — engine-only (Admin SDK bypasses rules) ────────────
     match /motifLexicon/{entryId} {
       allow read, write: if false;

@@ -1,7 +1,7 @@
 "use strict";
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { FieldValue } = require("firebase-admin/firestore");
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 
 const DAY = 24 * 60 * 60 * 1000;
 const timeMs = (value) => {
@@ -61,6 +61,30 @@ async function passageQueue(db) {
   };
 }
 
+function truncateWork(value) {
+  const work = typeof value === "string" ? value.trim() : "";
+  return work.length <= 80 ? work : work.slice(0, 80);
+}
+
+async function betaRequests(db, since) {
+  const [overnight, pending] = await Promise.all([
+    db.collection("betaRequests")
+      .where("createdAt", ">=", Timestamp.fromMillis(since))
+      .get(),
+    db.collection("betaRequests").where("status", "==", "new").count().get(),
+  ]);
+  return {
+    overnight: overnight.docs
+      .map((doc) => doc.data())
+      .sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt))
+      .map((request) => ({
+        email: request.email,
+        work: truncateWork(request.work),
+      })),
+    pending: pending.data().count,
+  };
+}
+
 async function transcriptionHealth(db, now) {
   const notes = await db.collectionGroup("fieldNotes").get();
   let stuck = 0, failed = 0, oldest = Infinity;
@@ -97,8 +121,9 @@ function createFounderDigest({ db, auth, founderEmail }) {
       if (!recipient) throw new Error("FOUNDER_DIGEST_EMAIL is not set");
 
       const now = Date.now();
-      const [field, queue, health, readings] = await Promise.all([
+      const [field, door, queue, health, readings] = await Promise.all([
         safe("field", () => fieldNumbers(db, auth, now - DAY)),
+        safe("door", () => betaRequests(db, now - DAY)),
         safe("queue", () => passageQueue(db)),
         safe("health", () => transcriptionHealth(db, now)),
         safe("readings", () => readingsCount(db, now - DAY)),
@@ -108,6 +133,24 @@ function createFounderDigest({ db, auth, founderEmail }) {
       else {
         const x = field.value;
         lines.push("the field, overnight", `  ${x.arrivals} new arrivals · ${x.total} fields total (${x.kept} kept, ${x.total - x.kept} unnamed)`, `  ${x.completed} encounters completed · ${x.noteCount} notes (${x.voice} voice, ${x.noteCount - x.voice} typed)`, `  morning call: ${x.optIns} opted in`);
+      }
+      lines.push("");
+      if (door.error) lines.push(unavailable("at the door"));
+      else {
+        const x = door.value;
+        if (x.overnight.length === 0 && x.pending === 0) {
+          lines.push("at the door — quiet");
+        } else {
+          lines.push(
+            "at the door",
+            `  ${x.overnight.length} requested access overnight · ${x.pending} awaiting invites`
+          );
+          for (const request of x.overnight) {
+            lines.push(
+              `  ${request.email} — ${request.work ? `"${request.work}"` : "(no note)"}`
+            );
+          }
+        }
       }
       lines.push("");
       let awaiting = 0, cleanQueue = false;
@@ -147,4 +190,4 @@ function createFounderDigest({ db, auth, founderEmail }) {
   );
 }
 
-module.exports = { createFounderDigest };
+module.exports = { betaRequests, createFounderDigest, truncateWork };
