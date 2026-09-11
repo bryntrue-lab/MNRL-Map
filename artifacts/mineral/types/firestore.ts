@@ -215,8 +215,10 @@ export interface PatternDoc {
   offerings: Record<string, { key: string; text: string }>;
   /** item → contributing note ids (D.3 note-set rules) */
   itemNotes?: Record<string, string[]>;
-  /** processed-note ledger (read client-side only for self-heal checks) */
+  /** Incremental ledger; retained by both rich and compact thread documents. */
   processed?: string[];
+  /** Explicit compact storage shape, used only when a thread doc is oversized. */
+  schemaVersion?: number;
   updatedAt: Timestamp;
   /** Slice K — conditions lens data (document id: `conditions`). */
   findings?: ConditionFinding[];

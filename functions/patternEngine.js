@@ -219,6 +219,10 @@ function extractMotifs(content, lexicon) {
 
 const LEDGER_CAP = 1500; // "capped reasonably" — oldest ids fall off first
 const EXEMPLAR_CAP = 3; // most recent kept
+const FIRESTORE_DOCUMENT_LIMIT_BYTES = 1048576;
+// Keep 24 KiB below Firestore's 1 MiB limit after applying its documented
+// storage-size formula. This is a size safety margin, not a content cap.
+const FIRESTORE_SAFE_DOCUMENT_BYTES = 1000 * 1024;
 
 function emptyPatternDoc(patternType) {
   return {
@@ -318,14 +322,30 @@ function dropItem(doc, key) {
 function subsumePhrases(doc) {
   let changed = false;
   const phrases = Object.keys(doc.itemCounts).filter(isPhrase);
+  const containerIndex = new Map();
+  const addContainer = (subphrase, phrase) => {
+    const containers = containerIndex.get(subphrase) ?? [];
+    containers.push(phrase);
+    containerIndex.set(subphrase, containers);
+  };
+
+  // Each longer phrase names every proper contiguous sub-phrase it could
+  // subsume. Traversal stays in the original outer-A / inner-B insertion
+  // order, which is important because dropping one phrase can affect a later
+  // pair in the same pass.
+  for (const b of phrases) {
+    const words = b.split(" ");
+    for (let start = 0; start < words.length - 1; start++) {
+      for (let end = start + 2; end <= words.length; end++) {
+        const a = words.slice(start, end).join(" ");
+        if (a !== b) addContainer(a, b);
+      }
+    }
+  }
   for (const a of phrases) {
     if (!(a in doc.itemCounts)) continue;
-    const aWords = a.split(" ");
-    for (const b of phrases) {
-      if (a === b || !(b in doc.itemCounts)) continue;
-      const bWords = b.split(" ");
-      if (bWords.length <= aWords.length) continue;
-      if (sameNoteSet(doc, a, b) && contiguousSub(aWords, bWords)) {
+    for (const b of containerIndex.get(a) ?? []) {
+      if (b in doc.itemCounts && sameNoteSet(doc, a, b)) {
         dropItem(doc, a);
         changed = true;
         break;
@@ -386,12 +406,62 @@ function exemplarsCoverNoteSet(doc, key) {
 function mergeOverlappingSiblings(doc) {
   let changed = false;
   const phrases = Object.keys(doc.itemCounts).filter(isPhrase);
+  const phraseIndex = new Map(phrases.map((key, index) => [key, index]));
+  const prefixIndex = new Map();
+  const suffixIndex = new Map();
+  const noteSetGroup = new Map();
+  const groupKey = (key) => {
+    const notes = noteSet(doc, key);
+    // The old proof never merges a one-note phrase. Keeping those out of the
+    // index is both equivalent and important for repeated common end words.
+    return notes.length < 2 ? null : JSON.stringify([...notes].sort());
+  };
+  const add = (index, run, key) => {
+    const entries = index.get(run) ?? [];
+    entries.push(key);
+    index.set(run, entries);
+  };
+
+  const indexPhrase = (key) => {
+    // The legacy nested loops only visit keys present at the beginning of
+    // this pass. A new union waits for the next fixpoint pass; an existing
+    // key overwritten by a union must be re-indexed for later legacy-order
+    // siblings in this pass.
+    if (!phraseIndex.has(key)) return;
+    const group = groupKey(key);
+    noteSetGroup.set(key, group);
+    if (!group) return;
+    const words = key.split(" ");
+    for (let size = 1; size < words.length; size++) {
+      add(prefixIndex, `${group}\u0000${words.slice(0, size).join(" ")}`, key);
+      add(suffixIndex, `${group}\u0000${words.slice(-size).join(" ")}`, key);
+    }
+  };
+
+  // A merge is possible only when an end-run of one phrase equals an end-run
+  // of the other. Index those runs first, then retain the original phrase
+  // ordering while checking just the possible siblings. This preserves the
+  // full exemplar-coverage proof below and avoids unrelated phrase pairs.
+  for (const key of phrases) {
+    indexPhrase(key);
+  }
+
   for (const a of phrases) {
     if (!(a in doc.itemCounts)) continue;
-    for (const b of phrases) {
+    const group = noteSetGroup.get(a);
+    if (!group) continue;
+    const aWords = a.split(" ");
+    const candidates = new Set();
+    for (let size = 1; size < aWords.length; size++) {
+      for (const b of prefixIndex.get(`${group}\u0000${aWords.slice(-size).join(" ")}`) ?? []) candidates.add(b);
+      for (const b of suffixIndex.get(`${group}\u0000${aWords.slice(0, size).join(" ")}`) ?? []) candidates.add(b);
+    }
+    const orderedCandidates = [...candidates].sort(
+      (left, right) => phraseIndex.get(left) - phraseIndex.get(right)
+    );
+    for (const b of orderedCandidates) {
       if (a === b || !(a in doc.itemCounts) || !(b in doc.itemCounts)) continue;
       if (!sameNoteSet(doc, a, b)) continue;
-      const aWords = a.split(" ");
       const bWords = b.split(" ");
       if (contiguousSub(aWords, bWords) || contiguousSub(bWords, aWords)) continue; // subsumption's job
       const union = overlapUnion(aWords, bWords);
@@ -414,6 +484,7 @@ function mergeOverlappingSiblings(doc) {
       doc.itemCounts[key] = count;
       doc.exemplars[key] = exemplars;
       doc.itemNotes[key] = notes;
+      indexPhrase(key);
       changed = true;
     }
   }
@@ -814,11 +885,124 @@ function buildPatternDocs(noteRecords, motifLexicon, consciousnessLexicon) {
 }
 
 /**
- * A field-wide rebuild is committed from a serializable transaction. Its note
- * query is part of the transaction, so a create/edit/delete arriving while it
- * is derived forces a retry instead of allowing a stale snapshot to win.
- * `_state.requestedGeneration` additionally lets a burst of event invocations
- * coalesce: only its newest claimant proceeds after the short settle window.
+ * Keep the established document shape while it fits. Rebuilds no longer use
+ * the incremental ledger, but installed clients still read it and thread note
+ * sets. Only an oversized thread document receives the explicit compact
+ * schema: it removes reconstructible thread note-set duplication while
+ * retaining the ledger, every count, offering, and verbatim exemplar sentence.
+ */
+function firestoreStringBytes(value) {
+  return Buffer.byteLength(value, "utf8") + 1;
+}
+
+function firestoreDocumentNameBytes(path) {
+  return path.split("/").reduce((total, segment) => total + Buffer.byteLength(segment, "utf8"), 16);
+}
+
+/** Firestore's documented storage-size formula for a value. */
+function firestoreValueBytes(value) {
+  if (value === null) return 1;
+  if (typeof value === "string") return firestoreStringBytes(value);
+  if (typeof value === "boolean") return 1;
+  if (typeof value === "number") return 8;
+  // Admin SDK Timestamp and the diagnostic's timestamp test double.
+  if (typeof value?.toMillis === "function" || value instanceof Date) return 8;
+  if (Array.isArray(value)) {
+    return value.reduce((total, entry) => total + firestoreValueBytes(entry), 0);
+  }
+  if (value && typeof value === "object") {
+    return (
+      32 +
+      Object.entries(value).reduce(
+        (total, [key, entry]) => total + firestoreStringBytes(key) + firestoreValueBytes(entry),
+        0
+      )
+    );
+  }
+  throw new Error(`unsupported Firestore size-estimate value type: ${typeof value}`);
+}
+
+/** Firestore's documented document size: name + fields + 32 bytes. */
+function firestoreDocumentBytes(path, doc) {
+  return (
+    firestoreDocumentNameBytes(path) +
+    32 +
+    Object.entries(doc).reduce(
+      (total, [key, value]) => total + firestoreStringBytes(key) + firestoreValueBytes(value),
+      0
+    )
+  );
+}
+
+function compactThreadStorageProjection(doc) {
+  const compact = { ...doc, schemaVersion: 2 };
+  delete compact.itemNotes;
+  return compact;
+}
+
+function patternStorageProjectionForPath(type, path, doc) {
+  if (firestoreDocumentBytes(path, doc) < FIRESTORE_SAFE_DOCUMENT_BYTES) return doc;
+  if (type !== "thread") return doc;
+  return compactThreadStorageProjection(doc);
+}
+
+function serializedDocumentBytes(doc) {
+  return Buffer.byteLength(JSON.stringify(doc), "utf8");
+}
+
+function snapshotRevision(snap) {
+  if (!snap?.exists) return null;
+  const updateTime = snap.updateTime;
+  if (typeof updateTime?.toMillis === "function") {
+    return `${updateTime.toMillis()}:${updateTime.nanoseconds ?? 0}`;
+  }
+  // Firestore Admin snapshots always provide updateTime. Keeping the missing
+  // marker explicit makes a lightweight test double fail closed rather than
+  // silently turning this into a count-only freshness check.
+  return "missing-revision";
+}
+
+function snapshotSetFingerprint(snap) {
+  return snap.docs
+    .map((doc) => `${doc.id}:${snapshotRevision(doc)}`)
+    .sort()
+    .join("|");
+}
+
+function rebuildInputFingerprint({ notesSnap, motifSnap, consciousnessSnap, offeringSnaps }) {
+  return {
+    notes: snapshotSetFingerprint(notesSnap),
+    motifs: snapshotSetFingerprint(motifSnap),
+    consciousness: snapshotRevision(consciousnessSnap),
+    offerings: offeringSnaps
+      .map((snap) => `${snap.ref.path}:${snapshotRevision(snap)}`)
+      .sort()
+      .join("|"),
+  };
+}
+
+function sameRebuildInputs(left, right) {
+  return (
+    left.notes === right.notes &&
+    left.motifs === right.motifs &&
+    left.consciousness === right.consciousness &&
+    left.offerings === right.offerings
+  );
+}
+
+function staleRebuildInputError() {
+  const error = new Error("pattern rebuild inputs changed before commit");
+  error.code = "aborted";
+  error.retryable = true;
+  return error;
+}
+
+/**
+ * The expensive, pure scan deliberately happens outside the transaction.
+ * The short publishing transaction re-reads every input revision and fences
+ * on `_state.requestedGeneration`; it can only publish the exact snapshot that
+ * was built. A create/edit/delete or mutable-lexicon change therefore rejects
+ * this generation instead of allowing stale output to win.
  */
 async function rebuildPatternsForUser(uid, options = {}) {
   const db = getFirestore();
@@ -832,28 +1016,55 @@ async function rebuildPatternsForUser(uid, options = {}) {
   const motifLexiconRef = db.collection("motifLexicon");
   const consciousnessLexiconRef = db.doc("practitionerContent/consciousness_lexicon");
 
+  const [stateSnap, notesSnap, motifSnap, consciousnessSnap] = await Promise.all([
+    stateRef.get(),
+    notesRef.get(),
+    motifLexiconRef.get(),
+    consciousnessLexiconRef.get(),
+  ]);
+  if (generationDisposition(stateSnap.data(), generation) === "coalesced") {
+    return { scanned: 0, processed: 0, unsupportedConditionFindings: 0, coalesced: true };
+  }
+
+  const noteRecords = notesSnap.docs.map((snap) => ({ id: snap.id, ...snap.data() }));
+  const built = buildPatternDocs(
+    noteRecords,
+    motifLexiconFromDocs(motifSnap.docs),
+    consciousnessLexiconFromData(consciousnessSnap.exists ? consciousnessSnap.data() : null)
+  );
+  const wantedOfferings = offeringRequests(built.offeringHits);
+  const offeringRefs = wantedOfferings.map(({ docId }) =>
+    db.collection("practitionerContent").doc(docId)
+  );
+  const offeringSnaps = await Promise.all(offeringRefs.map((ref) => ref.get()));
+  const expectedInputs = rebuildInputFingerprint({
+    notesSnap,
+    motifSnap,
+    consciousnessSnap,
+    offeringSnaps,
+  });
+
   return db.runTransaction(async (tx) => {
-    const [stateSnap, notesSnap, motifSnap, consciousnessSnap] = await Promise.all([
-      tx.get(stateRef),
-      tx.get(notesRef),
-      tx.get(motifLexiconRef),
-      tx.get(consciousnessLexiconRef),
-    ]);
-    if (generationDisposition(stateSnap.data(), generation) === "coalesced") {
+    const [liveStateSnap, liveNotesSnap, liveMotifSnap, liveConsciousnessSnap, ...liveOfferingSnaps] =
+      await Promise.all([
+        tx.get(stateRef),
+        tx.get(notesRef),
+        tx.get(motifLexiconRef),
+        tx.get(consciousnessLexiconRef),
+        ...offeringRefs.map((ref) => tx.get(ref)),
+      ]);
+    if (generationDisposition(liveStateSnap.data(), generation) === "coalesced") {
       return { scanned: 0, processed: 0, unsupportedConditionFindings: 0, coalesced: true };
     }
+    const liveInputs = rebuildInputFingerprint({
+      notesSnap: liveNotesSnap,
+      motifSnap: liveMotifSnap,
+      consciousnessSnap: liveConsciousnessSnap,
+      offeringSnaps: liveOfferingSnaps,
+    });
+    if (!sameRebuildInputs(expectedInputs, liveInputs)) throw staleRebuildInputError();
 
-    const noteRecords = notesSnap.docs.map((snap) => ({ id: snap.id, ...snap.data() }));
-    const built = buildPatternDocs(
-      noteRecords,
-      motifLexiconFromDocs(motifSnap.docs),
-      consciousnessLexiconFromData(consciousnessSnap.exists ? consciousnessSnap.data() : null)
-    );
-    const wantedOfferings = offeringRequests(built.offeringHits);
-    const offeringSnaps = await Promise.all(
-      wantedOfferings.map(({ docId }) => tx.get(db.collection("practitionerContent").doc(docId)))
-    );
-    const offerings = offeringsFromSnapshots(wantedOfferings, offeringSnaps);
+    const offerings = offeringsFromSnapshots(wantedOfferings, liveOfferingSnaps);
     for (const [key, offering] of offerings) {
       const hit = built.offeringHits.get(key);
       if (hit?.keyType === "resistance") built.docs.resistance.offerings[key] = offering;
@@ -862,9 +1073,18 @@ async function rebuildPatternsForUser(uid, options = {}) {
 
     const now = Timestamp.now();
     for (const [type, data] of Object.entries(built.docs)) {
-      delete data.ledgerFloorAt;
       data.updatedAt = now;
-      tx.set(db.doc(`users/${uid}/patterns/${type}`), data);
+      const ref = db.doc(`users/${uid}/patterns/${type}`);
+      const projected = patternStorageProjectionForPath(type, ref.path, data);
+      if (firestoreDocumentBytes(ref.path, projected) >= FIRESTORE_SAFE_DOCUMENT_BYTES) {
+        const error = new Error(
+          `pattern ${type} document exceeds the ${FIRESTORE_SAFE_DOCUMENT_BYTES}-byte Firestore safety budget after projection`
+            + ` (hard limit ${FIRESTORE_DOCUMENT_LIMIT_BYTES} bytes)`
+        );
+        error.code = "resource-exhausted";
+        throw error;
+      }
+      tx.set(ref, projected);
     }
     built.consciousness.updatedAt = now;
     built.conditions.updatedAt = now;
@@ -1039,4 +1259,17 @@ module.exports = {
   generationDisposition,
   stem,
   STOPWORDS,
+  // Pure helpers exposed only for deterministic equivalence/freshness tests.
+  __test: {
+    emptyPatternDoc,
+    applyAdd,
+    buildPatternDocs,
+    consciousnessLexiconFromData,
+    phraseHygiene,
+    patternStorageProjectionForPath,
+    serializedDocumentBytes,
+    firestoreDocumentBytes,
+    rebuildInputFingerprint,
+    sameRebuildInputs,
+  },
 };

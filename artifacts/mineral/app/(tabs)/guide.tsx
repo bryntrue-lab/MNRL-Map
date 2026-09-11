@@ -34,6 +34,7 @@ import {
   spellNumber,
   suppressForDisplay,
   todaysArrivals,
+  threadItemNoteSets,
   tokenStream,
 } from "@/lib/patternText";
 import type {
@@ -95,7 +96,10 @@ type PoolItem = {
 
 /** All counted items pooled across docs; a key present in both thread and
  *  a lexicon doc keeps the lexicon entry (richer — can carry an offering). */
-function poolItems(patterns: Patterns): PoolItem[] {
+function poolItems(
+  patterns: Patterns,
+  threadNoteSets: Record<string, string[]>
+): PoolItem[] {
   const byKey = new Map<string, PoolItem>();
   for (const type of ["thread", "motif", "resistance"] as PatternType[]) {
     const doc = patterns[type];
@@ -112,7 +116,10 @@ function poolItems(patterns: Patterns): PoolItem[] {
         lexicon: type !== "thread",
         phrase: key.includes(" "),
         latestMs,
-        noteIds: doc.itemNotes?.[key] ?? [],
+        noteIds:
+          type === "thread"
+            ? doc.itemNotes?.[key] ?? threadNoteSets[key] ?? []
+            : doc.itemNotes?.[key] ?? [],
       };
       const existing = byKey.get(key);
       if (!existing || (item.lexicon && !existing.lexicon)) byKey.set(key, item);
@@ -238,8 +245,8 @@ export default function GuideScreen() {
     };
   }, [user]);
 
-  // ── Self-heal (D.3 Part A gate): if any content-ready note is missing
-  //    from every ledger, run the backfill callable once per session. ──
+  // ── Self-heal: both rich and compact thread schemas retain this legacy
+  // ledger, so installed clients and this client share the same gate. ──
   useEffect(() => {
     if (selfHealAttempted || !user || !patternsLoaded || notes.length === 0) return;
     const ledgered = new Set<string>();
@@ -247,10 +254,7 @@ export default function GuideScreen() {
       for (const id of doc?.processed ?? []) ledgered.add(id);
     }
     const missing = notes.some(
-      (n) =>
-        !!n.content &&
-        n.transcriptStatus !== "pending" &&
-        !ledgered.has(n.id)
+      (n) => !!n.content && n.transcriptStatus !== "pending" && !ledgered.has(n.id)
     );
     if (!missing) return;
     selfHealAttempted = true;
@@ -301,14 +305,20 @@ export default function GuideScreen() {
     : 0;
 
   const arrivals = useMemo(() => todaysArrivals(notes), [notes]);
-
+  const threadNoteSets = useMemo(
+    () =>
+      patterns.thread?.schemaVersion === 2
+        ? threadItemNoteSets(Object.keys(patterns.thread?.itemCounts ?? {}), notes)
+        : {},
+    [patterns.thread, notes]
+  );
   // ── Pooled, display-suppressed items ─────────────────────────────
   const visibleItems = useMemo(() => {
-    const pooled = poolItems(patterns);
+    const pooled = poolItems(patterns, threadNoteSets);
     const itemNotes: Record<string, string[] | undefined> = {};
     for (const it of pooled) itemNotes[it.key] = it.noteIds;
     return suppressForDisplay(pooled, itemNotes);
-  }, [patterns]);
+  }, [patterns, threadNoteSets]);
 
   const established = useMemo(
     () => visibleItems.filter((i) => i.count >= 3).sort(heroOrder),

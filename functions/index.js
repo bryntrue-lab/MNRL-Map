@@ -133,9 +133,14 @@ const READING_LEASE_MS = 3 * 60 * 1000;
 
 /**
  * The letter request is a deliberately narrow privacy boundary: no caller
- * payload is accepted, no fieldNote document is read, and no note text is
- * copied. The count aggregation and server-derived conditions metadata are the
- * only field-derived data this path may access.
+ * payload is accepted and no note text is copied. It uses only a direct
+ * fieldNotes count plus a one-document `createdAt` projection, never a full
+ * note document. It does not read patterns or any pattern-derived metadata.
+ *
+ * The timestamp-only query replaces the former `patterns/conditions`
+ * aggregate: exact elapsed Guide days still require the earliest note time,
+ * but letter eligibility must remain available when pattern rebuilding is
+ * delayed or unavailable.
  */
 function createRequestLetterHandler({ db, serverTimestamp, now = () => Date.now() }) {
   return async (request) => {
@@ -155,11 +160,16 @@ function createRequestLetterHandler({ db, serverTimestamp, now = () => Date.now(
 
     const userRef = db.doc(`users/${uid}`);
     const notesRef = userRef.collection("fieldNotes");
-    // This aggregation is intentionally the sole fieldNotes operation in this
-    // callable. Never query note documents, including content or timestamps.
-    const [countSnap, conditionsSnap] = await Promise.all([
+    // These are the only fieldNotes operations in this callable. The second
+    // read projects only the earliest timestamp needed for the exact elapsed
+    // day span; it never reads note content or a full note document.
+    const [countSnap, earliestSnap] = await Promise.all([
       notesRef.count().get(),
-      userRef.collection("patterns").doc("conditions").get(),
+      notesRef
+        .select("createdAt")
+        .orderBy("createdAt")
+        .limit(1)
+        .get(),
     ]);
     const noteCount = countSnap.data().count;
     if (!Number.isInteger(noteCount) || noteCount < 15) {
@@ -169,16 +179,8 @@ function createRequestLetterHandler({ db, serverTimestamp, now = () => Date.now(
       );
     }
 
-    // `conditions.firstNoteAt` is server-generated aggregate metadata from
-    // the pattern rebuild's existing full scan. Requiring it and `notesRead`
-    // to agree with the aggregation prevents stale metadata from being
-    // presented as current without opening any private note here.
-    const conditions = conditionsSnap.exists ? conditionsSnap.data() : null;
-    const firstNoteAtMs = conditions?.firstNoteAt?.toMillis?.();
-    if (
-      conditions?.notesRead !== noteCount ||
-      !Number.isFinite(firstNoteAtMs)
-    ) {
+    const firstNoteAtMs = earliestSnap.docs[0]?.data()?.createdAt?.toMillis?.();
+    if (!Number.isFinite(firstNoteAtMs)) {
       throw new HttpsError(
         "failed-precondition",
         "the field is still settling."

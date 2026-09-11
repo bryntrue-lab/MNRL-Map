@@ -1,12 +1,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { phraseHygiene: legacyPhraseHygiene } = require("./tests/fixtures/legacyPhraseHygiene");
 const {
   STOPWORDS,
   deriveConditionsPattern,
   deriveConsciousnessPattern,
   extractLanguage,
   generationDisposition,
+  __test,
 } = require("./patternEngine");
 
 const at = (iso) => new Date(iso);
@@ -147,5 +149,242 @@ generationStore.requestedGeneration = 3; // retried event claim after callable f
 assert.equal(generationDisposition(generationStore, 3), "commit");
 generationStore.committedGeneration = 3; // create/edit/delete state has published
 assert.equal(generationDisposition(generationStore, 1), "coalesced");
+
+// The indexed hygiene path must remain exactly equivalent to the original
+// pairwise semantics, including the full exemplar-coverage merge gate.
+function clone(value) {
+  return structuredClone(value);
+}
+
+function comparable(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function legacyBuildThreadDoc(noteRecords) {
+  const doc = __test.emptyPatternDoc("thread");
+  const readable = noteRecords
+    .filter(
+      (entry) =>
+        typeof entry.content === "string" &&
+        entry.content.trim().length > 0 &&
+        entry.transcriptStatus !== "pending" &&
+        entry.transcriptStatus !== "processing"
+    )
+    .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id));
+  for (const entry of readable) {
+    const language = extractLanguage(entry.content);
+    if (!language.size) continue;
+    __test.applyAdd(doc, language, entry.id, entry);
+    legacyPhraseHygiene(doc);
+  }
+  return doc;
+}
+
+function phraseEntry(notes, text) {
+  return {
+    count: notes.length,
+    notes,
+    exemplars: notes.map((fieldNoteId, index) => ({
+      fieldNoteId,
+      text,
+      capturedAt: index + 1,
+    })),
+  };
+}
+
+function phraseDoc(entries) {
+  const doc = __test.emptyPatternDoc("thread");
+  for (const [key, entry] of Object.entries(entries)) {
+    doc.itemCounts[key] = entry.count;
+    doc.itemNotes[key] = entry.notes;
+    doc.exemplars[key] = entry.exemplars;
+  }
+  return doc;
+}
+
+const phraseFixture = phraseDoc({
+  "still water": phraseEntry(["a", "b"], "still water rises near shore"),
+  "still water rise": phraseEntry(["a", "b"], "still water rises near shore"),
+  "water rise near": phraseEntry(["a", "b"], "still water rises near shore"),
+  "rise near shore": phraseEntry(["a", "b"], "still water rises near shore"),
+  "other water": phraseEntry(["c", "d"], "other water remains"),
+  "water remain": phraseEntry(["c", "d"], "other water remains"),
+  "single water": phraseEntry(["e"], "single water returns"),
+  "water returns": phraseEntry(["e"], "single water returns"),
+});
+const expectedPhraseDoc = clone(phraseFixture);
+legacyPhraseHygiene(expectedPhraseDoc);
+const indexedPhraseDoc = clone(phraseFixture);
+__test.phraseHygiene(indexedPhraseDoc);
+assert.deepEqual(
+  comparable(indexedPhraseDoc),
+  comparable(expectedPhraseDoc),
+  "indexed hygiene must match pairwise reference"
+);
+
+// Regression from the production-sized shape that exposed traversal-order
+// sensitivity: both engines must retain exactly the legacy thread document.
+const mutationOrderNotes = [
+  "moon near opens path quiet. bird circle deep ember forest",
+  "opens path quiet river. bird circle deep",
+  "luminous moon near opens path quiet river stone. deep ember forest green hollow. joins keeps luminous",
+  "forest green hollow island. amber bird circle deep ember forest. opens path quiet river",
+  "bird circle deep ember forest. quiet river stone turns",
+].map((content, index) =>
+  note(`id${index}`, "other", `2026-01-01T00:00:0${index}Z`, { content })
+);
+const legacyMutationOrder = legacyBuildThreadDoc(mutationOrderNotes);
+const indexedMutationOrder = __test.buildPatternDocs(mutationOrderNotes, [], {}).docs.thread;
+assert.equal(legacyMutationOrder.itemCounts["deep ember forest"], 4);
+assert.equal(legacyMutationOrder.itemCounts["bird circle deep ember"], undefined);
+assert.deepEqual(
+  comparable(indexedMutationOrder),
+  comparable(legacyMutationOrder),
+  "indexed traversal must preserve pairwise mutation order"
+);
+
+// Generated overlapping sequences exercise different insertion and merge
+// orders against the exact checked-out legacy implementation.
+for (let seed = 0; seed < 16; seed++) {
+  const generated = Array.from({ length: 5 }, (_, index) => {
+    const tail = ["quartz", "willow", "cinder", "harbor", "lantern"][(seed + index) % 5];
+    const content = [
+      `orbit ember forest ${tail}.`,
+      index % 2 ? "bird circle deep ember forest." : "deep ember forest green hollow.",
+      index % 3 ? "quiet river stone turns." : "moon near opens path quiet river.",
+    ].join(" ");
+    return note(`generated-${seed}-${index}`, "other", `2026-02-01T00:00:0${index}Z`, { content });
+  });
+  assert.deepEqual(
+    comparable(__test.buildPatternDocs(generated, [], {}).docs.thread),
+    comparable(legacyBuildThreadDoc(generated)),
+    `indexed hygiene must equal legacy for generated sequence ${seed}`
+  );
+}
+
+// Storage projection must remove only reconstructible thread note-set
+// repetition. Counts, offerings, ledgers, and verbatim exemplar evidence
+// survive. The synthetic shape deliberately exceeds Firestore's limit before
+// projection and remains bounded afterwards without lowering pattern counts.
+const storageFixture = __test.emptyPatternDoc("thread");
+storageFixture.processed = Array.from({ length: 1500 }, (_, index) => `ledger-${index}`);
+for (let index = 0; index < 600; index++) {
+  const key = `synthetic pattern ${index}`;
+  storageFixture.itemCounts[key] = 50;
+  storageFixture.itemNotes[key] = Array.from(
+    { length: 50 },
+    (_, noteIndex) => `note-${index}-${noteIndex}-${"x".repeat(36)}`
+  );
+  storageFixture.exemplars[key] = Array.from({ length: 3 }, (_, exemplarIndex) => ({
+    fieldNoteId: `evidence-${index}-${exemplarIndex}`,
+    text: "verbatim evidence",
+    noteType: "other",
+    source: "spontaneous",
+    encounterRef: null,
+    capturedAt: exemplarIndex,
+  }));
+}
+storageFixture.offerings["synthetic pattern 0"] = { key: "synthetic pattern 0", text: "held line" };
+const storedThread = __test.patternStorageProjectionForPath(
+  "thread",
+  "users/test-user/patterns/thread",
+  storageFixture
+);
+assert.deepEqual(storedThread.itemCounts, storageFixture.itemCounts);
+assert.deepEqual(storedThread.offerings, storageFixture.offerings);
+assert.deepEqual(storedThread.processed, storageFixture.processed);
+assert.equal("itemNotes" in storedThread, false);
+assert.equal(
+  storedThread.exemplars["synthetic pattern 0"][0].fieldNoteId,
+  storageFixture.exemplars["synthetic pattern 0"][0].fieldNoteId
+);
+assert.equal(
+  storedThread.exemplars["synthetic pattern 0"][0].text,
+  storageFixture.exemplars["synthetic pattern 0"][0].text,
+  "verbatim exemplar evidence remains available to installed clients"
+);
+assert.equal(storedThread.schemaVersion, 2);
+assert.ok(
+  __test.serializedDocumentBytes(storageFixture) > 1048576,
+  "fixture must exercise the former oversized shape"
+);
+assert.ok(
+  __test.firestoreDocumentBytes("users/test-user/patterns/thread", storageFixture) > 1048576,
+  "documented Firestore estimate must exceed the hard document limit before compaction"
+);
+assert.ok(
+  __test.firestoreDocumentBytes("users/test-user/patterns/thread", storedThread) < 1000 * 1024,
+  "projected thread document must fit the conservative Firestore safety budget"
+);
+const richThread = __test.emptyPatternDoc("thread");
+richThread.itemCounts.river = 2;
+richThread.itemNotes.river = ["a", "b"];
+richThread.processed = ["a", "b"];
+richThread.exemplars.river = [
+  { fieldNoteId: "b", text: "the river returns", source: "spontaneous", capturedAt: 1 },
+];
+assert.equal(
+  __test.patternStorageProjectionForPath(
+    "thread",
+    "users/test-user/patterns/thread",
+    richThread
+  ),
+  richThread,
+  "fitting documents preserve the installed-client schema unchanged"
+);
+assert.equal(
+  __test.firestoreDocumentBytes("users/a/patterns/thread", {
+    text: "hi",
+    count: 2,
+    enabled: true,
+    when: { toMillis: () => 0 },
+    none: null,
+    array: ["x", 1],
+    map: { x: "y" },
+  }),
+  174,
+  "Firestore byte estimator must follow documented name, field, map, and value sizes"
+);
+
+// A same-size snapshot whose note revision changed is not fresh. This guards
+// against the old predicate-only/count-only commit weakness.
+const snapshot = (id, revision, path = `users/test/${id}`) => ({
+  id,
+  exists: true,
+  updateTime: { toMillis: () => revision, nanoseconds: revision % 1000 },
+  ref: { path },
+});
+const inputBefore = {
+  notesSnap: { docs: [snapshot("a", 10), snapshot("b", 20)] },
+  motifSnap: { docs: [snapshot("m", 30)] },
+  consciousnessSnap: snapshot("consciousness_lexicon", 40, "practitionerContent/consciousness_lexicon"),
+  offeringSnaps: [snapshot("motif_water", 50, "practitionerContent/motif_water")],
+};
+const inputAfterChangedNote = {
+  ...inputBefore,
+  notesSnap: { docs: [snapshot("a", 11), snapshot("b", 20)] },
+};
+const unchangedLatestInput = {
+  notesSnap: { docs: [snapshot("a", 10), snapshot("b", 20)] },
+  motifSnap: { docs: [snapshot("m", 30)] },
+  consciousnessSnap: snapshot("consciousness_lexicon", 40, "practitionerContent/consciousness_lexicon"),
+  offeringSnaps: [snapshot("motif_water", 50, "practitionerContent/motif_water")],
+};
+assert.equal(
+  __test.sameRebuildInputs(
+    __test.rebuildInputFingerprint(inputBefore),
+    __test.rebuildInputFingerprint(inputAfterChangedNote)
+  ),
+  false,
+  "a latest snapshot with the same note ids/count but a changed revision must not commit"
+);
+assert.equal(
+  __test.sameRebuildInputs(
+    __test.rebuildInputFingerprint(inputBefore),
+    __test.rebuildInputFingerprint(unchangedLatestInput)
+  ),
+  true,
+  "an unchanged latest snapshot may commit"
+);
 
 console.log("patternEngine Slice K tests passed");

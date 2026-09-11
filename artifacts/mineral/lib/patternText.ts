@@ -182,6 +182,79 @@ export function tokenStream(text: string): { raw: string; stem: string }[] {
     .map((raw) => ({ raw, stem: stemToken(raw) }));
 }
 
+const CONVERSATIONAL_FILLERS = new Set([
+  "though", "exactly", "sure", "actually", "almost", "along", "already",
+  "another", "anyway", "really", "maybe", "quite", "rather", "perhaps",
+  "especially",
+]);
+
+function patternSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?…])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+/** Server-equivalent language keys and their first verbatim sentence.
+ * Used only to hydrate compact thread evidence from the owner's field notes. */
+export function threadPatternSentences(text: string): Map<string, string> {
+  const items = new Map<string, string>();
+  for (const sentence of patternSentences(text)) {
+    const tokens = tokenStream(sentence).map((token) => ({
+      ...token,
+      stop:
+        isStopword(token.raw) ||
+        isStopword(stem(token.raw)) ||
+        token.raw.length < 2,
+    }));
+    for (const token of tokens) {
+      if (!token.stop && !items.has(token.stem)) items.set(token.stem, sentence);
+    }
+    for (let width = 2; width <= 6; width++) {
+      for (let start = 0; start + width <= tokens.length; start++) {
+        const window = tokens.slice(start, start + width);
+        if (window.some((token) => CONVERSATIONAL_FILLERS.has(token.raw))) continue;
+        const contentCount = window.reduce((total, token) => total + (token.stop ? 0 : 1), 0);
+        if (width === 2 ? contentCount !== 2 : contentCount < 2) continue;
+        const key = window.map((token) => token.stem).join(" ");
+        if (!items.has(key)) items.set(key, sentence);
+      }
+    }
+  }
+  return items;
+}
+
+/** Rebuild the capped per-item note-set evidence that canonical thread
+ * documents intentionally do not persist. Input notes remain authoritative. */
+export function threadItemNoteSets(
+  keys: Iterable<string>,
+  notes: { id: string; content?: string | null; transcriptStatus?: string; createdAt?: { toMillis?: () => number } }[]
+): Record<string, string[]> {
+  const wanted = new Set(keys);
+  const result: Record<string, string[]> = {};
+  const ordered = [...notes]
+    .filter(
+      (note) =>
+        typeof note.content === "string" &&
+        note.content.trim().length > 0 &&
+        note.transcriptStatus !== "pending"
+    )
+    .sort(
+      (a, b) =>
+        (a.createdAt?.toMillis?.() ?? 0) - (b.createdAt?.toMillis?.() ?? 0) ||
+        a.id.localeCompare(b.id)
+    );
+  for (const note of ordered) {
+    for (const key of threadPatternSentences(note.content!).keys()) {
+      if (!wanted.has(key)) continue;
+      const ids = result[key] ?? [];
+      ids.push(note.id);
+      result[key] = ids.slice(-50);
+    }
+  }
+  return result;
+}
+
 /**
  * DISPLAY TRIM (D.3d §3.3): the trim list is connectives-only — strip
  * TRAILING connectives from a rendered item; never leading, never

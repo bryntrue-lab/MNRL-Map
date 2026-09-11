@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 process.env.NODE_ENV = "test";
 const { __test } = require("./index");
@@ -15,12 +17,13 @@ const NOW = 50 * DAY;
 
 function letterDb({
   noteCount = 15,
-  notesRead = noteCount,
   firstNoteAt = timestamp(NOW - 3 * DAY),
-  conditionsExists = true,
   existing,
 } = {}) {
   const calls = [];
+  const earliestDocs = firstNoteAt
+    ? [{ data: () => ({ createdAt: firstNoteAt }) }]
+    : [];
   const notesRef = {
     count: () => ({
       get: async () => {
@@ -28,38 +31,43 @@ function letterDb({
         return { data: () => ({ count: noteCount }) };
       },
     }),
-  };
-  const conditionsRef = {
-    get: async () => {
-      calls.push("patterns.conditions.get");
+    select: (field) => {
+      assert.equal(field, "createdAt");
+      calls.push("fieldNotes.select(createdAt)");
       return {
-        exists: conditionsExists,
-        data: () => ({ notesRead, firstNoteAt }),
+        orderBy: (orderField) => {
+          assert.equal(orderField, "createdAt");
+          calls.push("fieldNotes.orderBy(createdAt)");
+          return {
+            limit: (size) => {
+              assert.equal(size, 1);
+              calls.push("fieldNotes.limit(1)");
+              return {
+                get: async () => {
+                  calls.push("fieldNotes.earliest.get");
+                  return { docs: earliestDocs };
+                },
+              };
+            },
+          };
+        },
       };
     },
   };
+  // Deliberately no patterns collection: eligibility must work with no
+  // pattern documents and cannot regain a pattern-pipeline dependency.
   const userRef = {
     collection: (name) => {
       assert.equal(name, "fieldNotes");
       return notesRef;
     },
   };
-  // The real callable asks for patterns once; model that nested reference
-  // without adding a readable fieldNotes API to the fake.
-  userRef.collection = (name) => {
-    if (name === "fieldNotes") return notesRef;
-    assert.equal(name, "patterns");
-    return { doc: (id) => {
-      assert.equal(id, "conditions");
-      return conditionsRef;
-    } };
-  };
   const requestRef = { path: "letterRequests/test-uid" };
   const writes = [];
   const db = {
-    doc: (path) => {
-      if (path === "users/test-uid") return userRef;
-      assert.equal(path, "letterRequests/test-uid");
+    doc: (docPath) => {
+      if (docPath === "users/test-uid") return userRef;
+      assert.equal(docPath, "letterRequests/test-uid");
       return requestRef;
     },
     runTransaction: async (work) =>
@@ -86,7 +94,7 @@ async function rejects(handler, request, code) {
 }
 
 async function testGateAndPrivacy() {
-  const belowGate = letterDb({ noteCount: 14, notesRead: 14 });
+  const belowGate = letterDb({ noteCount: 14 });
   const belowHandler = __test.createRequestLetterHandler({
     db: belowGate.db,
     serverTimestamp: () => "server-time",
@@ -96,8 +104,11 @@ async function testGateAndPrivacy() {
     { auth: { uid: "test-uid", token: { email: "jane@example.test" } } },
     "failed-precondition"
   );
+  assert.equal(belowGate.writes.length, 0);
 
-  const fixture = letterDb({ noteCount: 15, notesRead: 15 });
+  // Fifteen direct notes remain eligible even if no pattern document exists
+  // or a rebuild has stalled. The fake exposes no patterns collection.
+  const fixture = letterDb({ noteCount: 15 });
   const handler = __test.createRequestLetterHandler({
     db: fixture.db,
     serverTimestamp: () => "server-time",
@@ -109,7 +120,13 @@ async function testGateAndPrivacy() {
     data: { email: "forged@example.test", note: "private text" },
   });
   assert.deepEqual(result, { ok: true });
-  assert.deepEqual(fixture.calls, ["fieldNotes.count", "patterns.conditions.get"]);
+  assert.deepEqual(fixture.calls, [
+    "fieldNotes.count",
+    "fieldNotes.select(createdAt)",
+    "fieldNotes.orderBy(createdAt)",
+    "fieldNotes.limit(1)",
+    "fieldNotes.earliest.get",
+  ]);
   assert.deepEqual(fixture.writes, [{
     kind: "create",
     ref: { path: "letterRequests/test-uid" },
@@ -131,9 +148,23 @@ async function testGateAndPrivacy() {
     {},
     "unauthenticated"
   );
+  assert.equal(noAuth.calls.length, 0);
+  assert.equal(noAuth.writes.length, 0);
+
+  const noEmail = letterDb();
+  await rejects(
+    __test.createRequestLetterHandler({
+      db: noEmail.db,
+      serverTimestamp: () => "server-time",
+    }),
+    { auth: { uid: "test-uid", token: {} } },
+    "failed-precondition"
+  );
+  assert.equal(noEmail.calls.length, 0);
+  assert.equal(noEmail.writes.length, 0);
 }
 
-async function testGuideDaySpanAndMissingMetadata() {
+async function testGuideDaySpanAndMissingTimestamp() {
   const sparse = letterDb({
     // Two actual note days spread across forty-one elapsed Guide days.
     firstNoteAt: timestamp(NOW - 40 * DAY),
@@ -159,18 +190,6 @@ async function testGuideDaySpanAndMissingMetadata() {
     "failed-precondition"
   );
   assert.equal(missing.writes.length, 0);
-
-  const staleCount = letterDb({ notesRead: 14 });
-  await rejects(
-    __test.createRequestLetterHandler({
-      db: staleCount.db,
-      serverTimestamp: () => "server-time",
-      now: () => NOW,
-    }),
-    { auth: { uid: "test-uid", token: { email: "jane@example.test" } } },
-    "failed-precondition"
-  );
-  assert.equal(staleCount.writes.length, 0);
 }
 
 async function testRerequestPreservesAnsweredRequest() {
@@ -241,10 +260,19 @@ async function testDigestOmitsAnsweredRequests() {
   }]);
 }
 
+function testLetterRequestRulesAreServerOnly() {
+  const rules = fs.readFileSync(path.join(__dirname, "..", "firestore.rules"), "utf8");
+  assert.match(
+    rules,
+    /match\s+\/letterRequests\/\{uid\}\s*\{\s*allow\s+read,\s*write:\s*if\s+false;/s
+  );
+}
+
 (async () => {
   await testGateAndPrivacy();
-  await testGuideDaySpanAndMissingMetadata();
+  await testGuideDaySpanAndMissingTimestamp();
   await testRerequestPreservesAnsweredRequest();
   await testDigestOmitsAnsweredRequests();
+  testLetterRequestRulesAreServerOnly();
   console.log("letter request tests passed");
 })();

@@ -49,6 +49,7 @@ A daily practice app for creatives reckoning with what they're called to make.
 - `userInterfaceStyle: "dark"` is forced in app.json — Mineral has no light mode.
 - Phase I (Signal/Archaic) atmosphere only in v0.5; other phases implemented via same token system, just accent colors swap.
 - Custom tab bar (classic Tabs, not NativeTabs) so we fully control the dark atmospheric styling. NativeTabs would override to system chrome.
+- Firestore pattern rebuilds: perform pure, potentially expensive derivation outside transactions; use a short final transaction to validate exact input revisions and generation, then publish atomically. Never hold a transaction open through CPU-heavy pairwise work.
 
 ## Product
 
