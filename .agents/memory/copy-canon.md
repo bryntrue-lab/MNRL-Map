@@ -14,3 +14,9 @@ description: Founder's standing rules for user-facing strings in Mineral
 **Why:** The founder explicitly established this boundary when clarifying Conditions findings: evidence detection does not authorize new language.
 
 **How to apply:** On every engine extension, separately check the evidence gate and approved-copy coverage. Neither alone is sufficient to display a finding.
+
+**Copy must follow computation:** When approved detection and descriptive copy disagree, request corrected copy rather than narrowing the computation to preserve an aesthetic word.
+
+**Why:** The founder explicitly rejected adding a morning restriction to a day-based gap finding merely to retain “morning” in its evidence sentence.
+
+**How to apply:** Preserve the agreed detection rule, flag unsupported claims in the wording, and obtain an accurate founder-approved replacement before rendering.
