@@ -6,6 +6,9 @@
   "engines": {
     "node": "22"
   },
+  "scripts": {
+    "test": "node patternEngine.test.js && NODE_ENV=test node letterRequest.test.js"
+  },
   "dependencies": {
     "@google-cloud/speech": "^7.2.0",
     "firebase-admin": "^13.0.0",

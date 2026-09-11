@@ -61,11 +61,21 @@ const STOPWORDS = new Set(
     "keep keeps keeping kept feel feels feeling felt little big right left " +
     "first last next new old good bad yes okay ok oh um uh hmm " +
     // D.3d §3.1 — modal/auxiliary verbs
-    "can could would should will shall may might must"
+    "can could would should will shall may might must " +
+    // Slice K — conversational fillers must never surface as language.
+    "though exactly sure actually almost along already another anyway rather especially"
   )
     .split(/\s+/)
     .filter(Boolean)
 );
+
+// Phrase windows intentionally retain structural stopwords ("this work is"),
+// but conversational fillers are never meaningful parts of a gathering item.
+const CONVERSATIONAL_FILLERS = new Set([
+  "though", "exactly", "sure", "actually", "almost", "along", "already",
+  "another", "anyway", "really", "maybe", "quite", "rather", "perhaps",
+  "especially",
+]);
 
 // ─────────────────────────────────────────────────────────────
 // NORMALIZATION — lowercase, strip punctuation, light stemming
@@ -154,6 +164,7 @@ function extractLanguage(content) {
     for (let n = 2; n <= 6; n++) {
       for (let i = 0; i + n <= tokens.length; i++) {
         const win = tokens.slice(i, i + n);
+        if (win.some((t) => CONVERSATIONAL_FILLERS.has(t.raw))) continue;
         const contentCount = win.reduce((c, t) => c + (t.stop ? 0 : 1), 0);
         if (n === 2 ? contentCount !== 2 : contentCount < 2) continue;
         const phrase = win.map((t) => t.stem).join(" ");
@@ -480,18 +491,222 @@ function applyRemove(doc, items, noteId) {
 
 async function loadLexicon(db) {
   const snap = await db.collection("motifLexicon").get();
-  return snap.docs
+  return motifLexiconFromDocs(snap.docs);
+}
+
+function motifLexiconFromDocs(docs) {
+  return docs
     .map((d) => d.data())
     .filter((e) => e && e.key && Array.isArray(e.terms));
 }
 
+/**
+ * The founder edits this document directly. It is deliberately loaded for
+ * every rebuild: deploying code must never be required for a word change to
+ * take effect.
+ */
+async function loadConsciousnessLexicon(db) {
+  const snap = await db.doc("practitionerContent/consciousness_lexicon").get();
+  return consciousnessLexiconFromData(snap.exists ? snap.data() : null);
+}
+
+function consciousnessLexiconFromData(data) {
+  // `structures` is the original console document shape. `families` is the
+  // explicit seed shape; accept both so a founder's live edit is never
+  // overwritten merely to satisfy a later seed schema.
+  const rawFamilies = data?.families ?? data?.structures;
+  if (data?.kind !== "consciousness_lexicon" || !rawFamilies || typeof rawFamilies !== "object") {
+    return {};
+  }
+  const families = {};
+  for (const structure of ["magic", "mythic", "mental", "integral"]) {
+    const terms = rawFamilies[structure];
+    if (Array.isArray(terms)) {
+      families[structure] = terms.filter((term) => typeof term === "string" && term.trim());
+    }
+  }
+  return families;
+}
+
+function noteMillis(note) {
+  const value = note?.createdAt;
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number") return value;
+  return 0;
+}
+
+function noteIsReadable(note) {
+  return (
+    typeof note?.content === "string" &&
+    note.content.trim().length > 0 &&
+    note.transcriptStatus !== "pending" &&
+    note.transcriptStatus !== "processing"
+  );
+}
+
+function utcDayKey(ms) {
+  return ms ? new Date(ms).toISOString().slice(0, 10) : null;
+}
+
+function previousUtcDayKey(dayKey) {
+  if (!dayKey) return null;
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day - 1)).toISOString().slice(0, 10);
+}
+
+function timeBucket(hour) {
+  if (hour < 10) return "morning";
+  if (hour < 17) return "midday";
+  if (hour < 21) return "evening";
+  return "night";
+}
+
+/**
+ * Every evidence-valid weather is retained internally. Only the two hour
+ * phrasings that the founder has approved become `findings`; other detected
+ * weather is counted as unsupported and is never exposed as invented copy.
+ */
+function isApprovedHourFinding(finding) {
+  return (
+    (finding.type === "resistance" && finding.bucket === "night") ||
+    (finding.type === "reflection" && finding.bucket === "morning")
+  );
+}
+
+function deriveConditionsPattern(notes) {
+  // This aggregate is built from the rebuild's existing full note scan. It
+  // deliberately stores only the earliest timestamp, never note text, so
+  // server-only consumers can calculate the Guide's elapsed field age without
+  // opening fieldNote documents themselves.
+  const allDatedNotes = notes
+    .map((note) => ({ ...note, _ms: noteMillis(note) }))
+    .filter((note) => note._ms > 0);
+  const datedNotes = allDatedNotes.filter((note) => typeof note.type === "string");
+  const firstNoteAt = allDatedNotes.reduce(
+    (earliest, note) => (!earliest || note._ms < earliest._ms ? note : earliest),
+    null
+  )?.createdAt ?? null;
+  const dayKeys = new Set(datedNotes.map((note) => utcDayKey(note._ms)).filter(Boolean));
+  const byType = new Map();
+  for (const note of datedNotes) {
+    if (!Number.isInteger(note.localHour) || note.localHour < 0 || note.localHour > 23) continue;
+    const item = byType.get(note.type) ?? { totalWithHour: 0, buckets: new Map() };
+    item.totalWithHour += 1;
+    const bucket = timeBucket(note.localHour);
+    item.buckets.set(bucket, (item.buckets.get(bucket) ?? 0) + 1);
+    byType.set(note.type, item);
+  }
+
+  const detected = [];
+  for (const [type, item] of byType) {
+    for (const [bucket, matchingCount] of item.buckets) {
+      // Missing localHour values are intentionally absent from both sides.
+      if (matchingCount >= 3 && matchingCount * 3 >= item.totalWithHour * 2) {
+        detected.push({
+          kind: "hour",
+          type,
+          bucket,
+          matchingCount,
+          totalWithHour: item.totalWithHour,
+        });
+      }
+    }
+  }
+
+  // Gap evidence is calendar-only: it has no local-hour restriction. The
+  // previous UTC creation day is known from Firestore; no local hour is ever
+  // inferred for an older note.
+  const qualifying = datedNotes.filter((note) => {
+    const previous = previousUtcDayKey(utcDayKey(note._ms));
+    return previous && !dayKeys.has(previous);
+  });
+  if (qualifying.length >= 3) {
+    const typeCounts = new Map();
+    for (const note of qualifying) {
+      typeCounts.set(note.type, (typeCounts.get(note.type) ?? 0) + 1);
+    }
+    const ordered = [...typeCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const [type, count] = ordered[0] ?? [];
+    const tied = ordered.length > 1 && ordered[1][1] === count;
+    if (!tied && count * 2 >= qualifying.length) {
+      detected.push({
+        kind: "gap",
+        type,
+        matchingCount: count,
+        totalQualifying: qualifying.length,
+      });
+    }
+  }
+
+  const approved = detected.filter(
+    (finding) => finding.kind === "gap" || isApprovedHourFinding(finding)
+  );
+  return {
+    patternType: "conditions",
+    notesRead: datedNotes.length,
+    daysRead: dayKeys.size,
+    firstNoteAt,
+    findings: approved,
+    detectedFindings: detected,
+    unsupportedFindingCount: detected.length - approved.length,
+  };
+}
+
+function deriveConsciousnessPattern(notes, families) {
+  const structureCounts = { magic: 0, mythic: 0, mental: 0, integral: 0 };
+  const entries = Object.entries(families)
+    .filter(([structure, terms]) => structure in structureCounts && Array.isArray(terms))
+    .map(([key, terms]) => ({ key, terms, keyType: "consciousness" }));
+  const freshest = new Map();
+  const readable = notes
+    .filter(noteIsReadable)
+    .map((note) => ({ ...note, _ms: noteMillis(note) }))
+    .sort((a, b) => a._ms - b._ms || String(a.id).localeCompare(String(b.id)));
+
+  for (const note of readable) {
+    const hits = extractMotifs(note.content, entries);
+    for (const [structure, hit] of hits) {
+      structureCounts[structure] += 1;
+      freshest.set(structure, {
+        ...makeExemplar(hit.sentence, note.id, note),
+        structure,
+        _ms: note._ms,
+      });
+    }
+  }
+
+  const highest = Math.max(...Object.values(structureCounts));
+  if (highest === 0) {
+    return { patternType: "consciousness", structureCounts, notesRead: readable.length, leading: null, exemplar: null };
+  }
+  const contenders = Object.keys(structureCounts).filter(
+    (structure) => structureCounts[structure] === highest
+  );
+  contenders.sort((a, b) => {
+    const aFresh = freshest.get(a);
+    const bFresh = freshest.get(b);
+    return (bFresh?._ms ?? 0) - (aFresh?._ms ?? 0) ||
+      String(bFresh?.fieldNoteId ?? "").localeCompare(String(aFresh?.fieldNoteId ?? ""));
+  });
+  const leading = contenders[0];
+  const exemplar = freshest.get(leading);
+  if (exemplar) {
+    delete exemplar._ms;
+    delete exemplar.structure;
+  }
+  return {
+    patternType: "consciousness",
+    structureCounts,
+    notesRead: readable.length,
+    leading,
+    exemplar: exemplar ?? null,
+  };
+}
+
 /** offerings for matched keys, from practitionerContent (id: {keyType}_{slug}) */
 async function loadOfferings(db, motifHits) {
-  const wanted = [...motifHits.entries()].map(([key, { keyType }]) => ({
-    key,
-    keyType,
-    docId: `${keyType}_${key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
-  }));
+  const wanted = offeringRequests(motifHits);
   const result = new Map(); // key → { key, text }
   await Promise.all(
     wanted.map(async ({ key, docId }) => {
@@ -501,6 +716,173 @@ async function loadOfferings(db, motifHits) {
     })
   );
   return result;
+}
+
+function offeringRequests(motifHits) {
+  return [...motifHits.entries()].map(([key, { keyType }]) => ({
+    key,
+    keyType,
+    docId: `${keyType}_${key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+  }));
+}
+
+function offeringsFromSnapshots(wanted, snaps) {
+  const result = new Map(); // key → { key, text }
+  wanted.forEach(({ key }, index) => {
+    const snap = snaps[index];
+    const text = snap?.exists ? snap.data().text : null;
+    if (text) result.set(key, { key, text });
+  });
+  return result;
+}
+
+/**
+ * A complete rebuild is the canonical path for the field-wide lenses. This
+ * makes creates, edits, deletes, transcript arrivals, lexicon edits, and
+ * stopword changes converge to the same result instead of attempting unsafe
+ * reversible deltas for a user's entire field.
+ */
+const PATTERN_STATE_ID = "_state";
+const EVENT_COALESCE_MS = 300;
+
+async function claimPatternGeneration(db, uid) {
+  const stateRef = db.doc(`users/${uid}/patterns/${PATTERN_STATE_ID}`);
+  return db.runTransaction(async (tx) => {
+    const current = await tx.get(stateRef);
+    const generation = Number(current.data()?.requestedGeneration ?? 0) + 1;
+    tx.set(
+      stateRef,
+      { requestedGeneration: generation, dirtyAt: Timestamp.now() },
+      { merge: true }
+    );
+    return generation;
+  });
+}
+
+function generationDisposition(state, generation) {
+  const requested = Number(state?.requestedGeneration ?? 0);
+  const committed = Number(state?.committedGeneration ?? 0);
+  if (requested === generation) return "commit";
+  // A newer generation has already published the complete field, so this
+  // invocation can safely stand down.
+  if (committed >= generation) return "coalesced";
+
+  // A newer claimant exists but has not committed. Returning a successful
+  // coalescence here would lose the only durable retry if that claimant fails.
+  // Eventarc retries this rejected field-note event; its retry claims a fresh
+  // generation and restores convergence.
+  const error = new Error("pattern rebuild superseded before a newer generation committed");
+  error.code = "aborted";
+  error.retryable = true;
+  throw error;
+}
+
+function buildPatternDocs(noteRecords, motifLexicon, consciousnessLexicon) {
+  const readable = noteRecords
+    .filter(noteIsReadable)
+    .sort((a, b) => noteMillis(a) - noteMillis(b) || a.id.localeCompare(b.id));
+  const docs = {
+    thread: emptyPatternDoc("thread"),
+    motif: emptyPatternDoc("motif"),
+    resistance: emptyPatternDoc("resistance"),
+  };
+  const offeringHits = new Map();
+
+  for (const note of readable) {
+    const language = extractLanguage(note.content);
+    const motifHits = extractMotifs(note.content, motifLexicon);
+    const motifItems = new Map();
+    const resistanceItems = new Map();
+    for (const [key, hit] of motifHits) {
+      (hit.keyType === "resistance" ? resistanceItems : motifItems).set(key, hit.sentence);
+      offeringHits.set(key, hit);
+    }
+    if (language.size) {
+      applyAdd(docs.thread, language, note.id, note);
+      phraseHygiene(docs.thread);
+    }
+    if (motifItems.size) applyAdd(docs.motif, motifItems, note.id, note);
+    if (resistanceItems.size) applyAdd(docs.resistance, resistanceItems, note.id, note);
+  }
+  return {
+    docs,
+    offeringHits,
+    readable,
+    consciousness: deriveConsciousnessPattern(noteRecords, consciousnessLexicon),
+    conditions: deriveConditionsPattern(noteRecords),
+  };
+}
+
+/**
+ * A field-wide rebuild is committed from a serializable transaction. Its note
+ * query is part of the transaction, so a create/edit/delete arriving while it
+ * is derived forces a retry instead of allowing a stale snapshot to win.
+ * `_state.requestedGeneration` additionally lets a burst of event invocations
+ * coalesce: only its newest claimant proceeds after the short settle window.
+ */
+async function rebuildPatternsForUser(uid, options = {}) {
+  const db = getFirestore();
+  const generation = await claimPatternGeneration(db, uid);
+  if (options.coalesce) {
+    await new Promise((resolve) => setTimeout(resolve, EVENT_COALESCE_MS));
+  }
+
+  const stateRef = db.doc(`users/${uid}/patterns/${PATTERN_STATE_ID}`);
+  const notesRef = db.collection(`users/${uid}/fieldNotes`);
+  const motifLexiconRef = db.collection("motifLexicon");
+  const consciousnessLexiconRef = db.doc("practitionerContent/consciousness_lexicon");
+
+  return db.runTransaction(async (tx) => {
+    const [stateSnap, notesSnap, motifSnap, consciousnessSnap] = await Promise.all([
+      tx.get(stateRef),
+      tx.get(notesRef),
+      tx.get(motifLexiconRef),
+      tx.get(consciousnessLexiconRef),
+    ]);
+    if (generationDisposition(stateSnap.data(), generation) === "coalesced") {
+      return { scanned: 0, processed: 0, unsupportedConditionFindings: 0, coalesced: true };
+    }
+
+    const noteRecords = notesSnap.docs.map((snap) => ({ id: snap.id, ...snap.data() }));
+    const built = buildPatternDocs(
+      noteRecords,
+      motifLexiconFromDocs(motifSnap.docs),
+      consciousnessLexiconFromData(consciousnessSnap.exists ? consciousnessSnap.data() : null)
+    );
+    const wantedOfferings = offeringRequests(built.offeringHits);
+    const offeringSnaps = await Promise.all(
+      wantedOfferings.map(({ docId }) => tx.get(db.collection("practitionerContent").doc(docId)))
+    );
+    const offerings = offeringsFromSnapshots(wantedOfferings, offeringSnaps);
+    for (const [key, offering] of offerings) {
+      const hit = built.offeringHits.get(key);
+      if (hit?.keyType === "resistance") built.docs.resistance.offerings[key] = offering;
+      else built.docs.motif.offerings[key] = offering;
+    }
+
+    const now = Timestamp.now();
+    for (const [type, data] of Object.entries(built.docs)) {
+      delete data.ledgerFloorAt;
+      data.updatedAt = now;
+      tx.set(db.doc(`users/${uid}/patterns/${type}`), data);
+    }
+    built.consciousness.updatedAt = now;
+    built.conditions.updatedAt = now;
+    tx.set(db.doc(`users/${uid}/patterns/consciousness`), built.consciousness);
+    tx.set(db.doc(`users/${uid}/patterns/conditions`), built.conditions);
+    tx.set(
+      stateRef,
+      { committedGeneration: generation, committedAt: now, dirtyAt: now },
+      { merge: true }
+    );
+
+    return {
+      scanned: notesSnap.size,
+      processed: built.readable.length,
+      unsupportedConditionFindings: built.conditions.unsupportedFindingCount,
+      coalesced: false,
+    };
+  });
 }
 
 /**
@@ -593,6 +975,12 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
  * Returns { scanned, processed }.
  */
 async function backfillPatternsForUser(uid, options = {}) {
+  // Slice K's field-wide lenses must reflect mutable lexicon content and
+  // reversible context changes. Rebuilding all five documents is also the
+  // safest repair for the older three incremental documents.
+  if (options.rebuild || options.fullRebuild) {
+    return await rebuildPatternsForUser(uid);
+  }
   const db = getFirestore();
 
   // Rebuild mode (migration): zero the caller's pattern docs, then
@@ -642,9 +1030,13 @@ async function backfillPatternsForUser(uid, options = {}) {
 module.exports = {
   updatePatternsForNote,
   backfillPatternsForUser,
+  rebuildPatternsForUser,
   // exported for the gate/test path
   extractLanguage,
   extractMotifs,
+  deriveConditionsPattern,
+  deriveConsciousnessPattern,
+  generationDisposition,
   stem,
   STOPWORDS,
 };

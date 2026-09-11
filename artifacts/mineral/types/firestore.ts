@@ -22,7 +22,7 @@ export type PatternType =
   | "motif"
   | "thread"
   | "resistance"
-  | "condition"
+  | "conditions"
   | "consciousness";
 
 export type MembershipStatus = "free" | "member";
@@ -181,6 +181,12 @@ export interface FieldNoteDoc {
   questionId: string | null;
   atmosphere: PhaseId;
   createdAt: Timestamp;
+  /**
+   * The device's capture context. Optional because older notes intentionally
+   * remain unbackfilled; the engine never derives either value from UTC.
+   */
+  localHour?: number;
+  weekday?: number;
 
   // v1.8 additive — set only on counterweight "keep what comes" captures:
   // which map position provoked this reflection. Null on all other notes.
@@ -212,7 +218,34 @@ export interface PatternDoc {
   /** processed-note ledger (read client-side only for self-heal checks) */
   processed?: string[];
   updatedAt: Timestamp;
+  /** Slice K — conditions lens data (document id: `conditions`). */
+  findings?: ConditionFinding[];
+  detectedFindings?: ConditionFinding[];
+  unsupportedFindingCount?: number;
+  notesRead?: number;
+  daysRead?: number;
+  /** Slice K — consciousness lens data (document id: `consciousness`). */
+  structureCounts?: Record<ConsciousnessStructure, number>;
+  leading?: ConsciousnessStructure | null;
+  exemplar?: ExemplarEntry | null;
 }
+
+export type ConsciousnessStructure = "magic" | "mythic" | "mental" | "integral";
+
+export type ConditionFinding =
+  | {
+      kind: "hour";
+      type: FieldNoteType;
+      bucket: "morning" | "midday" | "evening" | "night";
+      matchingCount: number;
+      totalWithHour: number;
+    }
+  | {
+      kind: "gap";
+      type: FieldNoteType;
+      matchingCount: number;
+      totalQualifying: number;
+    };
 
 // ─────────────────────────────────────────────────────────────
 // practitionerContent/{contentId}  (fully locked, admin/console only)

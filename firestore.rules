@@ -28,6 +28,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Letter requests — callable/Admin SDK only ─────────────────────────
+    // The request contains only server-derived email and aggregate metadata;
+    // it never grants a client or practitioner access to field notes.
+    match /letterRequests/{uid} {
+      allow read, write: if false;
+    }
+
     // ── Motif lexicon — engine-only (Admin SDK bypasses rules) ────────────
     match /motifLexicon/{entryId} {
       allow read, write: if false;

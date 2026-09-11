@@ -34,7 +34,9 @@ const STOPWORDS = new Set(
     "keep keeps keeping kept feel feels feeling felt little big right left " +
     "first last next new old good bad yes okay ok oh um uh hmm " +
     // D.3d §3.1 — modal/auxiliary verbs
-    "can could would should will shall may might must"
+    "can could would should will shall may might must " +
+    // Slice K — mirror the server's conversational filler filter exactly.
+    "though exactly sure actually almost along already another anyway rather especially"
   )
     .split(/\s+/)
     .filter(Boolean)

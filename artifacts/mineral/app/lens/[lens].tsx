@@ -12,10 +12,15 @@ import { SheetShell } from "@/components/OriginSheets";
 import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
+import { useUser } from "@/context/UserContext";
 import { db } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import { fieldNotesQuery } from "@/lib/firestore";
+import { ageAt, resolve } from "@/lib/spiral";
+import { spellNumber } from "@/lib/patternText";
 import type {
+  ConditionFinding,
+  ConsciousnessStructure,
   ExemplarEntry,
   FieldNoteDoc,
   PatternDoc,
@@ -40,8 +45,21 @@ const LENS_META: Record<
   resistance: { pattern: "resistance", title: "recurring resistance", color: "#e08aaf" },
   // Quiet lenses (no engine yet) — the teaching IS the content. When
   // their engines ship, data sections appear above with no nav change.
-  conditions: { pattern: null, title: "conditions", color: "#9bb6d6" },
-  consciousness: { pattern: null, title: "consciousness", color: "#c4baea" },
+  conditions: { pattern: "conditions", title: "conditions", color: "#9bb6d6" },
+  consciousness: { pattern: "consciousness", title: "consciousness", color: "#c4baea" },
+};
+
+const TYPE_PLURALS: Record<string, string> = {
+  dream: "dreams",
+  spark: "sparks",
+  resistance: "resistances",
+  symbol: "symbols",
+  synchronicity: "synchronicities",
+  vision: "visions",
+  desire: "desires",
+  fear: "fears",
+  other: "others",
+  reflection: "reflections",
 };
 
 function attribution(e: ExemplarEntry): string {
@@ -56,9 +74,34 @@ function attribution(e: ExemplarEntry): string {
   return parts.join(" · ");
 }
 
+function conditionCopy(finding: ConditionFinding): { line: string; evidence: string } | null {
+  if (finding.kind === "gap") {
+    return {
+      line: `the ${TYPE_PLURALS[finding.type] ?? `${finding.type}s`} come after quiet`,
+      evidence: `${spellNumber(finding.matchingCount)} arrived after a day away`,
+    };
+  }
+  if (finding.type === "resistance" && finding.bucket === "night") {
+    return {
+      line: "resistance arrives at night",
+      evidence: `${spellNumber(finding.matchingCount)} of ${spellNumber(finding.totalWithHour)} walls · named after nine`,
+    };
+  }
+  if (finding.type === "reflection" && finding.bucket === "morning") {
+    return {
+      line: "reflection belongs to your mornings",
+      evidence: `${spellNumber(finding.matchingCount)} of ${spellNumber(finding.totalWithHour)} · before ten`,
+    };
+  }
+  // Detection is broader than founder-approved language. This should remain
+  // unreachable for the current engine output, and protects future data.
+  return null;
+}
+
 export default function LensScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { profile } = useUser();
   const { lens } = useLocalSearchParams<{ lens: string }>();
   const meta = LENS_META[lens ?? ""];
 
@@ -211,17 +254,50 @@ export default function LensScreen() {
     ? motifPassageContent[fieldPassageItem] ?? null
     : null;
 
+  const consciousnessRows = useMemo(
+    () =>
+      Object.entries(doc?.structureCounts ?? {})
+        .filter(([, count]) => count > 0)
+        .sort(([aName, aCount], [bName, bCount]) => bCount - aCount || aName.localeCompare(bName)) as [
+        ConsciousnessStructure,
+        number,
+      ][],
+    [doc]
+  );
+  const consciousnessMax = consciousnessRows[0]?.[1] ?? 0;
+  const consciousnessExemplar = lens === "consciousness" ? doc?.exemplar ?? null : null;
+  const leading = lens === "consciousness" ? doc?.leading ?? null : null;
+  const conditions = useMemo(
+    () =>
+      lens === "conditions"
+        ? (doc?.findings ?? [])
+            .map(conditionCopy)
+            .filter((finding): finding is { line: string; evidence: string } => finding !== null)
+        : [],
+    [doc, lens]
+  );
+  const birthDate = profile?.birthDate?.toDate?.();
+  const mapStructure = useMemo(
+    () => (birthDate ? resolve(ageAt(birthDate, new Date())).station.structure.toLowerCase() : null),
+    [birthDate]
+  );
+  const quietLensHasData =
+    (lens === "consciousness" && consciousnessRows.length > 0) ||
+    (lens === "conditions" && conditions.length > 0);
+
   if (!meta) return null;
 
   return (
     <View style={styles.container}>
       <ArchaicAtmosphere />
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 80 },
         ]}
         showsVerticalScrollIndicator={false}
+        overScrollMode="never"
       >
         <LinkSecondary
           label="← the guide"
@@ -249,7 +325,66 @@ export default function LensScreen() {
           </Text>
         )}
 
-        {rows.length === 0 ? (
+        {lens === "consciousness" && consciousnessRows.length > 0 ? (
+          <>
+            <Text style={styles.countLine} testID="consciousness-notes-read">
+              {spellNumber(doc?.notesRead ?? 0)} {doc?.notesRead === 1 ? "note" : "notes"} read
+            </Text>
+            <View style={styles.spectrum} testID="consciousness-spectrum">
+              {consciousnessRows.map(([structure, count], index) => (
+                <View key={structure} style={styles.spectrumRow}>
+                  <View style={styles.spectrumLabelRow}>
+                    <Text style={styles.spectrumName}>{structure}</Text>
+                    <Text style={styles.spectrumCount}>
+                      {spellNumber(count)} {count === 1 ? "note" : "notes"}
+                    </Text>
+                  </View>
+                  <View style={styles.spectrumTrack}>
+                    <View
+                      style={[
+                        styles.spectrumFill,
+                        {
+                          width: `${(count / consciousnessMax) * 100}%`,
+                          opacity: [0.55, 0.42, 0.34, 0.28][index] ?? 0.28,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+            {consciousnessExemplar ? (
+              <View style={styles.consciousnessExemplar} testID="consciousness-exemplar">
+                <Text style={styles.exemplarText}>“{consciousnessExemplar.text}”</Text>
+                <Text style={styles.exemplarMeta}>
+                  {leading ? `${leading} · ` : ""}{attribution(consciousnessExemplar)}
+                </Text>
+              </View>
+            ) : null}
+            {leading && mapStructure ? (
+              <Text style={styles.mirrorLine} testID="consciousness-mirror">
+                {mapStructure === leading
+                  ? `the map and your words stand together in the ${leading}.`
+                  : `the map holds this year in the ${mapStructure}. your words answer from the ${leading}.`}
+              </Text>
+            ) : null}
+          </>
+        ) : lens === "conditions" && conditions.length > 0 ? (
+          <>
+            <Text style={styles.countLine} testID="conditions-notes-read">
+              {spellNumber(doc?.notesRead ?? 0)} {doc?.notesRead === 1 ? "note" : "notes"} ·{" "}
+              {spellNumber(doc?.daysRead ?? 0)} {doc?.daysRead === 1 ? "day" : "days"}
+            </Text>
+            <View style={styles.conditionsList} testID="conditions-findings">
+              {conditions.map((finding, index) => (
+                <View key={`${finding.line}-${index}`} style={styles.conditionFinding}>
+                  <Text style={styles.conditionLine}>{finding.line}</Text>
+                  <Text style={styles.conditionEvidence}>{finding.evidence}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : rows.length === 0 ? (
           teaching?.paragraphs ? (
             // Quiet lens — the closing paragraph(s) replace the old
             // promise/empty line. Nothing else renders inline.
@@ -262,7 +397,7 @@ export default function LensScreen() {
                   </Text>
                 ))}
             </View>
-          ) : meta.pattern !== null ? (
+          ) : meta.pattern !== null && !quietLensHasData ? (
             <Text style={styles.listening}>listening.</Text>
           ) : null
         ) : (
@@ -327,7 +462,9 @@ export default function LensScreen() {
         >
           <ScrollView
             style={{ maxHeight: Dimensions.get("window").height * 0.62 }}
+            contentContainerStyle={styles.teachingSheetContent}
             showsVerticalScrollIndicator={false}
+            overScrollMode="never"
           >
             {teaching.heldLine ? (
               <Text style={styles.teachingHeld}>{teaching.heldLine}</Text>
@@ -358,9 +495,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#050208",
+    overflow: "hidden",
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: "#050208",
   },
   scrollContent: {
-    paddingHorizontal: 28,
+    flexGrow: 1,
+    paddingLeft: 28,
+    paddingRight: 32,
   },
   backLink: {
     alignSelf: "flex-start",
@@ -380,12 +524,73 @@ const styles = StyleSheet.create({
   title: {
     ...TypeScale.serifTitle,
     color: "rgba(255,255,255,0.92)",
+    flexShrink: 1,
   },
   countLine: {
     ...TypeScale.metadata,
     letterSpacing: 1.2,
     color: "rgba(255,255,255,0.5)",
     marginTop: 6,
+    flexShrink: 1,
+  },
+  spectrum: {
+    marginTop: 32,
+    gap: 18,
+  },
+  spectrumRow: {
+    gap: 7,
+  },
+  spectrumLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+  },
+  spectrumName: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.92)",
+    flexShrink: 1,
+  },
+  spectrumCount: {
+    ...TypeScale.metadata,
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.5)",
+    flexShrink: 0,
+  },
+  spectrumTrack: {
+    height: 1.5,
+    width: "100%",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  spectrumFill: {
+    height: 1.5,
+    backgroundColor: "#c4baea",
+  },
+  consciousnessExemplar: {
+    paddingLeft: 14,
+    borderLeftWidth: 1.5,
+    borderLeftColor: "rgba(255,255,255,0.12)",
+    marginTop: 30,
+  },
+  mirrorLine: {
+    ...TypeScale.serifMedium,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 34,
+  },
+  conditionsList: {
+    marginTop: 34,
+    gap: 30,
+  },
+  conditionFinding: {
+    gap: 4,
+  },
+  conditionLine: {
+    ...TypeScale.body,
+    color: "rgba(255,255,255,0.92)",
+  },
+  conditionEvidence: {
+    ...TypeScale.metadata,
+    letterSpacing: 1.2,
+    color: "rgba(255,255,255,0.5)",
   },
   listening: {
     ...TypeScale.serifSmall,
@@ -469,5 +674,9 @@ const styles = StyleSheet.create({
     ...TypeScale.bodyLarge,
     color: "rgba(255,255,255,0.72)",
     marginBottom: 16,
+    flexShrink: 1,
+  },
+  teachingSheetContent: {
+    paddingBottom: 28,
   },
 });

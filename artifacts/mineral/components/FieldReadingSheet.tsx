@@ -161,11 +161,11 @@ export function FieldReadingSheet({
     >
       {state.kind === "pending" ? (
         <Text style={styles.pending} testID="field-reading-pending">
-          reading your field…
+          the guide is reflecting…
         </Text>
       ) : state.kind === "failed" ? (
         <Text style={styles.failed} testID="field-reading-failed">
-          the reading didn't arrive — ask again.
+          the reflection didn't arrive — ask again.
         </Text>
       ) : (
         <ScrollView
@@ -177,7 +177,7 @@ export function FieldReadingSheet({
             <Text style={styles.resting}>the field rests until tomorrow.</Text>
           ) : null}
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>A READING</Text>
+            <Text style={styles.eyebrow}>A REFLECTION</Text>
             <Text style={styles.date}>{readingDate(state.reading)}</Text>
           </View>
 
@@ -199,6 +199,9 @@ export function FieldReadingSheet({
           {state.reading.question ? (
             <Text style={styles.question}>{state.reading.question}</Text>
           ) : null}
+          <Text style={styles.guideMeta}>
+            read by the guide — pattern, not practitioner.
+          </Text>
         </ScrollView>
       )}
     </SheetShell>
@@ -245,6 +248,11 @@ const styles = StyleSheet.create({
     ...TypeScale.serifMedium,
     color: "rgba(255,255,255,0.85)",
     marginTop: 18,
+  },
+  guideMeta: {
+    ...TypeScale.metadata,
+    color: colors.light.textMuted,
+    marginTop: 10,
     marginBottom: 8,
   },
 });

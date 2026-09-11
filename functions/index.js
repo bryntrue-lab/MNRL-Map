@@ -131,6 +131,97 @@ function normalizeReading(rawText, noteTexts) {
 const READING_REST_MS = 20 * 60 * 60 * 1000;
 const READING_LEASE_MS = 3 * 60 * 1000;
 
+/**
+ * The letter request is a deliberately narrow privacy boundary: no caller
+ * payload is accepted, no fieldNote document is read, and no note text is
+ * copied. The count aggregation and server-derived conditions metadata are the
+ * only field-derived data this path may access.
+ */
+function createRequestLetterHandler({ db, serverTimestamp, now = () => Date.now() }) {
+  return async (request) => {
+    const uid = request.auth?.uid;
+    const tokenEmail = request.auth?.token?.email;
+    const email =
+      typeof tokenEmail === "string" ? tokenEmail.trim() : "";
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "sign in to ask for a letter.");
+    }
+    if (!email) {
+      throw new HttpsError(
+        "failed-precondition",
+        "an email is required to ask for a letter."
+      );
+    }
+
+    const userRef = db.doc(`users/${uid}`);
+    const notesRef = userRef.collection("fieldNotes");
+    // This aggregation is intentionally the sole fieldNotes operation in this
+    // callable. Never query note documents, including content or timestamps.
+    const [countSnap, conditionsSnap] = await Promise.all([
+      notesRef.count().get(),
+      userRef.collection("patterns").doc("conditions").get(),
+    ]);
+    const noteCount = countSnap.data().count;
+    if (!Number.isInteger(noteCount) || noteCount < 15) {
+      throw new HttpsError(
+        "failed-precondition",
+        "the field needs fifteen notes."
+      );
+    }
+
+    // `conditions.firstNoteAt` is server-generated aggregate metadata from
+    // the pattern rebuild's existing full scan. Requiring it and `notesRead`
+    // to agree with the aggregation prevents stale metadata from being
+    // presented as current without opening any private note here.
+    const conditions = conditionsSnap.exists ? conditionsSnap.data() : null;
+    const firstNoteAtMs = conditions?.firstNoteAt?.toMillis?.();
+    if (
+      conditions?.notesRead !== noteCount ||
+      !Number.isFinite(firstNoteAtMs)
+    ) {
+      throw new HttpsError(
+        "failed-precondition",
+        "the field is still settling."
+      );
+    }
+    // Exact Guide definition: elapsed UTC-day span from the earliest note,
+    // inclusive. Do not substitute active-note days (`daysRead`) here.
+    const dayCount = Math.floor((now() - firstNoteAtMs) / 86400000) + 1;
+    if (!Number.isInteger(dayCount) || dayCount < 1) {
+      throw new HttpsError(
+        "failed-precondition",
+        "the field is still settling."
+      );
+    }
+
+    const requestRef = db.doc(`letterRequests/${uid}`);
+    await db.runTransaction(async (transaction) => {
+      const existing = await transaction.get(requestRef);
+      if (existing.exists) {
+        // Idempotency: keep the original request (including createdAt and a
+        // console-set answered status); a repeat only records that it was asked.
+        transaction.update(requestRef, { lastAskedAt: serverTimestamp() });
+        return;
+      }
+      transaction.create(requestRef, {
+        email,
+        noteCount,
+        dayCount,
+        createdAt: serverTimestamp(),
+        status: "new",
+      });
+    });
+    return { ok: true };
+  };
+}
+
+const requestLetterHandler = createRequestLetterHandler({
+  db: getFirestore(),
+  serverTimestamp: () => FieldValue.serverTimestamp(),
+});
+
+exports.requestLetter = onCall(async (request) => requestLetterHandler(request));
+
 async function waitForConcurrentReading(readingsRef, startedAtMs) {
   // A concurrent caller owns generation. Wait for its completed document
   // rather than invoking OpenAI twice or exposing the private lease doc.
@@ -279,50 +370,22 @@ exports.deleteAccount = onCall(
  * docs (clients own fieldNotes — nothing is written there).
  */
 const {
-  updatePatternsForNote,
-  backfillPatternsForUser,
+  rebuildPatternsForUser,
 } = require("./patternEngine");
 
 exports.updatePatterns = onDocumentWritten(
   {
     document: "users/{uid}/fieldNotes/{noteId}",
-    memory: "256MiB",
-    timeoutSeconds: 120,
-    retry: true, // ledger makes redelivery safe in both directions
+    memory: "512MiB",
+    timeoutSeconds: 300,
+    retry: true,
   },
   async (event) => {
-    const { uid, noteId } = event.params;
-    const before = event.data?.before?.exists ? event.data.before.data() : null;
-    const after = event.data?.after?.exists ? event.data.after.data() : null;
-
-    if (!after && before) {
-      // Delete: reverse whatever this note contributed, recomputed from
-      // its own final content.
-      await updatePatternsForNote(uid, noteId, before, "remove");
-      return;
-    }
-    if (!after) return;
-
-    const isCreateWithContent = !before && !!after.content;
-    const transcriptJustLanded =
-      !!before &&
-      before.transcriptStatus !== "done" &&
-      after.transcriptStatus === "done" &&
-      !!after.content;
-
-    if (isCreateWithContent || transcriptJustLanded) {
-      await updatePatternsForNote(uid, noteId, after, "add");
-      // Self-healing (Slice D.3 Part A): if earlier notes never made it
-      // into the ledgers (e.g. they predate an engine deploy), sweep them
-      // through the same pipeline now. Idempotent; usually a no-op scan.
-      try {
-        await backfillPatternsForUser(uid);
-      } catch (err) {
-        // The triggering note itself was processed; a failed sweep must
-        // not fail (and re-deliver) the event. The next note retries it.
-        console.error("backfill sweep failed", { uid }, err);
-      }
-    }
+    // Field-wide patterns depend on mutable vocabulary and on a note's
+    // content, type, capture context, and existence. A direct recomputation
+    // makes create, edit, delete, and transcript completion converge without
+    // leaving stale contributions behind.
+    await rebuildPatternsForUser(event.params.uid, { coalesce: true });
   }
 );
 
@@ -338,9 +401,7 @@ exports.backfillPatterns = onCall(
     if (!uid) {
       throw new HttpsError("unauthenticated", "sign in to tend a field.");
     }
-    return await backfillPatternsForUser(uid, {
-      rebuild: request.data?.rebuild === true,
-    });
+    return await rebuildPatternsForUser(uid);
   }
 );
 
@@ -529,3 +590,9 @@ exports.countCompletion = onDocumentUpdated(
       .update({ completedEncounterCount: FieldValue.increment(1) });
   }
 );
+
+// Unit tests exercise the privacy-critical callable through its injected
+// dependencies. This is never exported in deployed function manifests.
+if (process.env.NODE_ENV === "test") {
+  exports.__test = { createRequestLetterHandler };
+}

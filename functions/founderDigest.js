@@ -107,6 +107,26 @@ async function readingsCount(db, since) {
   return actual.filter((doc) => timeMs(doc.data().createdAt) >= since).length;
 }
 
+// Letter requests intentionally expose only the server-stamped email and
+// aggregate counts. This digest never reads fieldNotes or their content.
+async function letterRequests(db) {
+  const snap = await db.collection("letterRequests").where("status", "==", "new").get();
+  return snap.docs
+    .map((doc) => doc.data())
+    .filter(
+      (request) =>
+        typeof request.email === "string" &&
+        Number.isInteger(request.noteCount) &&
+        Number.isInteger(request.dayCount)
+    )
+    .sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt))
+    .map((request) => ({
+      email: request.email,
+      noteCount: request.noteCount,
+      dayCount: request.dayCount,
+    }));
+}
+
 function unavailable(name) { return `${name}: unavailable`; }
 function ageText(ms) {
   const hours = Math.floor(ms / (60 * 60 * 1000));
@@ -121,12 +141,13 @@ function createFounderDigest({ db, auth, founderEmail }) {
       if (!recipient) throw new Error("FOUNDER_DIGEST_EMAIL is not set");
 
       const now = Date.now();
-      const [field, door, queue, health, readings] = await Promise.all([
+      const [field, door, queue, health, readings, letters] = await Promise.all([
         safe("field", () => fieldNumbers(db, auth, now - DAY)),
         safe("door", () => betaRequests(db, now - DAY)),
         safe("queue", () => passageQueue(db)),
         safe("health", () => transcriptionHealth(db, now)),
         safe("readings", () => readingsCount(db, now - DAY)),
+        safe("letters", () => letterRequests(db)),
       ]);
       const lines = [];
       if (field.error) lines.push(unavailable("the field, overnight"));
@@ -162,6 +183,16 @@ function createFounderDigest({ db, auth, founderEmail }) {
         lines.push("awaiting you", awaiting ? `  ${awaiting} passages drafted: ${queue.value.keys.join(", ")}` : "  clear");
         if (awaiting) lines.push("  → review in the Firestore console (practitionerContent)");
       }
+      if (letters.error) lines.push(`  ${unavailable("letter requests")}`);
+      else if (letters.value.length > 0) {
+        const details = letters.value
+          .map(
+            (request) =>
+              `${request.email} (${request.noteCount} notes · ${request.dayCount} days)`
+          )
+          .join(", ");
+        lines.push(`  ${letters.value.length} asked for a letter: ${details}`);
+      }
       lines.push("");
       let healthClean = false;
       if (health.error) lines.push(unavailable("health"));
@@ -190,4 +221,4 @@ function createFounderDigest({ db, auth, founderEmail }) {
   );
 }
 
-module.exports = { betaRequests, createFounderDigest, truncateWork };
+module.exports = { betaRequests, createFounderDigest, letterRequests, truncateWork };

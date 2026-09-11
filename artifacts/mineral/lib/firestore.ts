@@ -347,6 +347,10 @@ export async function createFieldNote(
   noteId?: string
 ): Promise<string> {
   const isAudio = input.captureMode === "audio";
+  // Conditions are a device-local observation. Capture them at the exact
+  // client-side moment the note is created; never infer them from the server
+  // timestamp later.
+  const capturedNow = new Date();
 
   // Omit charge entirely — it is engine-only and must be absent, not null.
   const data: Omit<FieldNoteDoc, "charge" | "createdAt"> & { createdAt: FieldValue } = {
@@ -361,6 +365,8 @@ export async function createFieldNote(
     atmosphere: input.atmosphere,
     createdAt: serverTimestamp(),
     mapRef: input.mapRef ?? null,
+    localHour: capturedNow.getHours(),
+    weekday: capturedNow.getDay(),
   };
 
   const colRef = collection(db, "users", uid, "fieldNotes");

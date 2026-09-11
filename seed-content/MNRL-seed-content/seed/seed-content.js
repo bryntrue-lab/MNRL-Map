@@ -51,6 +51,7 @@ const OFFERINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'offering
 const TEACHINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'teachings.json');
 const COUNTERWEIGHT_POOLS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'counterweight-pools.json');
 const PASSAGE_PROMPT_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'passage-prompt.json');
+const CONSCIOUSNESS_LEXICON_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'consciousness-lexicon.json');
 const MOTIF_LEXICON_FILE = path.join(CONTENT_ROOT, 'motif-lexicon', 'lexicon.json');
 
 const VALID_PHASES = new Set(['signal', 'field', 'friction', 'voice']);
@@ -599,6 +600,52 @@ async function seedPassagePrompt(db) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// CONSCIOUSNESS LEXICON (Slice K)
+// Server-only practitioner content. The seed is create-only: once the
+// founder changes a family in Firestore, no subsequent seed may overwrite it.
+// ─────────────────────────────────────────────────────────────
+
+async function seedConsciousnessLexicon(db) {
+  console.log('\n─── Consciousness lexicon ─────────────────────');
+  if (!fs.existsSync(CONSCIOUSNESS_LEXICON_FILE)) {
+    console.log('  no consciousness-lexicon.json; skipping.');
+    return;
+  }
+  let entry;
+  try {
+    entry = JSON.parse(fs.readFileSync(CONSCIOUSNESS_LEXICON_FILE, 'utf8'));
+  } catch (e) {
+    console.log(`  ✗ consciousness-lexicon.json parse error — ${e.message}`);
+    return;
+  }
+  const validStructures = ['magic', 'mythic', 'mental', 'integral'];
+  const families = entry?.families;
+  const valid =
+    entry?.id === 'consciousness_lexicon' &&
+    entry?.kind === 'consciousness_lexicon' &&
+    families &&
+    typeof families === 'object' &&
+    validStructures.every(
+      structure =>
+        Array.isArray(families[structure]) &&
+        families[structure].length > 0 &&
+        families[structure].every(term => typeof term === 'string' && term.trim())
+    );
+  if (!valid) {
+    console.log('  ✗ consciousness-lexicon.json requires four non-empty word families.');
+    return;
+  }
+  const ref = db.collection('practitionerContent').doc('consciousness_lexicon');
+  const existing = await ref.get();
+  if (existing.exists) {
+    console.log('  ↻ consciousness_lexicon — retained founder edit');
+    return;
+  }
+  await ref.set({ kind: entry.kind, families });
+  console.log('  ✓ consciousness_lexicon — created');
+}
+
+// ─────────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────────
 
@@ -609,10 +656,17 @@ async function main() {
 
   const { db, bucket } = initFirebase();
   const practitionerOnly = process.argv.includes('--practitioner-content-only');
+  const consciousnessOnly = process.argv.includes('--consciousness-lexicon-only');
 
+  if (consciousnessOnly) {
+    await seedConsciousnessLexicon(db);
+    console.log('\nDone.\n');
+    process.exit(0);
+  }
   if (practitionerOnly) {
     await seedPractitionerContent(db);
     await seedPassagePrompt(db);
+    await seedConsciousnessLexicon(db);
     console.log('\nDone.\n');
     process.exit(0);
   }
@@ -622,6 +676,7 @@ async function main() {
   await seedTeachings(db);
   await seedCounterweightPools(db);
   await seedPassagePrompt(db);
+  await seedConsciousnessLexicon(db);
   await seedMotifLexicon(db);
 
   console.log('\nDone.\n');

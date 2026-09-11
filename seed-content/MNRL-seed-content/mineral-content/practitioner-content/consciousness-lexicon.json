@@ -1,0 +1,10 @@
+{
+  "id": "consciousness_lexicon",
+  "kind": "consciousness_lexicon",
+  "families": {
+    "magic": ["ritual", "sign", "omen", "luck", "spell", "charm", "synchronicity", "magic", "fate", "blessing"],
+    "mythic": ["story", "image", "dream", "symbol", "threshold", "journey", "quest", "myth", "fire", "shadow", "hero", "calling"],
+    "mental": ["plan", "goal", "system", "measure", "analyze", "decide", "strategy", "problem", "solve", "optimize", "workflow", "milestone"],
+    "integral": ["whole", "both", "paradox", "presence", "together", "weave", "integrate", "attune", "resonance"]
+  }
+}

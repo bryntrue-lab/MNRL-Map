@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ArchaicAtmosphere } from "@/components/Atmosphere";
 import { FieldPassageSheet } from "@/components/FieldPassageSheet";
+import { FieldLetterSheet } from "@/components/FieldLetterSheet";
 import { FieldReadingSheet } from "@/components/FieldReadingSheet";
 import { LinkWhisper } from "@/components/Links";
 import { SheetShell } from "@/components/OriginSheets";
@@ -56,8 +57,8 @@ const LENSES: {
   { id: "resistance",    pattern: "resistance", label: "recurring resistance",    color: "#e08aaf" },
   { id: "threads",       pattern: "thread",     label: "your recurring language", color: "#88dcba" },
   { id: "motifs",        pattern: "motif",      label: "mythic motifs",           color: "#e9b76b" },
-  { id: "conditions",    pattern: null,         label: "conditions",              color: "#9bb6d6" },
-  { id: "consciousness", pattern: null,         label: "consciousness",           color: "#c4baea" },
+  { id: "conditions",    pattern: "conditions", label: "conditions",              color: "#9bb6d6" },
+  { id: "consciousness", pattern: "consciousness", label: "consciousness",         color: "#c4baea" },
 ];
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -199,6 +200,7 @@ export default function GuideScreen() {
   const [patternsLoaded, setPatternsLoaded] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [readingOpen, setReadingOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
   const [fieldPassageOpen, setFieldPassageOpen] = useState(false);
   const [heroPassageContent, setHeroPassageContent] =
     useState<PractitionerContentDoc | null>(null);
@@ -489,6 +491,26 @@ export default function GuideScreen() {
       }
       return { phrase: null, live: false, weight: 0 };
     }
+    if (lensId === "consciousness") {
+      const leading = patterns.consciousness?.leading;
+      if (!leading) return { phrase: null, live: false, weight: 0 };
+      const weight = patterns.consciousness?.structureCounts?.[leading] ?? 0;
+      if (weight < 1) return { phrase: null, live: false, weight: 0 };
+      return {
+        phrase: `your words stand in the ${leading}`,
+        live: true,
+        weight,
+      };
+    }
+    if (lensId === "conditions") {
+      const n = patterns.conditions?.findings?.length ?? 0;
+      if (n === 0) return { phrase: null, live: false, weight: 0 };
+      return {
+        phrase: `${spellNumber(n)} ${n === 1 ? "weather" : "weathers"} noted`,
+        live: true,
+        weight: n,
+      };
+    }
     return { phrase: null, live: false, weight: 0 };
   }
 
@@ -768,6 +790,23 @@ export default function GuideScreen() {
           </Text>
         )}
 
+        {/* Footer doors retain the canonical order: reflection, letter, guide. */}
+        {profile?.readingsEnabled === true && notes.length >= 7 ? (
+          <LinkWhisper
+            label="a reflection →"
+            onPress={() => setReadingOpen(true)}
+            style={styles.readingLink}
+            testID="guide-reading-link"
+          />
+        ) : null}
+        {!user?.isAnonymous && !!user?.email && notes.length >= 15 ? (
+          <LinkWhisper
+            label="request a letter →"
+            onPress={() => setLetterOpen(true)}
+            style={styles.letterLink}
+            testID="guide-letter-link"
+          />
+        ) : null}
         {/* Permanent footer whisper — the opening text, summoned as a sheet */}
         <LinkWhisper
           label="about the guide"
@@ -775,14 +814,6 @@ export default function GuideScreen() {
           style={styles.aboutLink}
           testID="guide-about-link"
         />
-        {profile?.readingsEnabled === true && notes.length >= 7 ? (
-          <LinkWhisper
-            label="ask for a reading"
-            onPress={() => setReadingOpen(true)}
-            style={styles.readingLink}
-            testID="guide-reading-link"
-          />
-        ) : null}
       </ScrollView>
 
       <SheetShell
@@ -808,6 +839,11 @@ export default function GuideScreen() {
         open={readingOpen}
         uid={user?.uid ?? null}
         onClose={() => setReadingOpen(false)}
+        bottomPad={insets.bottom}
+      />
+      <FieldLetterSheet
+        open={letterOpen}
+        onClose={() => setLetterOpen(false)}
         bottomPad={insets.bottom}
       />
       <FieldPassageSheet
@@ -1065,9 +1101,13 @@ const styles = StyleSheet.create({
 
   aboutLink: {
     alignSelf: "flex-start",
-    marginTop: 44,
+    marginTop: 16,
   },
   readingLink: {
+    alignSelf: "flex-start",
+    marginTop: 44,
+  },
+  letterLink: {
     alignSelf: "flex-start",
     marginTop: 16,
   },
