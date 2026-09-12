@@ -223,6 +223,9 @@ const FIRESTORE_DOCUMENT_LIMIT_BYTES = 1048576;
 // Keep 24 KiB below Firestore's 1 MiB limit after applying its documented
 // storage-size formula. This is a size safety margin, not a content cap.
 const FIRESTORE_SAFE_DOCUMENT_BYTES = 1000 * 1024;
+const PRIMARY_EXEMPLARS_PER_ITEM = 1;
+const EVIDENCE_PAGE_SAFE_DOCUMENT_BYTES = 700 * 1024;
+const EVIDENCE_SCHEMA_VERSION = 1;
 
 function emptyPatternDoc(patternType) {
   return {
@@ -885,11 +888,11 @@ function buildPatternDocs(noteRecords, motifLexicon, consciousnessLexicon) {
 }
 
 /**
- * Keep the established document shape while it fits. Rebuilds no longer use
- * the incremental ledger, but installed clients still read it and thread note
- * sets. Only an oversized thread document receives the explicit compact
- * schema: it removes reconstructible thread note-set duplication while
- * retaining the ledger, every count, offering, and verbatim exemplar sentence.
+ * Root pattern docs retain their counts, note sets, ledgers, offerings, and
+ * newest exemplar for every item. The older two entries from each capped
+ * exemplar set live in bounded evidence pages below that root. This retains
+ * the exact evidence set without letting repeated verbatim sentences make the
+ * root document exceed Firestore's 1 MiB limit.
  */
 function firestoreStringBytes(value) {
   return Buffer.byteLength(value, "utf8") + 1;
@@ -934,20 +937,89 @@ function firestoreDocumentBytes(path, doc) {
   );
 }
 
-function compactThreadStorageProjection(doc) {
-  const compact = { ...doc, schemaVersion: 2 };
-  delete compact.itemNotes;
-  return compact;
+function evidencePageId(index) {
+  return `page_${String(index).padStart(4, "0")}`;
 }
 
-function patternStorageProjectionForPath(type, path, doc) {
-  if (firestoreDocumentBytes(path, doc) < FIRESTORE_SAFE_DOCUMENT_BYTES) return doc;
-  if (type !== "thread") return doc;
-  return compactThreadStorageProjection(doc);
+function splitPatternEvidenceForStorage(type, path, doc, generation, updatedAt, options = {}) {
+  const root = {
+    ...doc,
+    exemplars: {},
+    evidenceSchemaVersion: EVIDENCE_SCHEMA_VERSION,
+    evidenceGeneration: generation,
+    evidencePrimaryExemplarsPerItem: PRIMARY_EXEMPLARS_PER_ITEM,
+    evidencePageCount: 0,
+  };
+  const overflowByKey = [];
+  for (const [key, entries] of Object.entries(doc.exemplars || {})) {
+    const keep = entries.slice(-PRIMARY_EXEMPLARS_PER_ITEM);
+    const overflow = entries.slice(0, -PRIMARY_EXEMPLARS_PER_ITEM);
+    root.exemplars[key] = keep;
+    if (overflow.length) overflowByKey.push([key, overflow]);
+  }
+
+  const pages = [];
+  let pageEntries = {};
+  const pageData = (index, exemplars) => ({
+    evidenceSchemaVersion: EVIDENCE_SCHEMA_VERSION,
+    evidenceGeneration: generation,
+    patternType: type,
+    pageIndex: index,
+    updatedAt,
+    exemplars,
+  });
+  const flush = () => {
+    if (!Object.keys(pageEntries).length) return;
+    const index = pages.length;
+    pages.push({ id: evidencePageId(index), data: pageData(index, pageEntries) });
+    pageEntries = {};
+  };
+  for (const [key, entries] of overflowByKey) {
+    const candidate = { ...pageEntries, [key]: entries };
+    const candidatePath = `${path}/evidence/${evidencePageId(pages.length)}`;
+    if (
+      Object.keys(pageEntries).length &&
+      firestoreDocumentBytes(candidatePath, pageData(pages.length, candidate)) >=
+        EVIDENCE_PAGE_SAFE_DOCUMENT_BYTES
+    ) {
+      flush();
+    }
+    const single = { ...pageEntries, [key]: entries };
+    const singlePath = `${path}/evidence/${evidencePageId(pages.length)}`;
+    if (firestoreDocumentBytes(singlePath, pageData(pages.length, single)) >= EVIDENCE_PAGE_SAFE_DOCUMENT_BYTES) {
+      const error = new Error(`pattern ${type} evidence item exceeds page size budget`);
+      error.code = "resource-exhausted";
+      throw error;
+    }
+    pageEntries = single;
+  }
+  flush();
+  root.evidencePageCount = pages.length;
+  if (!options.allowOversizeRoot && firestoreDocumentBytes(path, root) >= FIRESTORE_SAFE_DOCUMENT_BYTES) {
+    const error = new Error(
+      `pattern ${type} root exceeds the ${FIRESTORE_SAFE_DOCUMENT_BYTES}-byte Firestore safety budget`
+        + ` (hard limit ${FIRESTORE_DOCUMENT_LIMIT_BYTES} bytes)`
+    );
+    error.code = "resource-exhausted";
+    throw error;
+  }
+  return { root, pages };
 }
 
-function serializedDocumentBytes(doc) {
-  return Buffer.byteLength(JSON.stringify(doc), "utf8");
+function hydratePatternEvidence(root, pages) {
+  const hydrated = { ...root, exemplars: { ...(root.exemplars || {}) } };
+  const overflow = new Map();
+  for (const page of [...pages].sort((a, b) => a.pageIndex - b.pageIndex)) {
+    for (const [key, entries] of Object.entries(page.exemplars || {})) {
+      const existing = overflow.get(key) || [];
+      existing.push(...entries);
+      overflow.set(key, existing);
+    }
+  }
+  for (const [key, entries] of overflow) {
+    hydrated.exemplars[key] = [...entries, ...(hydrated.exemplars[key] || [])];
+  }
+  return hydrated;
 }
 
 function snapshotRevision(snap) {
@@ -1045,14 +1117,21 @@ async function rebuildPatternsForUser(uid, options = {}) {
   });
 
   return db.runTransaction(async (tx) => {
-    const [liveStateSnap, liveNotesSnap, liveMotifSnap, liveConsciousnessSnap, ...liveOfferingSnaps] =
-      await Promise.all([
-        tx.get(stateRef),
-        tx.get(notesRef),
-        tx.get(motifLexiconRef),
-        tx.get(consciousnessLexiconRef),
-        ...offeringRefs.map((ref) => tx.get(ref)),
-      ]);
+    const patternTypes = Object.keys(built.docs);
+    const evidenceCollections = patternTypes.map((type) =>
+      db.collection(`users/${uid}/patterns/${type}/evidence`)
+    );
+    const liveReads = await Promise.all([
+      tx.get(stateRef),
+      tx.get(notesRef),
+      tx.get(motifLexiconRef),
+      tx.get(consciousnessLexiconRef),
+      ...offeringRefs.map((ref) => tx.get(ref)),
+      ...evidenceCollections.map((ref) => tx.get(ref)),
+    ]);
+    const [liveStateSnap, liveNotesSnap, liveMotifSnap, liveConsciousnessSnap] = liveReads;
+    const liveOfferingSnaps = liveReads.slice(4, 4 + offeringRefs.length);
+    const liveEvidenceSnaps = liveReads.slice(4 + offeringRefs.length);
     if (generationDisposition(liveStateSnap.data(), generation) === "coalesced") {
       return { scanned: 0, processed: 0, unsupportedConditionFindings: 0, coalesced: true };
     }
@@ -1072,19 +1151,23 @@ async function rebuildPatternsForUser(uid, options = {}) {
     }
 
     const now = Timestamp.now();
-    for (const [type, data] of Object.entries(built.docs)) {
+    for (const [index, [type, data]] of Object.entries(built.docs).entries()) {
       data.updatedAt = now;
       const ref = db.doc(`users/${uid}/patterns/${type}`);
-      const projected = patternStorageProjectionForPath(type, ref.path, data);
-      if (firestoreDocumentBytes(ref.path, projected) >= FIRESTORE_SAFE_DOCUMENT_BYTES) {
-        const error = new Error(
-          `pattern ${type} document exceeds the ${FIRESTORE_SAFE_DOCUMENT_BYTES}-byte Firestore safety budget after projection`
-            + ` (hard limit ${FIRESTORE_DOCUMENT_LIMIT_BYTES} bytes)`
-        );
-        error.code = "resource-exhausted";
-        throw error;
+      const stored = splitPatternEvidenceForStorage(type, ref.path, data, generation, now);
+      tx.set(ref, stored.root);
+      const nextPagePaths = new Set();
+      for (const page of stored.pages) {
+        const pageRef = ref.collection("evidence").doc(page.id);
+        nextPagePaths.add(pageRef.path);
+        tx.set(pageRef, page.data);
       }
-      tx.set(ref, projected);
+      // Every current page is read before writes. Pages absent from this
+      // generation are deleted in the same atomic commit, so stale evidence
+      // can never be attached to a newly published root.
+      for (const existing of liveEvidenceSnaps[index].docs) {
+        if (!nextPagePaths.has(existing.ref.path)) tx.delete(existing.ref);
+      }
     }
     built.consciousness.updatedAt = now;
     built.conditions.updatedAt = now;
@@ -1266,8 +1349,8 @@ module.exports = {
     buildPatternDocs,
     consciousnessLexiconFromData,
     phraseHygiene,
-    patternStorageProjectionForPath,
-    serializedDocumentBytes,
+    splitPatternEvidenceForStorage,
+    hydratePatternEvidence,
     firestoreDocumentBytes,
     rebuildInputFingerprint,
     sameRebuildInputs,

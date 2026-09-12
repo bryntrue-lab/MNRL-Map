@@ -95,6 +95,14 @@ service cloud.firestore {
       match /patterns/{patternType} {
         allow read:  if request.auth.uid == uid;
         allow write: if false;
+
+        // Overflow evidence pages are server-published with their parent
+        // pattern generation. Owners may read the complete capped evidence;
+        // clients can never forge, replace, or delete pages.
+        match /evidence/{pageId} {
+          allow read: if request.auth.uid == uid;
+          allow write: if false;
+        }
       }
 
       // ── Founder-gated readings — callable writes, owner reads ─────────────

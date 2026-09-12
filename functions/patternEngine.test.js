@@ -262,22 +262,18 @@ for (let seed = 0; seed < 16; seed++) {
   );
 }
 
-// Storage projection must remove only reconstructible thread note-set
-// repetition. Counts, offerings, ledgers, and verbatim exemplar evidence
-// survive. The synthetic shape deliberately exceeds Firestore's limit before
-// projection and remains bounded afterwards without lowering pattern counts.
+// Storage overflow keeps the old root shape valid: all counts, note sets,
+// ledgers, offerings, and the newest exemplar survive on the root. Earlier
+// capped exemplars are preserved in bounded owner-readable evidence pages.
 const storageFixture = __test.emptyPatternDoc("thread");
-storageFixture.processed = Array.from({ length: 1500 }, (_, index) => `ledger-${index}`);
-for (let index = 0; index < 600; index++) {
+storageFixture.processed = Array.from({ length: 100 }, (_, index) => `ledger-${index}`);
+for (let index = 0; index < 1200; index++) {
   const key = `synthetic pattern ${index}`;
-  storageFixture.itemCounts[key] = 50;
-  storageFixture.itemNotes[key] = Array.from(
-    { length: 50 },
-    (_, noteIndex) => `note-${index}-${noteIndex}-${"x".repeat(36)}`
-  );
+  storageFixture.itemCounts[key] = 3;
+  storageFixture.itemNotes[key] = [`note-${index}-a`, `note-${index}-b`, `note-${index}-c`];
   storageFixture.exemplars[key] = Array.from({ length: 3 }, (_, exemplarIndex) => ({
     fieldNoteId: `evidence-${index}-${exemplarIndex}`,
-    text: "verbatim evidence",
+    text: "verbatim evidence ".repeat(18),
     noteType: "other",
     source: "spontaneous",
     encounterRef: null,
@@ -285,52 +281,57 @@ for (let index = 0; index < 600; index++) {
   }));
 }
 storageFixture.offerings["synthetic pattern 0"] = { key: "synthetic pattern 0", text: "held line" };
-const storedThread = __test.patternStorageProjectionForPath(
+const storedThread = __test.splitPatternEvidenceForStorage(
   "thread",
   "users/test-user/patterns/thread",
-  storageFixture
+  storageFixture,
+  7,
+  new Date("2026-01-01T00:00:00Z")
 );
-assert.deepEqual(storedThread.itemCounts, storageFixture.itemCounts);
-assert.deepEqual(storedThread.offerings, storageFixture.offerings);
-assert.deepEqual(storedThread.processed, storageFixture.processed);
-assert.equal("itemNotes" in storedThread, false);
+assert.deepEqual(storedThread.root.itemCounts, storageFixture.itemCounts);
+assert.deepEqual(storedThread.root.itemNotes, storageFixture.itemNotes);
+assert.deepEqual(storedThread.root.offerings, storageFixture.offerings);
+assert.deepEqual(storedThread.root.processed, storageFixture.processed);
 assert.equal(
-  storedThread.exemplars["synthetic pattern 0"][0].fieldNoteId,
-  storageFixture.exemplars["synthetic pattern 0"][0].fieldNoteId
+  storedThread.root.exemplars["synthetic pattern 0"][0].fieldNoteId,
+  storageFixture.exemplars["synthetic pattern 0"][2].fieldNoteId
 );
-assert.equal(
-  storedThread.exemplars["synthetic pattern 0"][0].text,
-  storageFixture.exemplars["synthetic pattern 0"][0].text,
-  "verbatim exemplar evidence remains available to installed clients"
-);
-assert.equal(storedThread.schemaVersion, 2);
-assert.ok(
-  __test.serializedDocumentBytes(storageFixture) > 1048576,
-  "fixture must exercise the former oversized shape"
+assert.deepEqual(
+  storedThread.root.exemplars["synthetic pattern 0"],
+  storageFixture.exemplars["synthetic pattern 0"].slice(-1),
+  "an older root-only reader retains the newest valid capped-exemplar subset"
 );
 assert.ok(
   __test.firestoreDocumentBytes("users/test-user/patterns/thread", storageFixture) > 1048576,
-  "documented Firestore estimate must exceed the hard document limit before compaction"
+  "fixture must exercise the former oversized root shape"
 );
 assert.ok(
-  __test.firestoreDocumentBytes("users/test-user/patterns/thread", storedThread) < 1000 * 1024,
-  "projected thread document must fit the conservative Firestore safety budget"
+  __test.firestoreDocumentBytes("users/test-user/patterns/thread", storedThread.root) < 1000 * 1024,
+  "primary root must fit the Firestore safety budget"
 );
-const richThread = __test.emptyPatternDoc("thread");
-richThread.itemCounts.river = 2;
-richThread.itemNotes.river = ["a", "b"];
-richThread.processed = ["a", "b"];
-richThread.exemplars.river = [
-  { fieldNoteId: "b", text: "the river returns", source: "spontaneous", capturedAt: 1 },
-];
-assert.equal(
-  __test.patternStorageProjectionForPath(
-    "thread",
-    "users/test-user/patterns/thread",
-    richThread
-  ),
-  richThread,
-  "fitting documents preserve the installed-client schema unchanged"
+for (const page of storedThread.pages) {
+  assert.equal(page.data.evidenceGeneration, 7);
+  assert.equal(page.data.updatedAt.toISOString(), "2026-01-01T00:00:00.000Z");
+  assert.ok(
+    __test.firestoreDocumentBytes(
+      `users/test-user/patterns/thread/evidence/${page.id}`,
+      page.data
+    ) < 700 * 1024,
+    "every evidence page must fit its conservative budget"
+  );
+}
+const rehydratedThread = __test.hydratePatternEvidence(
+  storedThread.root,
+  storedThread.pages.map((page) => page.data)
+);
+assert.deepEqual(rehydratedThread.itemCounts, storageFixture.itemCounts);
+assert.deepEqual(rehydratedThread.itemNotes, storageFixture.itemNotes);
+assert.deepEqual(rehydratedThread.processed, storageFixture.processed);
+assert.deepEqual(rehydratedThread.offerings, storageFixture.offerings);
+assert.deepEqual(
+  rehydratedThread.exemplars,
+  storageFixture.exemplars,
+  "root plus overflow pages must rehydrate the complete original capped evidence set"
 );
 assert.equal(
   __test.firestoreDocumentBytes("users/a/patterns/thread", {

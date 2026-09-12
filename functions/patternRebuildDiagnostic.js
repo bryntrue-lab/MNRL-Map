@@ -67,18 +67,39 @@ function utf8Bytes(value) {
 }
 
 function threadStorageSummary(doc, path) {
-  const projected = __test.patternStorageProjectionForPath("thread", path, doc);
+  const stored = __test.splitPatternEvidenceForStorage(
+    "thread",
+    path,
+    doc,
+    0,
+    new Date(0),
+    { allowOversizeRoot: true }
+  );
   const exemplarEntries = Object.values(doc.exemplars || {}).flat();
+  const rootExemplarEntries = Object.values(stored.root.exemplars || {}).flat();
   return {
-    // JSON totals are included only as a contribution comparison. The
-    // Firestore totals use the documented document-name/field/value formula.
-    estimatedJsonBytesBeforeProjection: utf8Bytes(doc),
-    estimatedJsonBytesAfterProjection: utf8Bytes(projected),
-    estimatedFirestoreBytesBeforeProjection: __test.firestoreDocumentBytes(path, doc),
-    estimatedFirestoreBytesAfterProjection: __test.firestoreDocumentBytes(path, projected),
-    storageSchemaVersion: projected.schemaVersion ?? 1,
+    // JSON totals are only a contribution comparison. Firestore totals use
+    // the documented document-name/field/value formula.
+    estimatedJsonBytesBeforeEvidenceSplit: utf8Bytes(doc),
+    estimatedJsonBytesPrimaryRoot: utf8Bytes(stored.root),
+    estimatedFirestoreBytesBeforeEvidenceSplit: __test.firestoreDocumentBytes(path, doc),
+    estimatedFirestoreBytesPrimaryRoot: __test.firestoreDocumentBytes(path, stored.root),
+    primaryExemplarsPerItem: stored.root.evidencePrimaryExemplarsPerItem,
+    overflowPageCount: stored.pages.length,
+    maxEstimatedOverflowPageBytes: stored.pages.reduce(
+      (maximum, page) =>
+        Math.max(
+          maximum,
+          __test.firestoreDocumentBytes(`${path}/evidence/${page.id}`, page.data)
+        ),
+      0
+    ),
+    rootFitsSafetyBudget:
+      __test.firestoreDocumentBytes(path, stored.root) < 1000 * 1024,
     itemCountEntries: Object.keys(doc.itemCounts || {}).length,
     exemplarEntries: exemplarEntries.length,
+    primaryExemplarEntries: rootExemplarEntries.length,
+    overflowExemplarEntries: exemplarEntries.length - rootExemplarEntries.length,
     exemplarTextUtf8Bytes: exemplarEntries.reduce(
       (total, entry) => total + Buffer.byteLength(entry.text || "", "utf8"),
       0
@@ -171,6 +192,16 @@ async function main() {
   const patterns = new Map(
     patternDocuments.map((document) => [documentId(document), documentData(document)])
   );
+  const patternEvidenceDocuments = new Map(
+    await Promise.all(
+      ["thread", "motif", "resistance"].map(async (type) => [
+        type,
+        (await listDocuments(
+          `documents/users/${encodeURIComponent(userId)}/patterns/${type}/evidence`
+        )).map(documentData),
+      ])
+    )
+  );
 
   if (mode === "profile") {
     const started = process.hrtime.bigint();
@@ -206,6 +237,17 @@ async function main() {
   const updateTimes = expectedDocs.map((data) => data.updatedAt?.toMillis?.()).filter(Boolean);
   const state = patterns.get("_state") || {};
   const conditions = patterns.get("conditions") || {};
+  const evidenceConsistent = ["thread", "motif", "resistance"].every((type) => {
+    const root = patterns.get(type) || {};
+    const pageCount = Number(root.evidencePageCount || 0);
+    const pages = patternEvidenceDocuments.get(type) || [];
+    if (!Number.isInteger(pageCount) || pageCount < 0) return false;
+    if (pageCount === 0) return true;
+    const matching = pages
+      .filter((page) => page.evidenceGeneration === root.evidenceGeneration)
+      .sort((left, right) => Number(left.pageIndex) - Number(right.pageIndex));
+    return matching.length === pageCount && matching.every((page, index) => page.pageIndex === index);
+  });
   console.log(
     JSON.stringify({
       mode,
@@ -216,6 +258,7 @@ async function main() {
       conditionsNotesReadMatches: conditions.notesRead === notes.length,
       conditionsHasFirstNoteAt: Boolean(conditions.firstNoteAt),
       atomicUpdatedAt: updateTimes.length === expectedPatternIds.length && new Set(updateTimes).size === 1,
+       evidenceGenerationConsistent: evidenceConsistent,
       generationCommitted:
         Number(state.requestedGeneration || 0) === Number(state.committedGeneration || 0),
     })

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { collection, doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -28,13 +28,13 @@ import { useUser } from "@/context/UserContext";
 import { db, functions } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
+import { subscribePatternDocuments } from "@/lib/patternEvidence";
 import {
   contentWords,
   displayItem,
   spellNumber,
   suppressForDisplay,
   todaysArrivals,
-  threadItemNoteSets,
   tokenStream,
 } from "@/lib/patternText";
 import type {
@@ -96,10 +96,7 @@ type PoolItem = {
 
 /** All counted items pooled across docs; a key present in both thread and
  *  a lexicon doc keeps the lexicon entry (richer — can carry an offering). */
-function poolItems(
-  patterns: Patterns,
-  threadNoteSets: Record<string, string[]>
-): PoolItem[] {
+function poolItems(patterns: Patterns): PoolItem[] {
   const byKey = new Map<string, PoolItem>();
   for (const type of ["thread", "motif", "resistance"] as PatternType[]) {
     const doc = patterns[type];
@@ -116,10 +113,7 @@ function poolItems(
         lexicon: type !== "thread",
         phrase: key.includes(" "),
         latestMs,
-        noteIds:
-          type === "thread"
-            ? doc.itemNotes?.[key] ?? threadNoteSets[key] ?? []
-            : doc.itemNotes?.[key] ?? [],
+        noteIds: doc.itemNotes?.[key] ?? [],
       };
       const existing = byKey.get(key);
       if (!existing || (item.lexicon && !existing.lexicon)) byKey.set(key, item);
@@ -227,17 +221,17 @@ export default function GuideScreen() {
         setNotes(snap.docs.map((d) => ({ id: d.id, ...(d.data() as FieldNoteDoc) }))),
       (err) => console.warn("guide notes", err)
     );
-    const unsubPatterns = onSnapshot(
-      collection(db, "users", user.uid, "patterns"),
-      (snap) => {
-        const next: Patterns = {};
-        snap.docs.forEach((d) => {
-          next[d.id as PatternType] = d.data() as PatternDoc;
-        });
+    const unsubPatterns = subscribePatternDocuments(
+      user.uid,
+      (next) => {
         setPatterns(next);
         setPatternsLoaded(true);
       },
-      (err) => console.warn("guide patterns", err)
+      (err) => {
+        setPatterns({});
+        setPatternsLoaded(false);
+        console.warn("guide patterns", err);
+      }
     );
     return () => {
       unsubNotes();
@@ -245,8 +239,8 @@ export default function GuideScreen() {
     };
   }, [user]);
 
-  // ── Self-heal: both rich and compact thread schemas retain this legacy
-  // ledger, so installed clients and this client share the same gate. ──
+  // ── Self-heal (D.3 Part A gate): if any content-ready note is missing
+  //    from every ledger, run the backfill callable once per session. ──
   useEffect(() => {
     if (selfHealAttempted || !user || !patternsLoaded || notes.length === 0) return;
     const ledgered = new Set<string>();
@@ -305,20 +299,13 @@ export default function GuideScreen() {
     : 0;
 
   const arrivals = useMemo(() => todaysArrivals(notes), [notes]);
-  const threadNoteSets = useMemo(
-    () =>
-      patterns.thread?.schemaVersion === 2
-        ? threadItemNoteSets(Object.keys(patterns.thread?.itemCounts ?? {}), notes)
-        : {},
-    [patterns.thread, notes]
-  );
   // ── Pooled, display-suppressed items ─────────────────────────────
   const visibleItems = useMemo(() => {
-    const pooled = poolItems(patterns, threadNoteSets);
+    const pooled = poolItems(patterns);
     const itemNotes: Record<string, string[] | undefined> = {};
     for (const it of pooled) itemNotes[it.key] = it.noteIds;
     return suppressForDisplay(pooled, itemNotes);
-  }, [patterns, threadNoteSets]);
+  }, [patterns]);
 
   const established = useMemo(
     () => visibleItems.filter((i) => i.count >= 3).sort(heroOrder),

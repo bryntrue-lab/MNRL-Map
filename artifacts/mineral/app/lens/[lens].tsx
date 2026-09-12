@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import { collection, doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ import { useUser } from "@/context/UserContext";
 import { db } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import { fieldNotesQuery } from "@/lib/firestore";
+import { subscribePatternDocuments } from "@/lib/patternEvidence";
 import { ageAt, resolve } from "@/lib/spiral";
 import { spellNumber } from "@/lib/patternText";
 import type {
@@ -166,13 +167,15 @@ export default function LensScreen() {
 
   useEffect(() => {
     if (!user || !meta?.pattern) return;
-    const unsubPatterns = onSnapshot(
-      collection(db, "users", user.uid, "patterns"),
-      (snap) => {
-        const found = snap.docs.find((d) => d.id === meta.pattern);
-        setDoc(found ? (found.data() as PatternDoc) : null);
+    const unsubPatterns = subscribePatternDocuments(
+      user.uid,
+      (patterns) => {
+        setDoc(patterns[meta.pattern!] ?? null);
       },
-      (err) => console.warn("lens patterns", err)
+      (err) => {
+        setDoc(null);
+        console.warn("lens patterns", err);
+      }
     );
     const unsubNotes =
       lens === "resistance"
