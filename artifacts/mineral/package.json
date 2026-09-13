@@ -4,6 +4,10 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "preinstall": "node scripts/guard-build-profile.js",
+    "config:development": "node scripts/select-app-config.js development",
+    "config:production": "node scripts/select-app-config.js production",
+    "test:config": "node --test scripts/config.test.js",
     "dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --localhost --port $PORT",
     "dev:client": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm exec expo start --dev-client --localhost --port $PORT",
     "build": "node scripts/build.js",
