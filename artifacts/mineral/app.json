@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Mineral",
+    "name": "Mineral Dev",
     "slug": "mineral",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mineral",
+    "scheme": "mineral-dev",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -15,9 +15,9 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.madebymineral.quartz",
+      "bundleIdentifier": "com.madebymineral.quartz.dev",
       "buildNumber": "1",
-      "googleServicesFile": "./GoogleService-Info.plist",
+      "googleServicesFile": "./GoogleService-Info.dev.plist",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Mineral uses your microphone to record voice reflections that become field notes.",
         "NSCameraUsageDescription": "Mineral uses your camera to add images to field notes.",
