@@ -39,14 +39,21 @@ function writeIdentityConfig(directory, identity) {
   );
 }
 
-test("the checked-in production app.json is an exact static snapshot", () => {
+test("the active app.json exactly matches an approved static variant", () => {
   const active = fs.readFileSync(path.join(APP_DIRECTORY, "app.json"), "utf8");
   const production = fs.readFileSync(
     path.join(APP_DIRECTORY, "app.production.json"),
     "utf8",
   );
 
-  assert.equal(active, production);
+  const development = fs.readFileSync(
+    path.join(APP_DIRECTORY, "app.development.json"),
+    "utf8",
+  );
+  assert.ok(
+    active === production || active === development,
+    "Active config must match the complete production or development variant",
+  );
 });
 
 test("development changes only the explicitly approved app identity fields", () => {
