@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic"
+      }
     },
     "preview": {
       "distribution": "internal",
