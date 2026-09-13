@@ -1,0 +1,36 @@
+We detected that 'artifacts/mineral' is a pnpm workspace
+Running "pnpm install --frozen-lockfile" in /Users/expo/workingdir/build directory
+Scope: all 9 workspace projects
+? Verifying lockfile against supply-chain policies (1570 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1594
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1594, reused 0, downloaded 102, added 4
+Progress: resolved 1594, reused 0, downloaded 558, added 61
+Progress: resolved 1594, reused 0, downloaded 754, added 78
+Progress: resolved 1594, reused 0, downloaded 1000, added 96
+Progress: resolved 1594, reused 0, downloaded 1158, added 109
+✓ Lockfile passes supply-chain policies (1570 entries in 5.5s)
+Progress: resolved 1594, reused 0, downloaded 1398, added 125
+Progress: resolved 1594, reused 0, downloaded 1436, added 129
+Progress: resolved 1594, reused 0, downloaded 1564, added 459
+Progress: resolved 1594, reused 0, downloaded 1564, added 942
+Progress: resolved 1594, reused 0, downloaded 1564, added 1188
+Progress: resolved 1594, reused 0, downloaded 1564, added 1327
+Progress: resolved 1594, reused 0, downloaded 1564, added 1454
+Progress: resolved 1594, reused 0, downloaded 1564, added 1515
+Progress: resolved 1594, reused 0, downloaded 1564, added 1594, done
+devDependencies:
++ firebase-tools 15.19.1
++ prettier 3.8.1
++ typescript 5.9.3
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac; node artifacts/mineral/scripts/guard-build-profile.js'
+. preinstall: Build profile matches the active static app identity.
+. preinstall: Done
+artifacts/mineral preinstall$ node scripts/guard-build-profile.js
+artifacts/mineral preinstall: Build profile matches the active static app identity.
+artifacts/mineral preinstall: Done
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @firebase/util@1.15.1, @firebase/util@1.15.2, esbuild@0.27.3, protobufjs@7.5.8, re2@1.24.1
+Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+pnpm install --frozen-lockfile exited with non-zero code: 1

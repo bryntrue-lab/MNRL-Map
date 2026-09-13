@@ -1,4 +1,6 @@
 # Mineral Memory
+ 
+- [Cloud pnpm version](cloud-pnpm-version.md) — pin native cloud installs to the locally verified package manager; image defaults can change script-policy behavior.
 
 - [Firebase v12 React Native auth](firebase-v12-rn.md) — getReactNativePersistence removed in v12; use inMemoryPersistence on native or getAuth on web.
 - [Firebase project config](firebase-project-config.md) — anonymous auth now ON (was off → 400 ADMIN_ONLY_OPERATION); provider toggles work via Identity Toolkit Admin API + service account.
