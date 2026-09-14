@@ -1,0 +1,49 @@
+{
+  "title": "What Breaks Your Heart",
+  "subtitle": "care becoming specific",
+  "mapEpigraph": "You are not heartbroken by everything.",
+  "phase": "signal",
+  "order": 18,
+  "minTurn": 1,
+  "audioPath": "encounters/what-breaks-your-heart/audio.mp3",
+  "audioFile": "enc18_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r18-cannot-scroll-past",
+          "text": "What can you not scroll past?"
+        },
+        {
+          "id": "r18-how-long-awake",
+          "text": "How long has this particular care been awake?"
+        },
+        {
+          "id": "r18-scale",
+          "text": "What scale of response would honor it without consuming you?"
+        },
+        {
+          "id": "r18-crystallizing",
+          "text": "What breaks my heart—and where does my care become specific?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "One form",
+      "instruction": "Give the heartbreak one form: a sentence, image, gesture, donation, boundary, or act of attention. Choose the scale that does not consume you.",
+      "durationLabel": "today"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Let yourself be moved without making yourself responsible for everything."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

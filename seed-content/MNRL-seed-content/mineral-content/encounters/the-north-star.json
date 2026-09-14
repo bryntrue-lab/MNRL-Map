@@ -1,0 +1,45 @@
+{
+  "title": "The North Star",
+  "subtitle": "orientation without a map",
+  "mapEpigraph": "Name the fixed light.",
+  "phase": "signal",
+  "order": 19,
+  "minTurn": 1,
+  "audioPath": "encounters/the-north-star/audio.mp3",
+  "audioFile": "enc19_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r19-still-matter",
+          "text": "What truth, quality, or orientation would still matter across many forms of work?"
+        },
+        {
+          "id": "r19-refuse-to-abandon",
+          "text": "What do you refuse to abandon even when the plan changes?"
+        },
+        {
+          "id": "r19-crystallizing",
+          "text": "The fixed light I want my work to face is…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The fixed light",
+      "instruction": "Choose one word or brief phrase for your north star. Place it somewhere visible without explaining it.",
+      "durationLabel": "5 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Use it as orientation, not measurement."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

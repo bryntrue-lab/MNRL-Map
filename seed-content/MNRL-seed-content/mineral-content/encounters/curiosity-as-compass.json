@@ -1,0 +1,45 @@
+{
+  "title": "Curiosity as Compass",
+  "subtitle": "the animal of attention",
+  "mapEpigraph": "Your attention is an animal.",
+  "phase": "signal",
+  "order": 17,
+  "minTurn": 1,
+  "audioPath": "encounters/curiosity-as-compass/audio.mp3",
+  "audioFile": "enc17_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r17-three-things",
+          "text": "After following your attention without a task, what three things pulled you?"
+        },
+        {
+          "id": "r17-shared",
+          "text": "What do they share, if anything?"
+        },
+        {
+          "id": "r17-crystallizing",
+          "text": "What pulled my attention today—and what remains alive in it?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Off the leash",
+      "instruction": "Take a fifteen-minute walk without a phone or destination. Follow what pulls. Record three points without forcing them into a pattern.",
+      "durationLabel": "15 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Leave the leash off for one more hour."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}
