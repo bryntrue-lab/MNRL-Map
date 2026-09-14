@@ -20,6 +20,8 @@ import type { PhaseId } from "@/types/firestore";
 export const MS_YEAR = 365.2425 * 24 * 3600 * 1000;
 export const YEARS_PER_TURN = 28;
 export const MAX_AGE = 84; // three turns on the map
+/** Last date position with a supported season title before turn four. */
+export const MAX_DATE_AGE = MAX_AGE - 0.2;
 
 export type Quarter = "east" | "south" | "west" | "north";
 
@@ -331,6 +333,58 @@ export function dateAtAge(birth: Date, age: number): Date {
 /** "April 2012" */
 export function monthYearLabel(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+/**
+ * The wander date selector follows one complete life cycle into the future,
+ * while remaining inside the supported three-cycle map positions. The map's
+ * terminal age (84) starts turn four, which has no season title; the picker
+ * therefore ends at MAX_DATE_AGE, not a silently truncated 84-year date.
+ * Calendar shifts are used for the user-facing cycle horizon.
+ */
+export interface OriginDateRange {
+  minimumDate: Date;
+  maximumDate: Date;
+}
+
+export function originDateRange(birth: Date, today: Date): OriginDateRange {
+  const minimumDate = new Date(birth.getTime());
+  const cycleHorizon = shiftCalendarYears(today, YEARS_PER_TURN);
+  const mapHorizon = dateAtAge(birth, MAX_DATE_AGE);
+  const maximumDate = new Date(
+    Math.max(minimumDate.getTime(), Math.min(cycleHorizon.getTime(), mapHorizon.getTime()))
+  );
+  return { minimumDate, maximumDate };
+}
+
+/** Keep the spinner's initial value valid even across a midnight refresh. */
+export function originDateInRange(date: Date, range: OriginDateRange): Date {
+  return new Date(
+    Math.max(range.minimumDate.getTime(), Math.min(date.getTime(), range.maximumDate.getTime()))
+  );
+}
+
+/** Convert a selected calendar date into the pendulum's bounded age. */
+export function originAgeForDate(birth: Date, selected: Date): number {
+  // Date selection can land exactly on birth (age 0). The drag path keeps
+  // its .2 minimum to stay off the still point; that interaction guard does
+  // not apply to a date chosen from the bounded native picker.
+  return Math.max(0, Math.min(ageAt(birth, selected), MAX_DATE_AGE));
+}
+
+/** The season title is the wander caption; the station remains map-only. */
+export function seasonTitleForAge(age: number): string | null {
+  return seasonFor(resolve(age))?.title ?? null;
+}
+
+/**
+ * The shared pendulum settle path. Origin drag settling and date selection
+ * both use this same quadratic easing so a date never cuts the needle.
+ */
+export function originNeedleAgeAt(from: number, target: number, progress: number): number {
+  const k = Math.max(0, Math.min(1, progress));
+  const eased = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  return from + (target - from) * eased;
 }
 
 /** The full ritual date — "Saturday, July 21, 2012". */

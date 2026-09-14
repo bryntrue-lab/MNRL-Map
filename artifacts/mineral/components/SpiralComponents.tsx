@@ -382,7 +382,10 @@ export function OriginMap({
     return vis;
   }, [crossings, labelPos, visual.stationOpacity]);
 
-  const now = pt(Math.max(0.2, Math.min(displayAge, MAX_AGE - 0.2)));
+  // The date picker may intentionally select the exact birth position. Drag
+  // input still keeps its existing .2…MAX-.2 bounds; the renderer itself can
+  // draw the valid terminal map points without truncating the caption date.
+  const now = pt(Math.max(0, Math.min(displayAge, MAX_AGE)));
   const nowStation = STATION[resolve(displayAge).quarter];
   const needleLen = Math.hypot(now.x - CX, now.y - CY);
   const cw = displayAge >= 14 ? pt(displayAge - 14) : null;

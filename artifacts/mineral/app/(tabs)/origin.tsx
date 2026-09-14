@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
 import { doc as fsDoc, getDoc, onSnapshot } from "firebase/firestore";
@@ -22,6 +23,7 @@ import { LinkWhisper } from "@/components/Links";
 import {
   CompanionsSheet,
   MapTeachingSheet,
+  OriginDatePickerSheet,
   QuietToast,
   ReadingSheet,
   type MapTeaching,
@@ -53,6 +55,11 @@ import {
   dayInTurn,
   dayNumberWord,
   monthYearLabel,
+  originAgeForDate,
+  originDateRange,
+  originDateInRange,
+  originNeedleAgeAt,
+  seasonTitleForAge,
   phaseOfDay,
   practiceTurnOf,
   pt,
@@ -379,7 +386,7 @@ export default function OriginScreen() {
       const start = nowMs();
       const step = () => {
         const k = clamp01((nowMs() - start) / 900);
-        setDisplayAge(from + (target - from) * easeInOutQuad(k));
+        setDisplayAge(originNeedleAgeAt(from, target, k));
         if (k < 1) swingRaf.current = requestAnimationFrame(step);
         else {
           swingRaf.current = null;
@@ -647,6 +654,39 @@ export default function OriginScreen() {
       swingTo(Math.max(0.2, Math.min(age, MAX_AGE - 0.2)));
     },
     [swingTo]
+  );
+
+  // The wander caption's date is a native spinner on iOS/Android. Its
+  // selection is still a life position, so it enters through the same
+  // pendulum settle path as every other swing.
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [datePickerValue, setDatePickerValue] = useState<Date | null>(null);
+  const dateRange = useMemo(
+    () => (birthDate ? originDateRange(birthDate, now) : null),
+    [birthDate, now]
+  );
+  const toggleDatePicker = useCallback(() => {
+    if (Platform.OS === "web" || !birthDate) return;
+    if (!datePickerOpen && dateRange) {
+      setDatePickerValue(originDateInRange(dateAtAge(birthDate, displayAge), dateRange));
+    }
+    setDatePickerOpen((open) => !open);
+  }, [birthDate, datePickerOpen, dateRange, displayAge]);
+  const onDatePickerChange = useCallback(
+    (event: DateTimePickerEvent, selected?: Date) => {
+      if (Platform.OS === "android") setDatePickerOpen(false);
+      if (event.type !== "set" || !selected || !birthDate || !dateRange) return;
+      const bounded = new Date(
+        Math.max(
+          dateRange.minimumDate.getTime(),
+          Math.min(selected.getTime(), dateRange.maximumDate.getTime())
+        )
+      );
+      setDatePickerValue(bounded);
+      setWandering(true);
+      swingTo(originAgeForDate(birthDate, bounded));
+    },
+    [birthDate, dateRange, setWandering, swingTo]
   );
 
   // ── Gestures (stable; live values via ref) ────────────────
@@ -951,6 +991,15 @@ export default function OriginScreen() {
   const yearWordOf = (res: ReturnType<typeof resolve>) =>
     word(Math.max(1, Math.floor(res.yot)));
 
+  const seasonTitle = seasonTitleForAge(displayAge);
+  const wanderDate = birthDate ? dateAtAge(birthDate, displayAge) : null;
+  const wanderMeta = wanderDate
+    ? `${monthYearLabel(wanderDate)} · age ${displayAge.toFixed(1)} · cycle ${word(r.turn)} · year ${yearWordOf(r)}`
+    : "";
+  const datePickerDisplayValue =
+    dateRange &&
+    originDateInRange(datePickerValue ?? wanderDate ?? dateRange.minimumDate, dateRange);
+
   const epigraphText = encounter
     ? (encounter.mapEpigraph ?? encounter.subtitle)
     : library
@@ -1181,13 +1230,19 @@ export default function OriginScreen() {
           {hasBirth && (
             <>
               <View
-                style={[styles.captionWrap, { opacity: wanderFade, pointerEvents: "none" }]}
+                style={[styles.captionWrap, { opacity: wanderFade }]}
+                pointerEvents={wandering ? "auto" : "none"}
               >
-                <Text style={styles.captionStation}>{r.station.name}</Text>
-                <Text style={styles.captionMeta}>
-                  {birthDate ? monthYearLabel(dateAtAge(birthDate, displayAge)) : ""} · age{" "}
-                  {displayAge.toFixed(1)} · cycle {word(r.turn)} · year {yearWordOf(r)}
-                </Text>
+                {seasonTitle && <Text style={styles.captionSeason}>{seasonTitle}</Text>}
+                <Pressable
+                  onPress={toggleDatePicker}
+                  disabled={Platform.OS === "web"}
+                  style={styles.captionMetaPressable}
+                  testID="origin-wander-date"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.captionMeta}>{wanderMeta}</Text>
+                </Pressable>
               </View>
               {hintDone === false && (
                 <View
@@ -1222,6 +1277,17 @@ export default function OriginScreen() {
       {/* Sheets */}
       {birthDate && clampedCurrent != null && (
         <>
+          {dateRange && datePickerDisplayValue && !isWeb && (
+            <OriginDatePickerSheet
+              open={datePickerOpen}
+              value={datePickerDisplayValue}
+              minimumDate={dateRange.minimumDate}
+              maximumDate={dateRange.maximumDate}
+              bottomPad={tabBarHeight}
+              onClose={() => setDatePickerOpen(false)}
+              onChange={onDatePickerChange}
+            />
+          )}
           <ReadingSheet
             open={sheet === "reading"}
             displayAge={displayAge}
@@ -1417,7 +1483,9 @@ const styles = StyleSheet.create({
   wordZone: {
     // §6 — the caption block clears the map above by ≥16pt and the CTA
     // below by ≥28pt; the pill must never touch the caption's shoulders.
-    height: 46,
+    // The metadata's native target is padded to 44pt, so the season title
+    // and metadata need their full vertical register here.
+    height: 84,
     marginTop: 16,
     marginBottom: 28,
     justifyContent: "center",
@@ -1427,7 +1495,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  captionStation: {
+  captionSeason: {
     ...TypeScale.serifTitle,
     color: "rgba(240,235,255,0.9)",
   },
@@ -1439,6 +1507,13 @@ const styles = StyleSheet.create({
     textTransform: "lowercase",
     color: colors.light.textTertiary,
     marginTop: 4,
+  },
+  // Keep the metadata type unchanged; the ≥44pt target comes from padding.
+  captionMetaPressable: {
+    minHeight: 44,
+    paddingVertical: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
   hint: {
     ...TypeScale.metadata,

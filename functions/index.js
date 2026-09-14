@@ -43,6 +43,10 @@ const founderDigestEmail = defineString("FOUNDER_DIGEST_EMAIL");
 const { createBetaRequest } = require("./betaRequest");
 const { createFieldPassageQueue } = require("./fieldQueue");
 const { createFounderDigest } = require("./founderDigest");
+const {
+  normalizeReading,
+  requestStructuredReading,
+} = require("./reading");
 
 exports.betaRequest = createBetaRequest({ db: getFirestore() });
 exports.fieldPassageQueue = createFieldPassageQueue({
@@ -58,9 +62,9 @@ exports.founderDigest = createFounderDigest({
 
 const DEFAULT_READING_PROMPT = `You are the voice of Mineral's Field Guide — an old, kind, unhurried practice companion. You are given a person's recent field notes (their private reflections, dated and typed) and the patterns the guide has counted. Write them a reading.
 
-Rules, absolute: Work only from what is in the notes — never invent events, feelings, or facts. Quote their exact words often; quoted spans must appear verbatim in a note. Never advise, prescribe, diagnose, flatter, or predict. Never mention being an AI, a model, or a system. No therapy language, no productivity language, no exclamation marks. Do not summarize note by note — read across them: name what returns, what has shifted since the earliest notes, what sits next to what. It is enough to notice; you do not need to resolve.
+Rules, absolute: Work only from what is in the notes — never invent events, feelings, or facts. Read ACROSS the notes — name what returns, what has shifted since the earliest notes, what sits next to what. Never summarize or paraphrase notes one by one; a reading is not a recap of their week. Quote their exact words often, and mark as quotes ONLY spans copied verbatim, character for character, from a note — never a paraphrase, never your own sentence. Quoted spans should be short: a phrase, not a paragraph. Never advise, prescribe, diagnose, flatter, or predict. Never mention being an AI, a model, or a system. Forbidden words and moves: journey, navigate, symbolizes, indicates, embodies, resonates, growth, healing, "amidst", "as you", any sentence explaining what an image "represents" — if an image matters, set it next to another image and let them touch. No therapy language, no productivity language, no exclamation marks.
 
-Form: three short paragraphs at most, under 180 words total, then exactly one quiet question the notes themselves seem to be asking. Lowercase-comfortable, present tense, plain words.`;
+Form: three short paragraphs at most, under 180 words total, then exactly one quiet question the notes themselves seem to be asking. Lowercase-comfortable, present tense, plain words. It is enough to notice; you do not need to resolve.`;
 
 function readingUserMessage(notes, patterns, noteCount, dayCount) {
   const noteLines = notes.map((note) => {
@@ -89,43 +93,6 @@ function readingUserMessage(notes, patterns, noteCount, dayCount) {
     "",
     'Return JSON only in this shape: {"paragraphs":[{"spans":[{"text":"...","quote":false}]}],"question":"..."}',
   ].join("\n");
-}
-
-function normalizeReading(rawText, noteTexts) {
-  let parsed;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch {
-    return {
-      paragraphs: [{ spans: [{ text: rawText.trim(), quote: false }] }],
-      question: "",
-    };
-  }
-
-  const paragraphs = Array.isArray(parsed?.paragraphs)
-    ? parsed.paragraphs.slice(0, 3).map((paragraph) => ({
-        spans: Array.isArray(paragraph?.spans)
-          ? paragraph.spans
-              .filter((span) => typeof span?.text === "string" && span.text.length > 0)
-              .map((span) => {
-                const isVerbatim =
-                  span.quote === true && noteTexts.some((text) => text.includes(span.text));
-                return { text: span.text, quote: isVerbatim };
-              })
-          : [],
-      })).filter((paragraph) => paragraph.spans.length > 0)
-    : [];
-
-  if (paragraphs.length === 0) {
-    return {
-      paragraphs: [{ spans: [{ text: rawText.trim(), quote: false }] }],
-      question: "",
-    };
-  }
-  return {
-    paragraphs,
-    question: typeof parsed.question === "string" ? parsed.question.trim() : "",
-  };
 }
 
 const READING_REST_MS = 20 * 60 * 60 * 1000;
@@ -521,44 +488,13 @@ exports.requestReading = onCall(
         dayCount
       );
 
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openAiApiKey.value()}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            temperature: 0.5,
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userMessage },
-            ],
-          }),
-        }
-      );
-      if (!response.ok) {
-        const detail = await response.text();
-        console.error(
-          "reading generation failed",
-          response.status,
-          detail.slice(0, 500)
-        );
-        throw new HttpsError("internal", "the reading did not arrive.");
-      }
-      const completion = await response.json();
-      const rawText = completion?.choices?.[0]?.message?.content;
-      if (typeof rawText !== "string" || rawText.trim().length === 0) {
-        throw new HttpsError("internal", "the reading did not arrive.");
-      }
-
-      const reading = normalizeReading(
-        rawText,
-        notes.map((note) => note.content)
-      );
+      const reading = await requestStructuredReading({
+        fetchImpl: fetch,
+        apiKey: openAiApiKey.value(),
+        systemPrompt,
+        userMessage,
+        noteTexts: notes.map((note) => note.content),
+      });
       const created = await readingsRef.add({
         ...reading,
         createdAt: FieldValue.serverTimestamp(),
@@ -596,5 +532,9 @@ exports.countCompletion = onDocumentUpdated(
 // Unit tests exercise the privacy-critical callable through its injected
 // dependencies. This is never exported in deployed function manifests.
 if (process.env.NODE_ENV === "test") {
-  exports.__test = { createRequestLetterHandler };
+  exports.__test = {
+    createRequestLetterHandler,
+    normalizeReading,
+    requestStructuredReading,
+  };
 }

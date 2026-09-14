@@ -1,4 +1,6 @@
 # Mineral Memory
+- [Origin wander scope](origin-wander-scope.md) — season-headline ruling extends to Origin; Today and drag behavior stay unchanged.
+- [Reading recovery](reading-recovery.md) — restrict legacy unwrapping; preserve prose atomically and validate recovered serif claims against exact note text.
  
 - [Cloud pnpm version](cloud-pnpm-version.md) — pin native cloud installs to the locally verified package manager; image defaults can change script-policy behavior.
 

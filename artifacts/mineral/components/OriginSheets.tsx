@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import {
   Animated,
   Dimensions,
@@ -197,6 +200,51 @@ export function SheetShell({
     <Modal transparent visible animationType="none" onRequestClose={onClose}>
       {body}
     </Modal>
+  );
+}
+
+interface OriginDatePickerSheetProps {
+  open: boolean;
+  value: Date;
+  minimumDate: Date;
+  maximumDate: Date;
+  bottomPad: number;
+  onClose: () => void;
+  onChange: (event: DateTimePickerEvent, date?: Date) => void;
+}
+
+/**
+ * The life-date wheel uses the same transparent native modal/sheet shell as
+ * the Origin sheets. There is deliberately no extra copy or action row:
+ * backdrop dismissal and the caption's toggle are the only exits.
+ */
+export function OriginDatePickerSheet({
+  open,
+  value,
+  minimumDate,
+  maximumDate,
+  bottomPad,
+  onClose,
+  onChange,
+}: OriginDatePickerSheetProps) {
+  return (
+    <SheetShell
+      open={open}
+      onClose={onClose}
+      bottomPad={bottomPad}
+      modal
+      testID="origin-date-picker-sheet"
+    >
+      <DateTimePicker
+        value={value}
+        mode="date"
+        display="spinner"
+        minimumDate={minimumDate}
+        maximumDate={maximumDate}
+        onChange={onChange}
+        testID="origin-wander-date-picker"
+      />
+    </SheetShell>
   );
 }
 

@@ -17,15 +17,15 @@ import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { db, functions } from "@/lib/firebase";
 import { spellNumber } from "@/lib/patternText";
-
-type ReadingSpan = {
-  text: string;
-  quote: boolean;
-};
+import {
+  normalizeStoredReading,
+  storedReadingNeedsQuoteValidation,
+  type NormalizedReading,
+} from "@/lib/reading";
 
 type ReadingDoc = {
-  paragraphs: { spans: ReadingSpan[] }[];
-  question: string;
+  paragraphs: NormalizedReading["paragraphs"];
+  question: NormalizedReading["question"];
   createdAt: Timestamp;
   noteCount: number;
 };
@@ -68,9 +68,24 @@ async function latestReading(uid: string): Promise<ReadingWithId | null> {
     )
   );
   const first = snap.docs[0];
-  return first
-    ? { id: first.id, ...(first.data() as ReadingDoc) }
-    : null;
+  if (!first) return null;
+  const data = first.data();
+  const noteTexts = storedReadingNeedsQuoteValidation(data)
+    ? await legacyNoteTexts(uid)
+    : [];
+  return {
+    id: first.id,
+    ...normalizeStoredReading(data, noteTexts),
+    createdAt: data.createdAt as Timestamp,
+    noteCount: typeof data.noteCount === "number" ? data.noteCount : 0,
+  };
+}
+
+async function legacyNoteTexts(uid: string): Promise<string[]> {
+  const snap = await getDocs(collection(db, "users", uid, "fieldNotes"));
+  return snap.docs
+    .map((note) => note.data().content)
+    .filter((content): content is string => typeof content === "string");
 }
 
 function isWithinReadingRest(reading: ReadingDoc): boolean {
@@ -124,7 +139,12 @@ export function FieldReadingSheet({
           kind: "reading",
           reading: {
             id: createdSnap.id,
-            ...(createdSnap.data() as ReadingDoc),
+            ...normalizeStoredReading(createdSnap.data()),
+            createdAt: createdSnap.data().createdAt as Timestamp,
+            noteCount:
+              typeof createdSnap.data().noteCount === "number"
+                ? createdSnap.data().noteCount
+                : 0,
           },
           resting: false,
         });

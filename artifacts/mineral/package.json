@@ -13,7 +13,9 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:pattern-evidence": "node --experimental-strip-types lib/patternEvidenceState.test.mjs"
+    "test:origin-wander": "node --experimental-strip-types lib/originWander.test.mjs",
+    "test:pattern-evidence": "node --experimental-strip-types lib/patternEvidenceState.test.mjs",
+    "test:reading": "node --experimental-strip-types lib/reading.test.mjs"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
