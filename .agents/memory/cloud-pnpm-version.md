@@ -10,6 +10,6 @@ Pin cloud native builds to the pnpm version verified locally rather than accepti
 
 Pin the native Xcode image as well while retaining SDK 54; avoid the moving `latest` alias.
 
-**Why:** The newer cloud compiler produced fmt consteval errors matching https://github.com/fmtlib/fmt/issues/4740. Expo lists macos-sequoia-15.6-xcode-26.0 as its SDK 54 image. Pinning avoids a native dependency patch or an unauthorized SDK upgrade; cloud success still needs verification.
+**Why:** The newer cloud compiler produced fmt consteval errors matching https://github.com/fmtlib/fmt/issues/4740. Expo lists macos-sequoia-15.6-xcode-26.0 as its SDK 54 image. Pinning avoids a native dependency patch or an unauthorized SDK upgrade. The user subsequently supplied an Expo screenshot confirming a successful internal development build with this approach; installed-device behavior remains a separate acceptance step.
 
 **How to apply:** Check Expo's current infrastructure documentation before selecting an image. Treat development and production build settings separately; do not silently change production tooling.
