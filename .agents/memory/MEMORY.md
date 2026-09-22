@@ -1,4 +1,5 @@
 # Mineral Memory
+- [Firestore index overrides](firestore-index-overrides.md) — group-only fieldOverrides replace inherited indexes; preserve collection ASC/DESC and verify client queries.
 - [Origin wander scope](origin-wander-scope.md) — season-headline ruling extends to Origin; Today and drag behavior stay unchanged.
 - [Reading recovery](reading-recovery.md) — restrict legacy unwrapping; preserve prose atomically and validate recovered serif claims against exact note text.
  

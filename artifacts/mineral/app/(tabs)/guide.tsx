@@ -27,6 +27,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import { db, functions } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
+import {
+  shouldShowLetter,
+  shouldShowReflection,
+} from "@/lib/fieldNotesState";
 import { fieldNotesQuery, type FieldNoteWithId } from "@/lib/firestore";
 import { subscribePatternDocuments } from "@/lib/patternEvidence";
 import {
@@ -738,7 +742,7 @@ export default function GuideScreen() {
             Every row is a door to its detail view. */}
         {hasField && (
           <View style={styles.section}>
-            <Text style={styles.eyebrow}>the lenses</Text>
+            <Text style={styles.eyebrow}>THE LENSES</Text>
             {liveRows.map(({ lens, status }) => (
               <Pressable
                 key={lens.id}
@@ -788,7 +792,10 @@ export default function GuideScreen() {
         )}
 
         {/* Footer doors retain the canonical order: reflection, letter, guide. */}
-        {profile?.readingsEnabled === true && notes.length >= 7 ? (
+        {shouldShowReflection(
+          notes.length,
+          profile?.readingsEnabled === true
+        ) ? (
           <LinkWhisper
             label="a reflection →"
             onPress={() => setReadingOpen(true)}
@@ -796,7 +803,10 @@ export default function GuideScreen() {
             testID="guide-reading-link"
           />
         ) : null}
-        {!user?.isAnonymous && !!user?.email && notes.length >= 15 ? (
+        {shouldShowLetter(
+          notes.length,
+          !user?.isAnonymous && !!user?.email
+        ) ? (
           <LinkWhisper
             label="request a letter →"
             onPress={() => setLetterOpen(true)}

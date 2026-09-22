@@ -40,8 +40,6 @@ const MORE_CHIPS: { id: FieldNoteType; label: string }[] = [
   { id: "other",  label: "OTHER" },
 ];
 
-const RECENT_LIMIT = 30;
-
 const NOTE_TYPE_LABEL: Record<string, string> = {
   dream: "dream",
   spark: "spark",
@@ -82,9 +80,8 @@ export default function NotesScreen() {
 
   const [captureType, setCaptureType] = useState<FieldNoteType | null>(null);
   // Slice J — tapped-open note. Held as a copy that live snapshot updates
-  // refresh while the note is still in the feed window, so an edit flows
-  // straight into the open sheet — but the sheet does NOT close if newer
-  // notes push it past RECENT_LIMIT; only closing or releasing closes it.
+  // refresh while the note remains in the field, so an edit flows straight
+  // into the open sheet.
   const [openNote, setOpenNote] = useState<FieldNoteWithId | null>(null);
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
 
@@ -101,7 +98,6 @@ export default function NotesScreen() {
       (snap) =>
         setRecentNotes(
           snap.docs
-            .slice(0, RECENT_LIMIT)
             .map((d) => ({ id: d.id, ...(d.data() as FieldNoteDoc) }))
         ),
       (err) => console.warn("recent notes", err)
@@ -109,9 +105,7 @@ export default function NotesScreen() {
     return unsub;
   }, [user]);
 
-  // Keep the open sheet's copy fresh while the note is still in the feed
-  // window (an edit's snapshot update flows in). Eviction past RECENT_LIMIT
-  // leaves the held copy as-is — deliberately not a dismissal.
+  // Keep the open sheet's copy fresh while the note remains in the field.
   useEffect(() => {
     setOpenNote((prev) => {
       if (!prev) return prev;

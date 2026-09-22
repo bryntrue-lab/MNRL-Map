@@ -24,6 +24,7 @@ import {
 } from "firebase/storage";
 
 import { db, storage } from "@/lib/firebase";
+import { FIELD_NOTES_ORDER_FIELD } from "@/lib/fieldNotesState";
 import { encounterFor, practiceTurnOf } from "@/lib/spiral";
 import type {
   CaptureMode,
@@ -289,7 +290,9 @@ export async function hasAnyFieldNote(uid: string): Promise<boolean> {
 export function fieldNotesQuery(uid: string) {
   return query(
     collection(db, "users", uid, "fieldNotes"),
-    orderBy("createdAt", "desc")
+    // Legacy notes intentionally have no localHour / weekday. Those fields
+    // are document data only and must never become query predicates.
+    orderBy(FIELD_NOTES_ORDER_FIELD, "desc")
   );
 }
 

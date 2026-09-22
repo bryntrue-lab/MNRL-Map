@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const path = require("node:path");
 const {
   SCHEDULE,
   TIME_ZONE,
@@ -16,6 +17,32 @@ const {
 const end = Date.parse("2025-03-14T12:00:00.000Z");
 const window = reportWindow(new Date(end).toISOString());
 const at = (offset) => new Date(end + offset).toISOString();
+
+const indexConfig = require(path.join(__dirname, "..", "firestore.indexes.json"));
+for (const [collectionGroup, fieldPath] of [
+  ["fieldNotes", "createdAt"],
+  ["userEncounters", "startedAt"],
+  ["userEncounters", "completedAt"],
+  ["userEncounters", "visitedAt"],
+]) {
+  const override = indexConfig.fieldOverrides.find(
+    (candidate) =>
+      candidate.collectionGroup === collectionGroup &&
+      candidate.fieldPath === fieldPath
+  );
+  assert.ok(override, `${collectionGroup}.${fieldPath} override is required`);
+  assert.deepEqual(
+    override.indexes
+      .map(({ order, queryScope }) => `${queryScope}:${order}`)
+      .sort(),
+    [
+      "COLLECTION:ASCENDING",
+      "COLLECTION:DESCENDING",
+      "COLLECTION_GROUP:ASCENDING",
+    ],
+    `${collectionGroup}.${fieldPath} must retain normal collection indexes`
+  );
+}
 
 assert.equal(SCHEDULE, "0 7 * * 5");
 assert.equal(TIME_ZONE, "America/Chicago");

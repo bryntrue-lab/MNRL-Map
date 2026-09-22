@@ -54,12 +54,11 @@ import {
   dateAtAge,
   dayInTurn,
   dayNumberWord,
-  monthYearLabel,
   originAgeForDate,
   originDateRange,
   originDateInRange,
   originNeedleAgeAt,
-  seasonTitleForAge,
+  originWanderFrame,
   phaseOfDay,
   practiceTurnOf,
   pt,
@@ -991,11 +990,12 @@ export default function OriginScreen() {
   const yearWordOf = (res: ReturnType<typeof resolve>) =>
     word(Math.max(1, Math.floor(res.yot)));
 
-  const seasonTitle = seasonTitleForAge(displayAge);
-  const wanderDate = birthDate ? dateAtAge(birthDate, displayAge) : null;
-  const wanderMeta = wanderDate
-    ? `${monthYearLabel(wanderDate)} · age ${displayAge.toFixed(1)} · cycle ${word(r.turn)} · year ${yearWordOf(r)}`
-    : "";
+  // Needle, date metadata, and season caption share this exact RAF-fed age.
+  // The title only changes at canonical seven-year season boundaries.
+  const wanderFrame = birthDate ? originWanderFrame(birthDate, displayAge) : null;
+  const seasonTitle = wanderFrame?.seasonTitle ?? null;
+  const wanderDate = wanderFrame?.date ?? null;
+  const wanderMeta = wanderFrame?.meta ?? "";
   const datePickerDisplayValue =
     dateRange &&
     originDateInRange(datePickerValue ?? wanderDate ?? dateRange.minimumDate, dateRange);
@@ -1123,7 +1123,7 @@ export default function OriginScreen() {
                 >
                   <OriginMap
                     currentAge={clampedCurrent}
-                    displayAge={displayAge}
+                    displayAge={wanderFrame?.age ?? displayAge}
                     birthYear={birthDate ? birthDate.getFullYear() : null}
                     visual={visual}
                     width={zone.w}

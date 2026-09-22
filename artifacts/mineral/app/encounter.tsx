@@ -52,6 +52,11 @@ import {
   type EncounterSession,
 } from "@/lib/encounter";
 import {
+  exitEncounterAfterPersist,
+  persistEncounterAudioPosition,
+  startEncounterAudio,
+} from "@/lib/encounterAudio";
+import {
   completeEncounter,
   createFieldNote,
   fetchEncounterLibrary,
@@ -292,6 +297,18 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   const status = useAudioPlayerStatus(player);
   const startedRef = useRef(false);
   const heldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastKnownPositionRef = useRef<number | null>(session.resume?.audioPosition ?? 0);
+  const audioFinishedRef = useRef(false);
+  const exitPersistedRef = useRef(false);
+
+  // useAudioPlayerStatus is the safe JS-side snapshot. Do not depend on a
+  // native getter during exit: useAudioPlayer may already have released it.
+  if (Number.isFinite(status.currentTime) && status.currentTime > 0) {
+    lastKnownPositionRef.current = status.currentTime;
+  }
+  // didJustFinish can be a one-update pulse; latch it through the held silence
+  // so an exit at the end clears an older midpoint instead of restoring it.
+  if (status.didJustFinish) audioFinishedRef.current = true;
 
   useEffect(() => {
     // Slice 3 — audio keeps playing when the app backgrounds (with
@@ -305,22 +322,17 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
     if (stage !== "listen" || startedRef.current || !(status.duration > 0)) return;
     startedRef.current = true;
     const pos = session.resume?.audioPosition ?? 0;
-    (async () => {
-      try {
-        if (pos > 0 && pos < status.duration - 2) await player.seekTo(pos);
-      } catch {
-        // Seek is best-effort; playing from the top is the graceful floor.
-      }
-      player.play();
-    })();
+    void startEncounterAudio(player, pos, status.duration);
   }, [stage, status.duration, player, session.resume]);
 
   const persistPosition = () => {
-    if (!sequence) return;
-    const secs = player.currentTime;
-    if (Number.isFinite(secs) && secs > 0) {
-      saveAudioPosition(uid, encounter.id, turn, secs).catch(() => {});
-    }
+    persistEncounterAudioPosition({
+      enabled: sequence,
+      lastKnownPosition: lastKnownPositionRef.current,
+      completed: audioFinishedRef.current,
+      player,
+      save: (seconds) => saveAudioPosition(uid, encounter.id, turn, seconds),
+    });
   };
 
   // Slice 3.1 — backgrounded narration keeps playing (supersedes Task B §1b's
@@ -356,7 +368,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   // Leaving the screen mid-audio also persists (§4).
   useEffect(
     () => () => {
-      if (stageRef.current === "listen") persistPosition();
+      if (stageRef.current === "listen" && !exitPersistedRef.current) persistPosition();
       if (heldTimer.current != null) clearTimeout(heldTimer.current);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,6 +411,16 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       saveAudioPosition(uid, encounter.id, turn, 0).catch(() => {});
     }
     setStage("capture");
+  };
+
+  const exitEncounter = () => {
+    exitEncounterAfterPersist(
+      () => {
+        if (stageRef.current === "listen") persistPosition();
+        exitPersistedRef.current = true;
+      },
+      () => router.replace("/(tabs)")
+    );
   };
 
   // ── ⟡ Capture (§1c) ──
@@ -760,7 +782,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
           Exit only navigates; whatever is already kept stays kept. */}
       {sheetMode == null && (
         <Pressable
-          onPress={() => router.replace("/(tabs)")}
+          onPress={exitEncounter}
           hitSlop={14}
           style={[styles.exitX, { top: insets.top + 14 }]}
           testID="encounter-exit"
@@ -806,6 +828,8 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
                 onPress={() => {
                   relistenRef.current = false;
                   userPausedRef.current = false;
+                  lastKnownPositionRef.current = 0;
+                  audioFinishedRef.current = false;
                   try {
                     player.seekTo(0);
                   } catch {}
@@ -826,6 +850,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
                 if (status.playing) player.pause();
                 else {
                   relistenRef.current = false;
+                  audioFinishedRef.current = false;
                   player.play();
                 }
               }}

@@ -377,6 +377,31 @@ export function seasonTitleForAge(age: number): string | null {
   return seasonFor(resolve(age))?.title ?? null;
 }
 
+export interface OriginWanderFrame {
+  /** The single animated life position consumed by the needle and caption. */
+  age: number;
+  seasonTitle: string | null;
+  date: Date;
+  meta: string;
+}
+
+/**
+ * Build every age-dependent part of Origin's wander presentation from the
+ * same animation frame. A season title intentionally holds within each
+ * canonical seven-year season while the needle and date metadata continue.
+ */
+export function originWanderFrame(birth: Date, age: number): OriginWanderFrame {
+  const r = resolve(age);
+  const date = dateAtAge(birth, age);
+  const yearOfTurn = word(Math.max(1, Math.floor(r.yot)));
+  return {
+    age,
+    seasonTitle: seasonFor(r)?.title ?? null,
+    date,
+    meta: `${monthYearLabel(date)} · age ${age.toFixed(1)} · cycle ${word(r.turn)} · year ${yearOfTurn}`,
+  };
+}
+
 /**
  * The shared pendulum settle path. Origin drag settling and date selection
  * both use this same quadratic easing so a date never cuts the needle.

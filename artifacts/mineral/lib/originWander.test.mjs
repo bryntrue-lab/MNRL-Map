@@ -10,6 +10,7 @@ import {
   originDateInRange,
   originDateRange,
   originNeedleAgeAt,
+  originWanderFrame,
   seasonTitleForAge,
 } from "./spiral.ts";
 
@@ -60,8 +61,33 @@ const birth = new Date(1990, 1, 28, 12);
   assert.equal(seasonTitleForAge(6.99), "The First Weather");
   assert.equal(seasonTitleForAge(0), "The First Weather");
   assert.equal(seasonTitleForAge(7), "The Edges of the World");
+  assert.equal(seasonTitleForAge(27.99), "The Door Appears");
   assert.equal(seasonTitleForAge(YEARS_PER_TURN), "The Chosen Ground");
+  assert.equal(seasonTitleForAge(55.99), "The Seed Remembers");
+  assert.equal(seasonTitleForAge(YEARS_PER_TURN * 2), "Becoming the Weather");
+  assert.equal(seasonTitleForAge(MAX_DATE_AGE), "The Open Door");
   assert.equal(seasonTitleForAge(MAX_AGE), null);
+}
+
+// Needle position, metadata, and caption are projected from one animated age.
+// The title correctly holds inside a season, then changes at the exact boundary.
+{
+  const before = originWanderFrame(birth, 6.99);
+  const boundary = originWanderFrame(birth, 7);
+  const laterInSameSeason = originWanderFrame(birth, 7.4);
+
+  assert.equal(before.age, 6.99);
+  assert.match(before.meta, /age 7\.0 · cycle one · year six$/);
+  assert.equal(before.seasonTitle, "The First Weather");
+
+  assert.equal(boundary.age, 7);
+  assert.match(boundary.meta, /age 7\.0 · cycle one · year seven$/);
+  assert.equal(boundary.seasonTitle, "The Edges of the World");
+
+  assert.equal(laterInSameSeason.age, 7.4);
+  assert.match(laterInSameSeason.meta, /age 7\.4 · cycle one · year seven$/);
+  assert.equal(laterInSameSeason.seasonTitle, boundary.seasonTitle);
+  assert.notEqual(laterInSameSeason.date.getTime(), boundary.date.getTime());
 }
 
 // Date selection uses the same quadratic settle path as the pendulum.

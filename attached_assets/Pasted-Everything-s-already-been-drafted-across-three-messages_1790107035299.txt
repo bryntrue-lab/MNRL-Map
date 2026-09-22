@@ -1,0 +1,21 @@
+Everything's already been drafted across three messages — here it is stitched into the one clean paste to hand Replit:Paste for Replit:
+
+---
+**Dev QA regression cluster — one suspected root plus two separate bugs. Work in this order.**
+
+**1. Data-loss check FIRST.** Count `users/{founder uid}/fieldNotes` docs directly (Admin/console). Expect ~37+. Report the number before touching anything — it decides whether this is a query fix or a recovery.
+
+**2. Suspected root — the client fieldNotes query excludes legacy notes.** Founder's Notes tab shows exactly 1 note (today's — the only one carrying Slice K2's new `localHour`/`weekday` fields), while the Guide's pattern data still references her full four-week field. Check whether those new fields entered any `orderBy`/`where`: Firestore silently drops documents missing an ordered/filtered field. FIX: queries order by `createdAt` only; `localHour`/`weekday` may never appear in a query clause — they're read from doc data with missing-field tolerance, per the K2 spec.
+
+**3. After the query fix, verify these self-heal (all gate on client note counts):** Notes tab shows the full field · Guide exits empty-state layout (opening description retires; lenses return to live/quiet per D.3d; RETURNING/GATHERING/ARRIVING order restored; lens section header is the `THE LENSES` eyebrow register, not a lowercase title) · `a reflection →` whisper returns (≥7 notes) · `request a letter →` appears (kept + ≥15 notes).
+
+**4. Separate bug — crash on ✕ out of encounter audio.** Dev redbox: `FunctionCallException → NativeSharedObjectNotFoundException` at `player.currentTime` in `persistPosition` (encounter.tsx:320) — the exit path releases the expo-audio player, then persistPosition reads the dead native object. Build 10 does NOT crash on the same gesture, so this regressed in the workspace since the `be1086e`-era state — diff encounter.tsx's exit/teardown against build 10 to find what reordered release vs. persist; understand the break, don't only patch forward. Then: (a) persist BEFORE release in the exit sequence; (b) track last-known position in JS state during playback and prefer it, with any direct `player.currentTime` read in try/catch — a failed persist loses a resume position, it must never take down the exit. Acceptance: ✕ mid-audio → clean return to Origin; reopen resumes at the right position; ✕ at audio start and at audio end both clean.
+
+**5. Separate bug — season caption static while dragging the spiral needle** on Origin. Also answer plainly: did the earlier N3 + season-caption task (date-jump on the meta line + I3 caption on Origin's wander state) land at all? If yes, fix here; if no, say so — it stays queued as its own task.
+
+Checkpoint: the fieldNotes count from step 1, root cause of each bug, acceptance results, file list. Nothing else rides along.
+---That's the complete QA package — the three fragments from tonight merged, ordered by consequence, with the data-loss check gating everything and the "nothing else rides along" fence at the bottom.
+
+What the checkpoint should come back with, so you can judge it at a glance: **the note count first** (~37 means query bug confirmed, panic over), then three named root causes — the query clause that ate your notes, the commit that reordered the audio teardown, and a yes/no on whether the N3/caption task ever landed. If any of the three comes back as "couldn't determine, applied a workaround," that's the answer to push on — this batch is unusually diagnosable, and vague fixes here would be Replit leaving certainty on the table.
+
+Once it clears and your field is whole again on dev, you're back at the build-12 gate with a much shorter list: re-run the four blockers (keyboard, reflection prose, storage counts + note-release, fresh-account quiet states), confirm the reflection and letter whispers stand where they should, and cut.
