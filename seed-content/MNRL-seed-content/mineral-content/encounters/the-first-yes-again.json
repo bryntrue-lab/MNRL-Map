@@ -1,0 +1,50 @@
+{
+  "title": "The First Yes, Again",
+  "subtitle": "same door, different listener",
+  "mapEpigraph": "Same door. Different listener.",
+  "phase": "signal",
+  "order": 23,
+  "minTurn": 1,
+  "audioPath": "encounters/the-first-yes-again/audio.mp3",
+  "audioFile": "enc23_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r23-1",
+          "text": "What remains true?",
+          "subtext": "Listen to the Day 1 capture before responding."
+        },
+        {
+          "id": "r23-2",
+          "text": "What has changed?"
+        },
+        {
+          "id": "r23-3",
+          "text": "What can you hear now that was not available then?"
+        },
+        {
+          "id": "r23-crystallizing",
+          "text": "Three weeks in—why am I really here?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The same question once",
+      "instruction": "Replay the first capture, then answer the same question once. No additional practice is needed.",
+      "durationLabel": "5 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Notice one other question in your life that deserves a second answer."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

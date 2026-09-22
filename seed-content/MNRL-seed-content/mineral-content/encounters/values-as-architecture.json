@@ -1,0 +1,45 @@
+{
+  "title": "Values as Architecture",
+  "subtitle": "what holds when the weather changes",
+  "mapEpigraph": "The structure decides what remains standing.",
+  "phase": "signal",
+  "order": 20,
+  "minTurn": 1,
+  "audioPath": "encounters/values-as-architecture/audio.mp3",
+  "audioFile": "enc20_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r20-1",
+          "text": "Which values define you at your best and help you make hard decisions?"
+        },
+        {
+          "id": "r20-2",
+          "text": "What behaviors prove each value is structurally present?"
+        },
+        {
+          "id": "r20-crystallizing",
+          "text": "My two non-negotiable values are…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Two values only",
+      "instruction": "Choose two values only. For each, name one supporting behavior and one early warning sign that you are building outside it.",
+      "durationLabel": "10 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Let the values make one decision today."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

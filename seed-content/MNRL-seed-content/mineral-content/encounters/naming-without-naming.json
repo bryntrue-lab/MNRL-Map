@@ -1,0 +1,45 @@
+{
+  "title": "Naming Without Naming",
+  "subtitle": "named, and still wild",
+  "mapEpigraph": "There is a way to name a bird while leaving it in the sky.",
+  "phase": "signal",
+  "order": 21,
+  "minTurn": 1,
+  "audioPath": "encounters/naming-without-naming/audio.mp3",
+  "audioFile": "enc21_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r21-1",
+          "text": "What past ideas were flattened by premature explanation?"
+        },
+        {
+          "id": "r21-2",
+          "text": "What words let the current calling stay alive rather than making it perform?"
+        },
+        {
+          "id": "r21-crystallizing",
+          "text": "Without a plan attached: what is calling?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Without the verbs",
+      "instruction": "Write one sentence without the verbs launch, build, scale, achieve, or complete. Keep it private.",
+      "durationLabel": "5 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "When asked what you are working on, resist the pitch once."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

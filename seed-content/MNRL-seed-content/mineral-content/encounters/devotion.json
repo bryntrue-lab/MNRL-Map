@@ -1,0 +1,49 @@
+{
+  "title": "Devotion",
+  "subtitle": "choosing what is worth carrying",
+  "mapEpigraph": "This is worth carrying.",
+  "phase": "signal",
+  "order": 25,
+  "minTurn": 1,
+  "audioPath": "encounters/devotion/audio.mp3",
+  "audioFile": "enc25_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r25-1",
+          "text": "What are you willing to struggle for?"
+        },
+        {
+          "id": "r25-2",
+          "text": "Which costs feel empty, and which feel like the price of aliveness?"
+        },
+        {
+          "id": "r25-3",
+          "text": "Who might you become by staying with this work?"
+        },
+        {
+          "id": "r25-crystallizing",
+          "text": "I am building ___ because I value ___. This work is an expression of ___ and matters because ___. I am willing to carry ___ to make room for it.",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The devotion statement",
+      "instruction": "Write the devotion statement. Read it slowly. Remove any line that sounds like an announcement.",
+      "durationLabel": "10 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Carry the sentence that feels heaviest and cleanest."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

@@ -1,0 +1,58 @@
+{
+  "title": "The Story So Far",
+  "subtitle": "the loom appears",
+  "mapEpigraph": "Stories are patient looms.",
+  "phase": "signal",
+  "order": 24,
+  "minTurn": 1,
+  "audioPath": "encounters/the-story-so-far/audio.mp3",
+  "audioFile": "enc24_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r24-1",
+          "text": "Once, someone began to hear something.",
+          "subtext": "Use these only as scaffolding."
+        },
+        {
+          "id": "r24-2",
+          "text": "It sounded like…"
+        },
+        {
+          "id": "r24-3",
+          "text": "It kept returning as…"
+        },
+        {
+          "id": "r24-4",
+          "text": "They finally allowed…"
+        },
+        {
+          "id": "r24-5",
+          "text": "What it asks now is…"
+        },
+        {
+          "id": "r24-crystallizing",
+          "text": "Once, someone began to hear something…",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "One paragraph, alone",
+      "instruction": "Tell the story in one paragraph, in third person if that helps. Read it aloud once, alone.",
+      "durationLabel": "10 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Let the story carry you toward the vow."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

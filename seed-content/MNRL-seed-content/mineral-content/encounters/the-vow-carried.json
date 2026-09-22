@@ -1,0 +1,45 @@
+{
+  "title": "The Vow Carried",
+  "subtitle": "devotion on an ordinary day",
+  "mapEpigraph": "A true vow is not luggage.",
+  "phase": "signal",
+  "order": 26,
+  "minTurn": 1,
+  "audioPath": "encounters/the-vow-carried/audio.mp3",
+  "audioFile": "enc26_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r26-1",
+          "text": "Where did your hand find the stone today?"
+        },
+        {
+          "id": "r26-2",
+          "text": "Which ordinary choice shifted, even slightly?"
+        },
+        {
+          "id": "r26-crystallizing",
+          "text": "Carrying the vow today, what shifted?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "The stone in the pocket",
+      "instruction": "Carry a small stone or another ordinary object. Let it stand for one line of the vow. Capture in the evening.",
+      "durationLabel": "today"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Sleep with the vow nearby. Tomorrow is the crossing."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

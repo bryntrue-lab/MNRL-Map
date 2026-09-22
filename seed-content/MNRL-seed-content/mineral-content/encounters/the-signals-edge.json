@@ -1,0 +1,45 @@
+{
+  "title": "The Signal's Edge",
+  "subtitle": "hands open at the crossing",
+  "mapEpigraph": "The field is already moving toward you.",
+  "phase": "signal",
+  "order": 27,
+  "minTurn": 1,
+  "audioPath": "encounters/the-signals-edge/audio.mp3",
+  "audioFile": "enc27_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r27-1",
+          "text": "What has remained after longing, recognition, permission, attunement, story, and vow?"
+        },
+        {
+          "id": "r27-2",
+          "text": "What can be carried without being clutched?"
+        },
+        {
+          "id": "r27-crystallizing",
+          "text": "What am I carrying with me as I cross into the work itself?",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Speak the answer",
+      "instruction": "Speak the answer. Close the encounter. Let the atmosphere cross-fade from Signal into Field; no further task is required.",
+      "durationLabel": "2 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Hands open."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}

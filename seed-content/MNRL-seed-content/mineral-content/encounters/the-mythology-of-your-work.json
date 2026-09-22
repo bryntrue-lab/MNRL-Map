@@ -1,0 +1,49 @@
+{
+  "title": "The Mythology of Your Work",
+  "subtitle": "the story beneath the function",
+  "mapEpigraph": "A cup can carry welcome.",
+  "phase": "signal",
+  "order": 22,
+  "minTurn": 1,
+  "audioPath": "encounters/the-mythology-of-your-work/audio.mp3",
+  "audioFile": "enc22_MNRL26.mp3",
+  "guideNote": null,
+  "blocks": [
+    {
+      "type": "reflection",
+      "prompts": [
+        {
+          "id": "r22-1",
+          "text": "What does the work do on the surface?"
+        },
+        {
+          "id": "r22-2",
+          "text": "What does it stand for?"
+        },
+        {
+          "id": "r22-3",
+          "text": "What becomes possible for someone who encounters it?"
+        },
+        {
+          "id": "r22-crystallizing",
+          "text": "My three-line myth: what it is · what it stands for · what it makes possible.",
+          "capturable": true,
+          "crystallizing": true
+        }
+      ]
+    },
+    {
+      "type": "integration",
+      "title": "Three lines",
+      "instruction": "Write exactly three lines. No origin story, brand language, or proof. Read them aloud and listen for the line with gravity.",
+      "durationLabel": "10 min"
+    },
+    {
+      "type": "carry",
+      "intro": "Trace",
+      "closing": "Let the myth remain larger than the pitch."
+    }
+  ],
+  "deepDive": null,
+  "nextThread": null
+}
