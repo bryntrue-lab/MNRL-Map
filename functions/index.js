@@ -43,6 +43,7 @@ const founderDigestEmail = defineString("FOUNDER_DIGEST_EMAIL");
 const { createBetaRequest } = require("./betaRequest");
 const { createFieldPassageQueue } = require("./fieldQueue");
 const { createFounderDigest } = require("./founderDigest");
+const { createWeeklyUsageReport } = require("./weeklyUsageReport");
 const {
   normalizeReading,
   requestStructuredReading,
@@ -55,6 +56,11 @@ exports.fieldPassageQueue = createFieldPassageQueue({
   founderEmail: founderDigestEmail,
 });
 exports.founderDigest = createFounderDigest({
+  db: getFirestore(),
+  auth: getAuth(),
+  founderEmail: founderDigestEmail,
+});
+exports.weeklyUsageReport = createWeeklyUsageReport({
   db: getFirestore(),
   auth: getAuth(),
   founderEmail: founderDigestEmail,
