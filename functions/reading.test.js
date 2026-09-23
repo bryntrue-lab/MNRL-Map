@@ -15,15 +15,25 @@ async function testMalformedOutputRetriesOnceAndFallsBackToText() {
     "the field keeps returning to the same door",
   ];
   let calls = 0;
+  const telemetryEvents = [];
   const reading = await requestStructuredReading({
     apiKey: "test-key",
     systemPrompt: "system",
     userMessage: "notes",
     noteTexts: notes,
+    telemetry: {
+      info: (event, fields) => telemetryEvents.push({ event, fields }),
+      warn: (event, fields) => telemetryEvents.push({ event, fields }),
+    },
     fetchImpl: async (_url, init) => {
       calls += 1;
       const request = JSON.parse(init.body);
-      assert.deepEqual(request.response_format, { type: "json_object" });
+      assert.equal(request.response_format.type, "json_schema");
+      assert.equal(request.response_format.json_schema.strict, true);
+      assert.deepEqual(
+        request.response_format.json_schema.schema.required,
+        ["paragraphs", "question"]
+      );
       assert.equal(request.messages[0].content, "system");
       return {
         ok: true,
@@ -39,9 +49,15 @@ async function testMalformedOutputRetriesOnceAndFallsBackToText() {
     paragraphs: [{ spans: [{ text: responses[1], quote: false }] }],
     question: "",
   });
+  assert.deepEqual(
+    telemetryEvents.map(({ fields }) => fields.outcome),
+    ["retry", "fallback"]
+  );
+  assert.equal(JSON.stringify(telemetryEvents).includes(responses[0]), false);
+  assert.equal(JSON.stringify(telemetryEvents).includes(responses[1]), false);
 }
 
-async function testMalformedShapeRetriesOnceAndFallsBackToRawText() {
+async function testMalformedShapeRetriesOnceAndUsesSafeFallback() {
   const responses = [
     JSON.stringify({
       paragraphs: [{ spans: [{ text: "partial", quote: false }] }],
@@ -67,7 +83,9 @@ async function testMalformedShapeRetriesOnceAndFallsBackToRawText() {
 
   assert.equal(calls, 2);
   assert.deepEqual(reading, {
-    paragraphs: [{ spans: [{ text: responses[1], quote: false }] }],
+    paragraphs: [
+      { spans: [{ text: "the reading did not arrive.", quote: false }] },
+    ],
     question: "",
   });
 }
@@ -169,7 +187,73 @@ function testSchemaValidationIsAtomic() {
     question: "what remains?",
   });
   assert.deepEqual(normalizeReading(malformed, notes), {
-    paragraphs: [{ spans: [{ text: malformed, quote: false }] }],
+    paragraphs: [
+      { spans: [{ text: "the reading did not arrive.", quote: false }] },
+    ],
+    question: "",
+  });
+}
+
+function testObservedTrailingQuestionShapeIsRecoveredLosslessly() {
+  const prose = Array.from({ length: 21 }, (_, index) => `span ${index + 1}`);
+  const paragraphs = [11, 6, 4].map((count, paragraphIndex) => ({
+    spans: prose
+      .slice(
+        [0, 11, 17][paragraphIndex],
+        [0, 11, 17][paragraphIndex] + count
+      )
+      .map((text, spanIndex) => {
+        const index = [0, 11, 17][paragraphIndex] + spanIndex;
+        if (index >= 1 && index <= 6) return { text };
+        return { text, quote: index === 0 || (index >= 7 && index <= 13) };
+      }),
+  }));
+  const question = "what returns?";
+  const inner = JSON.stringify({
+    paragraphs: [...paragraphs, { question }],
+  });
+  const outer = JSON.stringify({
+    paragraphs: [{ spans: [{ text: inner, quote: false }] }],
+    question: "",
+  });
+  const quoted = [prose[0], prose[7], prose[9], prose[11]];
+  const reading = normalizeReading(outer, quoted);
+
+  assert.deepEqual(
+    reading.paragraphs.flatMap((paragraph) =>
+      paragraph.spans.map((span) => span.text)
+    ),
+    prose
+  );
+  assert.equal(reading.question, question);
+  assert.equal(
+    reading.paragraphs.flatMap((paragraph) => paragraph.spans)
+      .filter((span) => span.quote).length,
+    4
+  );
+  assert.equal(JSON.stringify(reading).includes(inner), false);
+}
+
+function testTruncatedLargeTailIsNeverPartiallyRecovered() {
+  const completePrefix = JSON.stringify({
+    paragraphs: [
+      {
+        spans: [
+          { text: "first intact span", quote: false },
+          { text: "second intact span", quote: false },
+          { text: "third intact span", quote: false },
+        ],
+      },
+    ],
+    question: "what remains?",
+  });
+  const truncated = `${completePrefix}${"unfinished private tail ".repeat(3200)}`;
+
+  assert.equal(parseReadingOutput(truncated, notes), null);
+  assert.deepEqual(normalizeReading(truncated, notes), {
+    paragraphs: [
+      { spans: [{ text: "the reading did not arrive.", quote: false }] },
+    ],
     question: "",
   });
 }
@@ -232,12 +316,14 @@ async function testRecoverableWrappedJson() {
 
 (async () => {
   await testMalformedOutputRetriesOnceAndFallsBackToText();
-  await testMalformedShapeRetriesOnceAndFallsBackToRawText();
+  await testMalformedShapeRetriesOnceAndUsesSafeFallback();
   testValidFieldsArraysAndQuoteValidation();
   testMalformedShapeIsNotAcceptedAsStructuredReading();
   testMalformedNestedSpanPayloadIsRecoveredWithoutInventingText();
   testLegacyEnvelopeWithMissingOuterQuestionIsUnwrapped();
   testSchemaValidationIsAtomic();
+  testObservedTrailingQuestionShapeIsRecoveredLosslessly();
+  testTruncatedLargeTailIsNeverPartiallyRecovered();
   testMultiSpanJsonLookingProseIsNotUnwrapped();
   await testRecoverableWrappedJson();
   console.log("reading tests passed");

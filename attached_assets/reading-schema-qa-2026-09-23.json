@@ -1,0 +1,59 @@
+{
+  "evidenceVersion": 1,
+  "observedAt": "2026-09-23T19:54:09.814Z",
+  "project": "mineral-resonance",
+  "callable": "requestReading",
+  "isolatedQaAccount": {
+    "emailAttached": false,
+    "syntheticNoteCount": 7,
+    "founderHistoryTouched": false
+  },
+  "http": {
+    "ok": true,
+    "status": 200
+  },
+  "storedDocument": {
+    "topLevelKeys": [
+      "createdAt",
+      "noteCount",
+      "paragraphs",
+      "question"
+    ],
+    "paragraphsType": "array",
+    "paragraphCount": 1,
+    "paragraphItemTypes": [
+      "object"
+    ],
+    "spanCounts": [
+      3
+    ],
+    "spanFieldTypes": [
+      [
+        {
+          "text": "string",
+          "quote": "boolean"
+        },
+        {
+          "text": "string",
+          "quote": "boolean"
+        },
+        {
+          "text": "string",
+          "quote": "boolean"
+        }
+      ]
+    ],
+    "questionType": "string",
+    "questionPresent": true,
+    "noteCount": 7,
+    "createdAtType": "timestamp",
+    "nestedJsonTextSpans": 0,
+    "quoteTrueCount": 1,
+    "allTrueQuotesExactSyntheticNoteSubstrings": true,
+    "strictStructureValid": true
+  },
+  "cleanup": {
+    "completedWithoutError": true,
+    "remainingQaUserDocs": 0
+  }
+}

@@ -86,9 +86,82 @@ function testMultiSpanJsonLookingProseIsNotUnwrapped() {
   assert.deepEqual(normalizeStoredReading(outer), outer);
 }
 
+function testCanonicalFieldsWinOverStaleText() {
+  assert.deepEqual(
+    normalizeStoredReading({
+      ...structured,
+      text: "stale legacy prose",
+    }),
+    structured
+  );
+}
+
+function testObservedValidNestedPayloadIsRecoveredWithMissingQuoteFlags() {
+  const prose = Array.from({ length: 21 }, (_, index) => `prose ${index + 1}`);
+  const starts = [0, 11, 17];
+  const paragraphs = [11, 6, 4].map((count, paragraphIndex) => ({
+    spans: prose
+      .slice(starts[paragraphIndex], starts[paragraphIndex] + count)
+      .map((text, spanIndex) => {
+        const index = starts[paragraphIndex] + spanIndex;
+        if (index >= 1 && index <= 6) return { text };
+        return { text, quote: index === 0 || (index >= 7 && index <= 13) };
+      }),
+  }));
+  const nested = JSON.stringify({
+    paragraphs: [...paragraphs, { question: "what stays?" }],
+  });
+  const legacy = {
+    paragraphs: [{ spans: [{ text: nested, quote: false }] }],
+    question: "",
+  };
+  const trustedQuotes = [prose[0], prose[7], prose[9], prose[11]];
+  const normalized = normalizeStoredReading(legacy, trustedQuotes);
+
+  assert.deepEqual(
+    normalized.paragraphs.flatMap((paragraph) =>
+      paragraph.spans.map((span) => span.text)
+    ),
+    prose
+  );
+  assert.equal(normalized.question, "what stays?");
+  for (const span of normalized.paragraphs.flatMap((paragraph) => paragraph.spans)) {
+    if (span.quote) assert.ok(trustedQuotes.includes(span.text));
+  }
+  assert.equal(
+    normalized.paragraphs.flatMap((paragraph) => paragraph.spans)
+      .filter((span) => span.quote).length,
+    4
+  );
+}
+
+function testTruncatedLargeTailIsPreservedRatherThanPartiallyRecovered() {
+  const prefix = JSON.stringify({
+    paragraphs: [
+      {
+        spans: [
+          { text: "first intact span", quote: false },
+          { text: "second intact span", quote: false },
+          { text: "third intact span", quote: false },
+        ],
+      },
+    ],
+    question: "what remains?",
+  });
+  const truncated = `${prefix}${"unfinished private tail ".repeat(3200)}`;
+
+  assert.deepEqual(normalizeStoredReading({ text: truncated }), {
+    paragraphs: [{ spans: [{ text: truncated, quote: false }] }],
+    question: "",
+  });
+}
+
 testCurrentStructuredDocument();
 testLegacyJsonTextIsParsedIntoFields();
 testLegacyPlainTextAndMalformedJsonStayPlain();
 testNestedMalformedSpanPayloadIsRecoveredAndValidated();
 testMultiSpanJsonLookingProseIsNotUnwrapped();
+testCanonicalFieldsWinOverStaleText();
+testObservedValidNestedPayloadIsRecoveredWithMissingQuoteFlags();
+testTruncatedLargeTailIsPreservedRatherThanPartiallyRecovered();
 console.log("client reading normalizer tests passed");

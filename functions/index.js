@@ -97,7 +97,7 @@ function readingUserMessage(notes, patterns, noteCount, dayCount) {
     "COUNTED PATTERNS:",
     patternLines.join("\n"),
     "",
-    'Return JSON only in this shape: {"paragraphs":[{"spans":[{"text":"...","quote":false}]}],"question":"..."}',
+    'Return the reading in the required structured response. Put prose only in paragraphs[].spans[], put the question only in the top-level question field, and include text and quote on every span.',
   ].join("\n");
 }
 

@@ -59,17 +59,16 @@ export function FieldLetterSheet({
     >
       {state === "asked" ? (
         <Text style={styles.success} testID="field-letter-success">
-          asked. a letter begins with hers — watch your inbox.
+          asked. she'll write to you first — watch your inbox.
         </Text>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.eyebrow}>A LETTER</Text>
           <Text style={styles.title}>your field, read by hand.</Text>
           <Text style={styles.body}>
-            A letter is written by Bryn — the practitioner behind Mineral —
-            personally, one at a time. Nothing in your field is shared by
-            asking: she writes to you first, and you choose what to share with
-            her, in your own words, by reply.
+            Nothing in your field is shared with this request. She writes to you
+            first, and you choose what to share with her, in your own words, by
+            reply.
           </Text>
           <View style={styles.action}>
             <LinkPrimary

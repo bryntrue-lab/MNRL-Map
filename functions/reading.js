@@ -4,10 +4,50 @@
  * Reading response handling lives outside the callable so the parsing
  * contract can be exercised without a Firestore emulator. The model is
  * allowed one more attempt when its response is not the expected object;
- * after that, the last response is deliberately retained as plain text.
+ * after that, ordinary prose is retained while recognizable JSON is replaced
+ * by a safe, non-JSON fallback.
  */
 
-const READING_RESPONSE_FORMAT = { type: "json_object" };
+const READING_RESPONSE_FORMAT = {
+  type: "json_schema",
+  json_schema: {
+    name: "field_reading",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["paragraphs", "question"],
+      properties: {
+        paragraphs: {
+          type: "array",
+          minItems: 1,
+          maxItems: 3,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["spans"],
+            properties: {
+              spans: {
+                type: "array",
+                minItems: 1,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["text", "quote"],
+                  properties: {
+                    text: { type: "string", minLength: 1 },
+                    quote: { type: "boolean" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        question: { type: "string" },
+      },
+    },
+  },
+};
 const READING_COMPLETIONS_URL =
   "https://api.openai.com/v1/chat/completions";
 
@@ -23,6 +63,14 @@ function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function hasOnlyKeys(value, keys) {
+  return (
+    isRecord(value) &&
+    Object.keys(value).every((key) => keys.includes(key)) &&
+    keys.every((key) => Object.prototype.hasOwnProperty.call(value, key))
+  );
+}
+
 /**
  * Find balanced JSON object candidates while respecting quoted braces. This
  * recovers the common "```json ...```" / short preamble failure without
@@ -32,7 +80,13 @@ function jsonObjectCandidates(rawText) {
   const text = rawText.trim().replace(/^\uFEFF/, "");
   const candidates = [text];
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) candidates.push(fenced[1].trim());
+  if (fenced?.[1]) {
+    candidates.push(fenced[1].trim().replace(/^\\n|\\n$/g, ""));
+  }
+  const escapedFenced = text.match(
+    /```(?:json)?(?:\\n)+([\s\S]*?)(?:\\n)+```/i
+  );
+  if (escapedFenced?.[1]) candidates.push(escapedFenced[1].trim());
 
   let start = -1;
   let depth = 0;
@@ -60,7 +114,13 @@ function jsonObjectCandidates(rawText) {
     } else if (character === "}" && depth > 0) {
       depth -= 1;
       if (depth === 0 && start >= 0) {
-        candidates.push(text.slice(start, index + 1));
+        // A short preamble is recoverable, but bytes after the completed
+        // object are not: accepting a valid prefix would silently discard a
+        // truncated or otherwise unexplained payload tail. Fenced JSON is
+        // handled explicitly above.
+        if (text.slice(index + 1).trim().length === 0) {
+          candidates.push(text.slice(start, index + 1));
+        }
         start = -1;
       }
     }
@@ -159,6 +219,7 @@ function recoverMalformedReading(rawText) {
   textPattern.lastIndex = paragraphsKey;
   const recoveredSpans = spansKeys.map(() => []);
   let textCount = 0;
+  let finalQuoteValueEnd = -1;
   for (let match = textPattern.exec(source); match; match = textPattern.exec(source)) {
     if (match.index >= bodyEnd) break;
     textCount += 1;
@@ -199,9 +260,21 @@ function recoverMalformedReading(rawText) {
       text: decodeJsonStringFragment(source.slice(opening + 1, closing)),
       quote: quoteMatch[1] === "true",
     });
+    finalQuoteValueEnd = quoteMatch.index + quoteMatch[0].length;
   }
   if (textCount === 0 || recoveredSpans.every((spans) => spans.length === 0)) {
     return { reading: null, ambiguous: false };
+  }
+  // Every byte after the final span must be structural envelope syntax. The
+  // old repair used to accept a short valid-looking prefix and silently drop
+  // an arbitrarily large truncated tail.
+  if (
+    finalQuoteValueEnd < 0 ||
+    !/^[\s}\],]*$/.test(
+      source.slice(finalQuoteValueEnd, questionKey >= 0 ? questionKey : source.length)
+    )
+  ) {
+    return { reading: null, ambiguous: true };
   }
 
   let question = "";
@@ -216,6 +289,11 @@ function recoverMalformedReading(rawText) {
       question = decodeJsonStringFragment(
         source.slice(questionField.opening + 1, closing)
       );
+      if (!/^[\s}]*$/.test(source.slice(closing + 1))) {
+        return { reading: null, ambiguous: true };
+      }
+    } else {
+      return { reading: null, ambiguous: true };
     }
   }
 
@@ -231,6 +309,7 @@ function recoverMalformedReading(rawText) {
 function normalizeStructuredReading(parsed, noteTexts) {
   if (
     !isRecord(parsed) ||
+    !hasOnlyKeys(parsed, ["paragraphs", "question"]) ||
     !Array.isArray(parsed.paragraphs) ||
     parsed.paragraphs.length === 0 ||
     parsed.paragraphs.length > 3 ||
@@ -245,7 +324,7 @@ function normalizeStructuredReading(parsed, noteTexts) {
   const paragraphs = [];
   for (const paragraph of parsed.paragraphs) {
     if (
-      !isRecord(paragraph) ||
+      !hasOnlyKeys(paragraph, ["spans"]) ||
       !Array.isArray(paragraph.spans) ||
       paragraph.spans.length === 0
     ) {
@@ -254,7 +333,7 @@ function normalizeStructuredReading(parsed, noteTexts) {
     const spans = [];
     for (const span of paragraph.spans) {
       if (
-        !isRecord(span) ||
+        !hasOnlyKeys(span, ["text", "quote"]) ||
         typeof span.text !== "string" ||
         span.text.length === 0 ||
         typeof span.quote !== "boolean"
@@ -277,6 +356,72 @@ function normalizeStructuredReading(parsed, noteTexts) {
     paragraphs,
     question: parsed.question.trim(),
   };
+}
+
+/**
+ * Normalize the one known misplaced-question response without dropping any
+ * model prose. It is intentionally narrower than the canonical validator:
+ * the root has only `paragraphs`, the final item has only `question`, and
+ * every preceding item is a complete spans paragraph. Older models sometimes
+ * omitted `quote`; omission means prose, never an unverified quotation.
+ */
+function normalizeTrailingQuestionReading(parsed, noteTexts) {
+  if (
+    !hasOnlyKeys(parsed, ["paragraphs"]) ||
+    !Array.isArray(parsed.paragraphs) ||
+    parsed.paragraphs.length < 2 ||
+    parsed.paragraphs.length > 4
+  ) {
+    return null;
+  }
+  const finalItem = parsed.paragraphs[parsed.paragraphs.length - 1];
+  if (
+    !hasOnlyKeys(finalItem, ["question"]) ||
+    typeof finalItem.question !== "string"
+  ) {
+    return null;
+  }
+
+  const notes = Array.isArray(noteTexts)
+    ? noteTexts.filter((text) => typeof text === "string")
+    : [];
+  const paragraphs = [];
+  for (const paragraph of parsed.paragraphs.slice(0, -1)) {
+    if (
+      !hasOnlyKeys(paragraph, ["spans"]) ||
+      !Array.isArray(paragraph.spans) ||
+      paragraph.spans.length === 0
+    ) {
+      return null;
+    }
+    const spans = [];
+    for (const span of paragraph.spans) {
+      if (
+        !isRecord(span) ||
+        Object.keys(span).some((key) => key !== "text" && key !== "quote") ||
+        typeof span.text !== "string" ||
+        span.text.length === 0 ||
+        (span.quote !== undefined && typeof span.quote !== "boolean")
+      ) {
+        return null;
+      }
+      spans.push({
+        text: span.text,
+        quote:
+          span.quote === true &&
+          notes.some((noteText) => noteText.includes(span.text)),
+      });
+    }
+    paragraphs.push({ spans });
+  }
+  return { paragraphs, question: finalItem.question.trim() };
+}
+
+function normalizeParsedReading(parsed, noteTexts) {
+  return (
+    normalizeStructuredReading(parsed, noteTexts) ??
+    normalizeTrailingQuestionReading(parsed, noteTexts)
+  );
 }
 
 function nestedPayloadText(reading) {
@@ -309,7 +454,7 @@ function unwrapNestedReading(reading, noteTexts) {
   const nestedText = nestedPayloadText(reading);
   if (!nestedText) return reading;
   const parsed = parseReadingJson(nestedText);
-  if (parsed) return normalizeStructuredReading(parsed, noteTexts) ?? reading;
+  if (parsed) return normalizeParsedReading(parsed, noteTexts) ?? reading;
   const recovered = recoverMalformedReading(nestedText);
   return recovered.reading
     ? normalizeStructuredReading(recovered.reading, noteTexts) ?? reading
@@ -319,13 +464,13 @@ function unwrapNestedReading(reading, noteTexts) {
 function parseReadingOutput(rawText, noteTexts) {
   const parsed = parseReadingJson(rawText);
   if (parsed) {
-    const normalized = normalizeStructuredReading(parsed, noteTexts);
+    const normalized = normalizeParsedReading(parsed, noteTexts);
     if (normalized) return unwrapNestedReading(normalized, noteTexts);
     const nestedText = nestedPayloadText(parsed);
     if (nestedText) {
       const nestedParsed = parseReadingJson(nestedText);
       if (nestedParsed) {
-        return normalizeStructuredReading(nestedParsed, noteTexts);
+        return normalizeParsedReading(nestedParsed, noteTexts);
       }
       const recoveredNested = recoverMalformedReading(nestedText);
       return recoveredNested.reading
@@ -348,7 +493,17 @@ function parseReadingOutput(rawText, noteTexts) {
  * used by tests and is intentionally safe for already-stored plain text.
  */
 function normalizeReading(rawText, noteTexts) {
-  return parseReadingOutput(rawText, noteTexts) ?? plainTextReading(rawText);
+  const reading = parseReadingOutput(rawText, noteTexts);
+  if (reading) return reading;
+  // Never render a recognizable JSON payload as serif prose. If it parsed as
+  // an object but failed the atomic contract, use a neutral safe fallback.
+  const recognizableJson =
+    typeof rawText === "string" &&
+    rawText.trimStart().startsWith("{") &&
+    rawText.includes('"paragraphs"');
+  return parseReadingJson(rawText) || recognizableJson
+    ? plainTextReading("the reading did not arrive.")
+    : plainTextReading(rawText);
 }
 
 function completionRequest({
@@ -365,7 +520,6 @@ function completionRequest({
     },
     body: JSON.stringify({
       model,
-      temperature: 0.5,
       response_format: READING_RESPONSE_FORMAT,
       messages: [
         { role: "system", content: systemPrompt },
@@ -387,6 +541,7 @@ async function requestStructuredReading({
   systemPrompt,
   userMessage,
   noteTexts,
+  telemetry = console,
 }) {
   let lastRawText = "";
 
@@ -412,15 +567,27 @@ async function requestStructuredReading({
     lastRawText = rawText;
 
     const reading = parseReadingOutput(rawText, noteTexts);
-    if (reading) return reading;
+    if (reading) {
+      telemetry.info?.("reading_parse", {
+        outcome: "success",
+        attempt: attempt + 1,
+      });
+      return reading;
+    }
+    telemetry.warn?.("reading_parse", {
+      outcome: attempt === 0 ? "retry" : "fallback",
+      attempt: attempt + 1,
+      parseableJson: parseReadingJson(rawText) !== null,
+    });
   }
 
-  return plainTextReading(lastRawText);
+  return normalizeReading(lastRawText, noteTexts);
 }
 
 module.exports = {
   READING_RESPONSE_FORMAT,
   normalizeReading,
+  normalizeTrailingQuestionReading,
   normalizeStructuredReading,
   parseReadingJson,
   parseReadingOutput,
