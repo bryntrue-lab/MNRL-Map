@@ -66,9 +66,10 @@ export function FieldLetterSheet({
           <Text style={styles.metadata}>the letter</Text>
           <Text style={styles.title}>a letter, from a person.</Text>
           <Text style={styles.body}>
-            Nothing in your field is shared with this request. She writes to you
-            first, and you choose what to share with her, in your own words, by
-            reply.
+            A letter is written by Bryn – the scholar practitioner behind Mineral –
+            personally, one at a time. Nothing in your field is shared in this
+            request. She writes to you first, and you choose what to share with
+            her, in your own words, by reply.
           </Text>
           <View style={styles.action}>
             <LinkPrimary
