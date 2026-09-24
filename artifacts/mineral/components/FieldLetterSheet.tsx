@@ -63,8 +63,8 @@ export function FieldLetterSheet({
         </Text>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.eyebrow}>A LETTER</Text>
-          <Text style={styles.title}>your field, read by hand.</Text>
+          <Text style={styles.metadata}>the letter</Text>
+          <Text style={styles.title}>a letter, from a person.</Text>
           <Text style={styles.body}>
             Nothing in your field is shared with this request. She writes to you
             first, and you choose what to share with her, in your own words, by
@@ -72,7 +72,7 @@ export function FieldLetterSheet({
           </Text>
           <View style={styles.action}>
             <LinkPrimary
-              label="request →"
+              label="ask for a letter"
               onPress={requestLetter}
               disabled={state === "requesting"}
               testID="field-letter-request"
@@ -90,8 +90,8 @@ export function FieldLetterSheet({
 }
 
 const styles = StyleSheet.create({
-  eyebrow: {
-    ...TypeScale.eyebrow,
+  metadata: {
+    ...TypeScale.metadata,
     color: colors.light.textMuted,
   },
   title: {
