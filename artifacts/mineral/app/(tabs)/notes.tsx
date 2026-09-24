@@ -1,6 +1,7 @@
 import { onSnapshot } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  AppState,
   Dimensions,
   Platform,
   Pressable,
@@ -73,6 +74,91 @@ function noteWhenLabel(n: FieldNoteDoc): string {
   return `${days} days ago`;
 }
 
+type NoteDayGroup = {
+  key: string;
+  label: string | null;
+  dayStart: number;
+  notes: FieldNoteWithId[];
+};
+
+const MONTH_NAMES = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+] as const;
+
+function startOfLocalDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function dayHeaderLabel(dayStart: number, now: Date): string {
+  const todayStart = startOfLocalDay(now);
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+
+  if (dayStart === todayStart) return "today";
+  if (dayStart === yesterday.getTime()) return "yesterday";
+
+  const date = new Date(dayStart);
+  const dateLabel = `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}`;
+  return date.getFullYear() === now.getFullYear()
+    ? dateLabel
+    : `${dateLabel} ${date.getFullYear()}`;
+}
+
+function groupNotesByLocalDay(
+  notes: FieldNoteWithId[],
+  now: Date
+): NoteDayGroup[] {
+  const pending: FieldNoteWithId[] = [];
+  const groups = new Map<number, FieldNoteWithId[]>();
+
+  notes.forEach((note) => {
+    const created = note.createdAt?.toDate?.();
+    if (!created) {
+      pending.push(note);
+      return;
+    }
+
+    const dayStart = startOfLocalDay(created);
+    const dayNotes = groups.get(dayStart);
+    if (dayNotes) {
+      dayNotes.push(note);
+    } else {
+      groups.set(dayStart, [note]);
+    }
+  });
+
+  const datedGroups = Array.from(groups.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([dayStart, dayNotes]) => ({
+      key: String(dayStart),
+      label: dayHeaderLabel(dayStart, now),
+      dayStart,
+      notes: dayNotes,
+    }));
+
+  return pending.length > 0
+    ? [
+        {
+          key: "pending",
+          label: null,
+          dayStart: Number.POSITIVE_INFINITY,
+          notes: pending,
+        },
+        ...datedGroups,
+      ]
+    : datedGroups;
+}
+
 export default function NotesScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -84,6 +170,8 @@ export default function NotesScreen() {
   // into the open sheet.
   const [openNote, setOpenNote] = useState<FieldNoteWithId | null>(null);
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
+  const [activeType, setActiveType] = useState<FieldNoteType | null>(null);
+  const [calendarNow, setCalendarNow] = useState(() => Date.now());
 
   // Chronological fieldNotes, createdAt DESC — live, so the feed
   // refreshes itself on capture, sheet close, and tab focus (§C.1 1f).
@@ -113,6 +201,52 @@ export default function NotesScreen() {
       return live ?? prev;
     });
   }, [recentNotes]);
+
+  useEffect(() => {
+    const now = new Date();
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    ).getTime();
+    const midnightTimer = setTimeout(
+      () => setCalendarNow(Date.now()),
+      nextMidnight - now.getTime() + 50
+    );
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") setCalendarNow(Date.now());
+    });
+
+    return () => {
+      clearTimeout(midnightTimer);
+      appStateSubscription.remove();
+    };
+  }, [calendarNow]);
+
+  const existingTypes = useMemo(
+    () => Array.from(new Set(recentNotes.map((note) => note.type))),
+    [recentNotes]
+  );
+
+  useEffect(() => {
+    if (activeType && !existingTypes.includes(activeType)) {
+      setActiveType(null);
+    }
+  }, [activeType, existingTypes]);
+
+  const selectedType =
+    activeType && existingTypes.includes(activeType) ? activeType : null;
+  const visibleNotes = useMemo(
+    () =>
+      selectedType
+        ? recentNotes.filter((note) => note.type === selectedType)
+        : recentNotes,
+    [recentNotes, selectedType]
+  );
+  const noteGroups = useMemo(
+    () => groupNotesByLocalDay(visibleNotes, new Date(calendarNow)),
+    [calendarNow, visibleNotes]
+  );
 
   const tabBarHeight = Platform.OS === "web" ? 84 : 60 + insets.bottom;
 
@@ -185,22 +319,59 @@ export default function NotesScreen() {
               </Text>
             </View>
           ) : (
-            recentNotes.map((n) => (
-              <Pressable
-                key={n.id}
-                style={styles.noteItem}
-                onPress={() => setOpenNote(n)}
-                testID={`recent-note-${n.id}`}
-              >
-                <Text style={styles.noteLine} numberOfLines={2}>
-                  {noteOpeningLine(n)}
-                </Text>
-                <Text style={styles.noteMeta}>
-                  {NOTE_TYPE_LABEL[n.type] ?? n.type}
-                  {noteWhenLabel(n) ? ` · ${noteWhenLabel(n)}` : ""}
-                </Text>
-              </Pressable>
-            ))
+            <>
+              <View style={styles.filterRow}>
+                {existingTypes.map((type, index) => (
+                  <Pressable
+                    key={type}
+                    accessibilityRole="button"
+                    accessibilityLabel={NOTE_TYPE_LABEL[type] ?? type}
+                    accessibilityState={{ selected: selectedType === type }}
+                    onPress={() =>
+                      setActiveType((current) => current === type ? null : type)
+                    }
+                    hitSlop={6}
+                    testID={`notes-filter-${type}`}
+                  >
+                    <Text
+                      style={[
+                        styles.filterLabel,
+                        selectedType === type && styles.filterLabelActive,
+                      ]}
+                    >
+                      {`${index > 0 ? " · " : ""}${NOTE_TYPE_LABEL[type] ?? type}`}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {noteGroups.map((group, groupIndex) => (
+                <View
+                  key={group.key}
+                  style={groupIndex > 0 ? styles.laterDayGroup : undefined}
+                >
+                  {group.label && (
+                    <Text style={styles.dayHeader}>{group.label}</Text>
+                  )}
+                  {group.notes.map((n) => (
+                    <Pressable
+                      key={n.id}
+                      style={styles.noteItem}
+                      onPress={() => setOpenNote(n)}
+                      testID={`recent-note-${n.id}`}
+                    >
+                      <Text style={styles.noteLine} numberOfLines={2}>
+                        {noteOpeningLine(n)}
+                      </Text>
+                      <Text style={styles.noteMeta}>
+                        {NOTE_TYPE_LABEL[n.type] ?? n.type}
+                        {noteWhenLabel(n) ? ` · ${noteWhenLabel(n)}` : ""}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ))}
+            </>
           )}
         </View>
       </ScrollView>
@@ -317,6 +488,29 @@ const styles = StyleSheet.create({
   recentCount: {
     ...TypeScale.serifSmall,
     color: "rgba(255,255,255,0.5)",
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  filterLabel: {
+    ...TypeScale.label,
+    color: colors.light.textTertiary,
+    textTransform: "lowercase",
+  },
+  filterLabelActive: {
+    color: colors.light.textPrimary,
+  },
+  laterDayGroup: {
+    marginTop: 28,
+  },
+  dayHeader: {
+    ...TypeScale.metadata,
+    letterSpacing: 1.2,
+    color: colors.light.textMuted,
+    textTransform: "lowercase",
   },
 
   emptyState: {
