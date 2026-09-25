@@ -1,0 +1,282 @@
+diff --git a/artifacts/mineral/app/(tabs)/origin.tsx b/artifacts/mineral/app/(tabs)/origin.tsx
+index 7744fcf..88485d5 100644
+--- a/artifacts/mineral/app/(tabs)/origin.tsx
++++ b/artifacts/mineral/app/(tabs)/origin.tsx
+@@ -428,7 +428,13 @@ export default function OriginScreen() {
+ 
+   // §6 — counterweight capture: the position read when "keep what comes"
+   // was offered. Non-null renders the standard capture sheet.
+-  const [cwCapture, setCwCapture] = useState<{ date: string; phase: PhaseId } | null>(null);
++  const [cwCapture, setCwCapture] = useState<{
++    date: string;
++    phase: PhaseId;
++    /** Carried through so the sheet can show what is being answered. */
++    dateLabel: string;
++    question: string;
++  } | null>(null);
+ 
+   const [turnOpen, setTurnOpen] = useState(false);
+   const lifeOp = useRef(new Animated.Value(1)).current;
+@@ -648,6 +654,9 @@ export default function OriginScreen() {
+     introRunning,
+     turnOpen,
+     sheet,
++    // The counterweight capture is not one of the `sheet` values, so the map
++    // believed nothing was open and kept its gestures armed underneath it.
++    cwOpen: cwCapture != null,
+     wandering,
+     clampedCurrent,
+     wheelDay,
+@@ -660,6 +669,9 @@ export default function OriginScreen() {
+     introRunning,
+     turnOpen,
+     sheet,
++    // The counterweight capture is not one of the `sheet` values, so the map
++    // believed nothing was open and kept its gestures armed underneath it.
++    cwOpen: cwCapture != null,
+     wandering,
+     clampedCurrent,
+     wheelDay,
+@@ -726,7 +738,7 @@ export default function OriginScreen() {
+       .onUpdate((e) => {
+         const st = stateRef.current;
+         const act = actionsRef.current;
+-        if (st.introRunning || st.turnOpen || st.sheet) return;
++        if (st.introRunning || st.turnOpen || st.sheet || st.cwOpen) return;
+         const P = pinchStart.current;
+         const cx = st.zoneW / 2;
+         const cy = st.zoneH / 2;
+@@ -766,7 +778,7 @@ export default function OriginScreen() {
+       .onEnd((_e, success) => {
+         if (!success) return;
+         const st = stateRef.current;
+-        if (st.introRunning || st.turnOpen || st.sheet) return;
++        if (st.introRunning || st.turnOpen || st.sheet || st.cwOpen) return;
+         if (zoomRef.current.s > 1.001) actionsRef.current.animateZoomTo(ZOOM_HOME);
+       });
+ 
+@@ -787,7 +799,7 @@ export default function OriginScreen() {
+       .onUpdate((e) => {
+         const st = stateRef.current;
+         const act = actionsRef.current;
+-        if (st.introRunning || st.sheet) return;
++        if (st.introRunning || st.sheet || st.cwOpen) return;
+         // H3 — turn mode: scrub-select. The nearest day highlights and the
+         // floating label follows the finger; the wheel's geometry stays fixed.
+         if (st.turnOpen) {
+@@ -820,7 +832,7 @@ export default function OriginScreen() {
+       .onEnd((e) => {
+         const st = stateRef.current;
+         const act = actionsRef.current;
+-        if (st.introRunning || st.sheet) return;
++        if (st.introRunning || st.sheet || st.cwOpen) return;
+         // H3 — release resolves the scrub: past → visit; future → quiet
+         // toast; today or off-ring → cancel (a plain tap still opens today).
+         if (st.turnOpen) {
+@@ -869,7 +881,7 @@ export default function OriginScreen() {
+           act.finishIntro();
+           return;
+         }
+-        if (st.sheet) return; // the backdrop closes sheets
++        if (st.sheet || st.cwOpen) return; // the backdrop closes sheets
+         const vb = act.toViewBox(e.x, e.y);
+         if (st.turnOpen) {
+           const d = wheelDayFromPoint(vb.x, vb.y);
+@@ -1220,12 +1232,16 @@ export default function OriginScreen() {
+             onClose={() => setSheet(null)}
+             onCompanions={() => setSheet("companions")}
+             onSwingTo={sheetSwingTo}
+-            onKeepWhatComes={() => {
+-              // §6 — the position read is the displayed position.
++            onKeepWhatComes={(ctx) => {
++              // §6 — the position read is the displayed position. The date
++              // label and question come from the sheet that computed them,
++              // so the counterweight logic stays in one place.
+               setSheet(null);
+               setCwCapture({
+                 date: dateAtAge(birthDate, displayAge).toISOString().slice(0, 10),
+                 phase: r.phase,
++                dateLabel: ctx.dateLabel,
++                question: ctx.question,
+               });
+             }}
+             onHowToRead={mapTeaching ? () => setSheet("map") : undefined}
+@@ -1249,7 +1265,10 @@ export default function OriginScreen() {
+       )}
+ 
+       {/* §6 — counterweight capture: the standard sheet, type fixed to
+-          reflection, mapRef carrying the position that provoked it. */}
++          reflection, mapRef carrying the position that provoked it.
++          `modal` so the sheet covers the tab bar and the map beneath it —
++          without it the map's gestures and the tab bar stayed live under an
++          open sheet, and a stray touch navigated away mid-capture. */}
+       <CaptureSheet
+         open={cwCapture != null}
+         onClose={() => setCwCapture(null)}
+@@ -1258,7 +1277,11 @@ export default function OriginScreen() {
+         atmosphere={cwCapture?.phase ?? r.phase}
+         bottomPad={tabBarHeight}
+         lockedType="reflection"
+-        mapRef={cwCapture}
++        modal
++        eyebrow="KEEP WHAT COMES"
++        contextDate={cwCapture?.dateLabel ?? null}
++        promptText={cwCapture?.question ?? null}
++        mapRef={cwCapture ? { date: cwCapture.date, phase: cwCapture.phase } : null}
+         onSaved={() => showToast("kept.")}
+       />
+ 
+diff --git a/artifacts/mineral/app/encounter.tsx b/artifacts/mineral/app/encounter.tsx
+index d9123d5..acb0e1c 100644
+--- a/artifacts/mineral/app/encounter.tsx
++++ b/artifacts/mineral/app/encounter.tsx
+@@ -1150,6 +1150,10 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
+         atmosphere={phase}
+         bottomPad={insets.bottom + 8}
+         lockedType={sheetMode === "counterweight" ? "reflection" : null}
++        eyebrow={sheetMode === "counterweight" ? "KEEP WHAT COMES" : "CAPTURE"}
++        // The date and question stay on screen while they are answered.
++        contextDate={sheetMode === "counterweight" ? (cw?.dateLabel ?? null) : null}
++        promptText={sheetMode === "counterweight" ? (cw?.question ?? null) : null}
+         mapRef={
+           sheetMode === "counterweight" && cw
+             ? { date: cw.isoDate, phase: cw.phase }
+diff --git a/artifacts/mineral/components/CaptureSheet.tsx b/artifacts/mineral/components/CaptureSheet.tsx
+index 97dea44..220aeab 100644
+--- a/artifacts/mineral/components/CaptureSheet.tsx
++++ b/artifacts/mineral/components/CaptureSheet.tsx
+@@ -42,6 +42,18 @@ interface CaptureSheetProps {
+   lockedType?: FieldNoteType | null;
+   /** §6 additive v1.8 — which map position provoked this capture. */
+   mapRef?: CreateFieldNoteInput["mapRef"];
++  /** Header eyebrow. Defaults to CAPTURE; the counterweight names itself. */
++  eyebrow?: string;
++  /**
++   * What is being kept — held above the field and never scrolled away.
++   * Losing the date and the question behind the sheet was the substance of
++   * the first tester's complaint: "would have liked to still be able to see
++   * the date in question."
++   */
++  contextDate?: string | null;
++  promptText?: string | null;
++  /** Cover navigator siblings (the tab bar) while the sheet is up. */
++  modal?: boolean;
+   onSaved?: () => void;
+ }
+ 
+@@ -56,6 +68,10 @@ export function CaptureSheet({
+   initialType,
+   lockedType,
+   mapRef,
++  eyebrow = "CAPTURE",
++  contextDate,
++  promptText,
++  modal,
+   onSaved,
+ }: CaptureSheetProps) {
+   const [type, setType] = useState<FieldNoteType | null>(lockedType ?? initialType ?? null);
+@@ -111,20 +127,34 @@ export function CaptureSheet({
+       onClose={onClose}
+       bottomPad={bottomPad}
+       swipeToDismiss
++      modal={modal}
+       testID="capture-sheet"
+     >
++      {/* 2.1.3 — the header sits OUTSIDE the scroll view. Inside it, the ✕
++          scrolled out of reach the moment the keyboard raised the field, so
++          the only visible ✕ was the encounter screen's own exit — which quit
++          the encounter rather than the sheet. That is the whole of the
++          tester's "the x is cut off" and "it took me back to Today". */}
++      <View style={styles.headRow}>
++        <Text style={styles.eyebrow}>{eyebrow}</Text>
++        <Pressable onPress={onClose} style={styles.closeTarget} hitSlop={8} testID="capture-close">
++          <Text style={styles.closeGlyph}>✕</Text>
++        </Pressable>
++      </View>
++
++      {/* What is being kept stays visible while it is being answered. */}
++      {(contextDate || promptText) && (
++        <View style={styles.context} testID="capture-context">
++          {contextDate ? <Text style={styles.contextDate}>{contextDate}</Text> : null}
++          {promptText ? <Text style={styles.contextPrompt}>{promptText}</Text> : null}
++        </View>
++      )}
++
+       <KeyboardAwareScrollViewCompat
+         style={styles.scroll}
+         showsVerticalScrollIndicator={false}
+         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+       >
+-        <View style={styles.headRow}>
+-          <Text style={styles.eyebrow}>CAPTURE</Text>
+-          <Pressable onPress={onClose} style={styles.closeTarget} hitSlop={4} testID="capture-close">
+-            <Text style={styles.closeGlyph}>✕</Text>
+-          </Pressable>
+-        </View>
+-
+         {lockedType == null && (
+         <View style={styles.chipRow}>
+           {CAPTURE_CHIPS.map((chip) => {
+@@ -174,8 +204,11 @@ export function CaptureSheet({
+ }
+ 
+ const styles = StyleSheet.create({
++  // The header and context now live outside this view, so the scroll only
++  // has to hold chips + field + keep. Lower than the old 440 so the sheet
++  // does not overrun the screen top once the keyboard raises it.
+   scroll: {
+-    maxHeight: 440,
++    maxHeight: 330,
+   },
+   headRow: {
+     flexDirection: "row",
+@@ -183,6 +216,20 @@ const styles = StyleSheet.create({
+     alignItems: "center",
+     marginBottom: 8,
+   },
++
++  context: {
++    marginBottom: 18,
++  },
++  contextDate: {
++    ...TypeScale.body,
++    letterSpacing: 0.3,
++    color: "rgba(235,228,255,0.85)",
++    marginBottom: 6,
++  },
++  contextPrompt: {
++    ...TypeScale.serifSmall,
++    color: "rgba(235,228,255,0.58)",
++  },
+   eyebrow: {
+     ...TypeScale.metadata,
+     letterSpacing: 2.5,
+diff --git a/artifacts/mineral/components/OriginSheets.tsx b/artifacts/mineral/components/OriginSheets.tsx
+index 3029583..f5c9dc4 100644
+--- a/artifacts/mineral/components/OriginSheets.tsx
++++ b/artifacts/mineral/components/OriginSheets.tsx
+@@ -263,7 +263,9 @@ interface ReadingSheetProps {
+   onCompanions: () => void;
+   onSwingTo: (age: number) => void;
+   /** §6 — opens the standard capture sheet against this position's mapRef. */
+-  onKeepWhatComes?: () => void;
++  /** Hands the capture the date and question it is answering, so the sheet
++   *  can keep them on screen instead of opening onto a bare field. */
++  onKeepWhatComes?: (ctx: { dateLabel: string; question: string }) => void;
+   /** E9 — opens the map teaching sheet; hidden when the doc is absent. */
+   onHowToRead?: () => void;
+ }
+@@ -328,7 +330,12 @@ export function ReadingSheet({
+           {onKeepWhatComes && (
+             <LinkWhisper
+               label="keep what comes →"
+-              onPress={onKeepWhatComes}
++              onPress={() =>
++                onKeepWhatComes({
++                  dateLabel: ritualDateLabel(cwDate),
++                  question: cwQuestion,
++                })
++              }
+               style={styles.keepWhatComes}
+               testID="counterweight-keep"
+             />
