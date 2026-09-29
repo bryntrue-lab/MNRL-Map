@@ -655,9 +655,8 @@ export default function OriginScreen() {
     [swingTo]
   );
 
-  // The wander caption's date is a native spinner on iOS/Android. Its
-  // selection is still a life position, so it enters through the same
-  // pendulum settle path as every other swing.
+  // The wander caption's date opens the platform picker. Its selection is
+  // still a life position, so it enters through the same pendulum settle path.
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState<Date | null>(null);
   const dateRange = useMemo(
@@ -665,7 +664,7 @@ export default function OriginScreen() {
     [birthDate, now]
   );
   const toggleDatePicker = useCallback(() => {
-    if (Platform.OS === "web" || !birthDate) return;
+    if (!birthDate) return;
     if (!datePickerOpen && dateRange) {
       setDatePickerValue(originDateInRange(dateAtAge(birthDate, displayAge), dateRange));
     }
@@ -996,6 +995,9 @@ export default function OriginScreen() {
   const seasonTitle = wanderFrame?.seasonTitle ?? null;
   const wanderDate = wanderFrame?.date ?? null;
   const wanderMeta = wanderFrame?.meta ?? "";
+  const dateWordsEnd = wanderMeta.indexOf(" · age ");
+  const wanderDateWords = dateWordsEnd < 0 ? wanderMeta : wanderMeta.slice(0, dateWordsEnd);
+  const wanderMetaRest = dateWordsEnd < 0 ? "" : wanderMeta.slice(dateWordsEnd);
   const datePickerDisplayValue =
     dateRange &&
     originDateInRange(datePickerValue ?? wanderDate ?? dateRange.minimumDate, dateRange);
@@ -1236,12 +1238,14 @@ export default function OriginScreen() {
                 {seasonTitle && <Text style={styles.captionSeason}>{seasonTitle}</Text>}
                 <Pressable
                   onPress={toggleDatePicker}
-                  disabled={Platform.OS === "web"}
                   style={styles.captionMetaPressable}
                   testID="origin-wander-date"
                   accessibilityRole="button"
                 >
-                  <Text style={styles.captionMeta}>{wanderMeta}</Text>
+                  <View style={styles.captionMetaRow}>
+                    <Text style={[styles.captionMeta, styles.captionDateWords]}>{wanderDateWords}</Text>
+                    <Text style={styles.captionMeta}>{wanderMetaRest}</Text>
+                  </View>
                 </Pressable>
               </View>
               {hintDone === false && (
@@ -1277,7 +1281,7 @@ export default function OriginScreen() {
       {/* Sheets */}
       {birthDate && clampedCurrent != null && (
         <>
-          {dateRange && datePickerDisplayValue && !isWeb && (
+          {dateRange && datePickerDisplayValue && (
             <OriginDatePickerSheet
               open={datePickerOpen}
               value={datePickerDisplayValue}
@@ -1506,11 +1510,23 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textTransform: "lowercase",
     color: colors.light.textTertiary,
+  },
+  captionDateWords: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.light.textTertiary,
+  },
+  captionMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 4,
+    maxWidth: "100%",
   },
   // Keep the metadata type unchanged; the ≥44pt target comes from padding.
   captionMetaPressable: {
     minHeight: 44,
+    width: "100%",
     paddingVertical: 14,
     justifyContent: "center",
     alignItems: "center",
