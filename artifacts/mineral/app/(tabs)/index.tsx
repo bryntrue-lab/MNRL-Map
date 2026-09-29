@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -44,6 +44,14 @@ const ATMOSPHERE: Record<PhaseId, React.ComponentType> = {
 };
 
 const TURN_WORDS = ["first", "second", "third", "fourth", "fifth"] as const;
+
+function completedToday(doc: UserEncounterDoc | null | undefined, now: Date): boolean {
+  return (
+    doc?.status === "completed" &&
+    doc.completedAt != null &&
+    doc.completedAt.toDate().toDateString() === now.toDateString()
+  );
+}
 
 /**
  * The Threshold (§11) — the door to today's encounter, or to a visited one.
@@ -170,6 +178,14 @@ export default function TodayScreen() {
     );
     return () => clearTimeout(t);
   }, [dayKey]);
+  // Backgrounded JS can miss the midnight timer. A foreground transition
+  // refreshes the local day and re-evaluates the live gate.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") setDayKey(new Date().toDateString());
+    });
+    return () => sub.remove();
+  }, []);
   useEffect(() => {
     if (!user || !prevEncounter || prevTurn == null) {
       setGatedToday(false);
@@ -183,11 +199,7 @@ export default function TodayScreen() {
         const d = snap.data({ serverTimestamps: "estimate" }) as
           | UserEncounterDoc
           | undefined;
-        setGatedToday(
-          d?.status === "completed" &&
-            (!d.completedAt ||
-              d.completedAt.toDate().toDateString() === dayKey)
-        );
+        setGatedToday(completedToday(d, new Date()));
       },
       () => setGatedToday(false)
     );
@@ -244,11 +256,7 @@ export default function TodayScreen() {
       busy.current = true;
       try {
         const prevDoc = await getUserEncounter(user.uid, prevEncounter.id, prevTurn);
-        if (
-          prevDoc?.status === "completed" &&
-          (!prevDoc.completedAt ||
-            prevDoc.completedAt.toDate().toDateString() === new Date().toDateString())
-        ) {
+        if (completedToday(prevDoc, new Date())) {
           setGatedToday(true);
           busy.current = false;
           return;

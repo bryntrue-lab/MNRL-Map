@@ -227,6 +227,8 @@ export function OriginDatePickerSheet({
   onClose,
   onChange,
 }: OriginDatePickerSheetProps) {
+  const localDate = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   return (
     <SheetShell
       open={open}
@@ -235,15 +237,48 @@ export function OriginDatePickerSheet({
       modal
       testID="origin-date-picker-sheet"
     >
-      <DateTimePicker
-        value={value}
-        mode="date"
-        display="spinner"
-        minimumDate={minimumDate}
-        maximumDate={maximumDate}
-        onChange={onChange}
-        testID="origin-wander-date-picker"
-      />
+      {Platform.OS === "web" ? (
+        React.createElement("input", {
+          type: "date",
+          "data-testid": "origin-wander-date-picker",
+          value: localDate(value),
+          min: localDate(minimumDate),
+          max: localDate(maximumDate),
+          style: {
+            width: "100%",
+            fontSize: 18,
+            color: "rgba(235,228,255,0.85)",
+            backgroundColor: "#0e0a18",
+            border: "none",
+            colorScheme: "dark",
+          },
+          onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+            const [year, month, day] = event.target.value.split("-").map(Number);
+            if (!year || !month || !day) return;
+            const selected = new Date(year, month - 1, day);
+            onChange(
+              {
+                type: "set",
+                nativeEvent: {
+                  timestamp: selected.getTime(),
+                  utcOffset: -selected.getTimezoneOffset(),
+                },
+              },
+              selected
+            );
+          },
+        })
+      ) : (
+        <DateTimePicker
+          value={value}
+          mode="date"
+          display="spinner"
+          minimumDate={minimumDate}
+          maximumDate={maximumDate}
+          onChange={onChange}
+          testID="origin-wander-date-picker"
+        />
+      )}
     </SheetShell>
   );
 }
