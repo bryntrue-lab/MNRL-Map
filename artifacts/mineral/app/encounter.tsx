@@ -289,7 +289,7 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
   // The one capture sheet, parametrized by its trigger: the ambient `+`
   // (source 'encounter') or the counterweight's "keep what comes" (§6).
-  const [sheetMode, setSheetMode] = useState<null | "ambient" | "counterweight">(null);
+  const [sheetMode, setSheetMode] = useState<null | "ambient" | "counterweight" | "charge">(null);
   const [toast, setToast] = useState<{ key: number; text: string } | null>(null);
 
   // ── Listen (§1b) ──
@@ -667,7 +667,9 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
   ).current;
 
   // ── Close (§1g) ──
-  const closingRef = useRef(false);
+  // Reserve the close while charge capture is open, synchronously: state alone
+  // cannot exclude a second press before React has rendered the sheet.
+  const closingRef = useRef<boolean | "charge">(false);
   // Slice 6: the permission moment fires once, after the FIRST close (the
   // account moment, if it triggers, has already run inside the close stage).
   const morningCallOfferedRef = useRef(true);
@@ -679,8 +681,11 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       })
       .catch(() => {});
   }, []);
-  const closeOut = async () => {
-    if (closingRef.current) return;
+  const closeOut = async (
+    dest: "/(tabs)/origin" | "/(tabs)/guide" = "/(tabs)/origin"
+  ) => {
+    if (closingRef.current === true) return;
+    if (closingRef.current === "charge" && dest !== "/(tabs)/guide") return;
     closingRef.current = true;
     if (sequence) {
       // Not awaited — offline, the batch commits when connectivity returns;
@@ -688,6 +693,12 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
       completeEncounter(uid, encounter.id, turn, profile?.sequenceDay ?? 1).catch(
         (err) => console.warn("completion queued/failed", err)
       );
+    }
+    // Charge goes directly to the Guide without consuming the morning-call
+    // offer. The ordinary map close will still offer it on a later encounter.
+    if (dest === "/(tabs)/guide") {
+      router.replace(dest);
+      return;
     }
     // Re-read the flag at the moment of decision — the mount-time preload
     // may not have resolved on a very fast first close.
@@ -1161,19 +1172,34 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
 
           <LinkPrimary
             label="return to the map →"
-            onPress={closeOut}
+            onPress={() => closeOut()}
             style={styles.advance}
             testID="close-return"
+          />
+          <LinkWhisper
+            label="or ask where today's charge is — speak it"
+            onPress={() => {
+              if (closingRef.current) return;
+              closingRef.current = "charge";
+              setSheetMode("charge");
+            }}
+            style={{ alignSelf: "center", marginTop: 14 }}
+            testID="close-to-guide"
           />
         </View>
       )}
 
       <CaptureSheet
         open={sheetMode != null}
-        onClose={() => setSheetMode(null)}
+        onClose={() => {
+          // A saved charge has already acquired the navigation guard; only an
+          // unsaved dismissal releases the reservation for the map link.
+          if (closingRef.current === "charge") closingRef.current = false;
+          setSheetMode(null);
+        }}
         uid={uid}
-        source={sheetMode === "counterweight" ? "spontaneous" : "encounter"}
-        encounterRef={sheetMode === "counterweight" ? null : instanceId}
+        source={sheetMode === "counterweight" || sheetMode === "charge" ? "spontaneous" : "encounter"}
+        encounterRef={sheetMode === "counterweight" || sheetMode === "charge" ? null : instanceId}
         atmosphere={phase}
         bottomPad={insets.bottom + 8}
         lockedType={sheetMode === "counterweight" ? "reflection" : null}
@@ -1186,7 +1212,14 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             ? { date: cw.isoDate, phase: cw.phase }
             : null
         }
-        onSaved={() => setToast({ key: Date.now(), text: "kept." })}
+        onSaved={() => {
+          if (sheetMode === "charge") {
+            setSheetMode(null);
+            closeOut("/(tabs)/guide");
+          } else {
+            setToast({ key: Date.now(), text: "kept." });
+          }
+        }}
       />
       <QuietToast
         toast={toast}

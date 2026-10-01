@@ -14,6 +14,9 @@
       "backgroundColor": "#0a0510"
     },
     "ios": {
+      "entitlements": {
+        "com.apple.developer.devicecheck.appattest-environment": "production"
+      },
       "supportsTablet": false,
       "bundleIdentifier": "com.madebymineral.quartz",
       "buildNumber": "1",

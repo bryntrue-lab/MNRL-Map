@@ -796,23 +796,33 @@ export default function GuideScreen() {
           notes.length,
           profile?.readingsEnabled === true
         ) ? (
-          <LinkWhisper
-            label="a reflection →"
-            onPress={() => setReadingOpen(true)}
-            style={styles.readingLink}
-            testID="guide-reading-link"
-          />
+          <View style={styles.footerDoor}>
+            <LinkWhisper
+              label="a reflection →"
+              onPress={() => setReadingOpen(true)}
+              style={styles.readingLink}
+              testID="guide-reading-link"
+            />
+            <Text style={styles.footerHeld}>
+              {spellNumber(notes.length)} notes, held together in one reading.
+            </Text>
+          </View>
         ) : null}
         {shouldShowLetter(
           notes.length,
           !user?.isAnonymous && !!user?.email
         ) ? (
-          <LinkWhisper
-            label="request a letter →"
-            onPress={() => setLetterOpen(true)}
-            style={styles.letterLink}
-            testID="guide-letter-link"
-          />
+          <View style={styles.footerDoor}>
+            <LinkWhisper
+              label="request a letter →"
+              onPress={() => setLetterOpen(true)}
+              style={styles.letterLink}
+              testID="guide-letter-link"
+            />
+            <Text style={styles.footerHeld}>
+              written by a person, to your field alone.
+            </Text>
+          </View>
         ) : null}
         {/* Permanent footer whisper — the opening text, summoned as a sheet */}
         <LinkWhisper
@@ -1110,12 +1120,21 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginTop: 16,
   },
+  footerDoor: {
+    alignItems: "center",
+  },
+  footerHeld: {
+    ...TypeScale.serifSmall,
+    color: colors.light.textSecondary,
+    marginTop: 5,
+    textAlign: "center",
+  },
   readingLink: {
-    alignSelf: "flex-start",
+    alignSelf: "center",
     marginTop: 44,
   },
   letterLink: {
-    alignSelf: "flex-start",
+    alignSelf: "center",
     marginTop: 16,
   },
 });

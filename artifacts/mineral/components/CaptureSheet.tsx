@@ -99,6 +99,12 @@ export function CaptureSheet({
 
   const canKeep = type != null && text.trim().length > 0 && uid != null;
 
+  // Do not dismiss/reopen during a pending write: that would reset the busy
+  // guard and let a second save or the encounter's map link race the charge.
+  const dismiss = () => {
+    if (!busy.current) onClose();
+  };
+
   const keep = async () => {
     if (!canKeep || busy.current || !uid || !type) return;
     busy.current = true;
@@ -124,7 +130,7 @@ export function CaptureSheet({
   return (
     <SheetShell
       open={open}
-      onClose={onClose}
+      onClose={dismiss}
       bottomPad={bottomPad}
       swipeToDismiss
       modal={modal}
@@ -137,7 +143,7 @@ export function CaptureSheet({
           tester's "the x is cut off" and "it took me back to Today". */}
       <View style={styles.headRow}>
         <Text style={styles.eyebrow}>{eyebrow}</Text>
-        <Pressable onPress={onClose} style={styles.closeTarget} hitSlop={8} testID="capture-close">
+        <Pressable onPress={dismiss} style={styles.closeTarget} hitSlop={8} testID="capture-close">
           <Text style={styles.closeGlyph}>✕</Text>
         </Pressable>
       </View>

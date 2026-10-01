@@ -18,3 +18,18 @@ uri = "file://ENCOUNTERS_AS_SEEDED.md"
 type = "text"
 title = "ENCOUNTERS_AS_SEEDED.md"
 description = "Read-only export of all live Firestore encounter documents, in sequence order, with seed-content drift comparison."
+logical_id = "5649f1f9-d9a0-4182-a0b0-0b2440f69e94"
+
+[[outputs]]
+id = "fMn8B7a6dNePWwPTAvhBe"
+uri = "file://attached_assets/build14-practitioner-content-review.md"
+type = "text"
+title = "Build 14 — practitioner content review"
+description = "All six teaching held-lines, 20 randomly sampled drafts, and the content-shape issues that must be resolved before publication."
+logical_id = "32a7de5f-13d7-4273-9bb0-664b6fcbeb34"
+content_hash = "sha256:0853e7ae1bd026e6acad00f19f4a4440a7a43177068ad0f0aa7e2769757273ca"
+size = 33287
+mtime_ms = 1790898111712
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:b62f97a3-f220-4d48-8a98-ec1fd082bc46/32a7de5f-13d7-4273-9bb0-664b6fcbeb34/4510d59a-38c7-4a44-981a-88069bbdda33"
+storage_version_token = "1790898387965409"
+content_type = "text/markdown"
