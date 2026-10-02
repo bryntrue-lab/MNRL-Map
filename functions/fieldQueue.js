@@ -4,11 +4,13 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 
 const KEY_RE = /^[a-z]+$/;
-const DAILY_LIMIT = 3;
+const DAILY_LIMIT = 10;
+const PASSAGES_PER_CALL = 1;
 const RUN_LEASE_MS = 6 * 60 * 1000;
+const BOUNDED_OUTPUT = "Queue output contract: return exactly ONE passage in the passages array, never three or multiple passages. This overrides any passage-count instruction in the shared prompt. Keep its other editorial and privacy instructions. Return only the requested JSON.";
 
 function contentId(keyType, key) {
-  return `${keyType}_${key.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  return `${keyType}_${key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
 
 function utcDayKey(nowMs) {
@@ -18,8 +20,8 @@ function utcDayKey(nowMs) {
 function parsePassages(raw) {
   const parsed = JSON.parse(raw);
   const passages = Array.isArray(parsed) ? parsed : parsed?.passages;
-  if (!Array.isArray(passages) || passages.length !== 3) {
-    throw new Error("expected exactly three passages");
+  if (!Array.isArray(passages) || passages.length !== PASSAGES_PER_CALL) {
+    throw new Error("expected exactly one passage");
   }
   return passages.map((passage) => {
     if (
@@ -42,19 +44,75 @@ function parsePassages(raw) {
 }
 
 async function establishedCandidates(db) {
-  const snapshot = await db.collectionGroup("patterns").get();
-  const found = new Map();
-  for (const doc of snapshot.docs) {
-    const keyType =
-      doc.id === "motif" ? "motif" : doc.id === "thread" ? "word" : null;
-    if (!keyType) continue;
-    for (const [key, count] of Object.entries(doc.data().itemCounts || {})) {
-      if (count >= 3 && key.length >= 4 && KEY_RE.test(key)) {
-        found.set(`${keyType}:${key}`, { key, keyType });
-      }
+  const [snapshot, lexicon, allowlist, content] = await Promise.all([
+    db.collectionGroup("patterns").get(),
+    db.collection("motifLexicon").get(),
+    db.doc("practitionerContent/queue_allowlist").get(),
+    db.collection("practitionerContent").get(),
+  ]);
+  // Existing founder-seeded lexicon entries have no status field. Explicit
+  // unapproved proposals must not enter this boundary.
+  const allowed = new Set(lexicon.docs.map((doc) => doc.data()).filter((entry) =>
+    entry && (entry.status == null || entry.status === "approved") &&
+    (entry.approval?.status == null || entry.approval.status === "approved") &&
+    ["motif", "resistance"].includes(entry.keyType) && Array.isArray(entry.terms) &&
+    typeof entry.key === "string" && KEY_RE.test(entry.key)
+  ).map((entry) => entry.key));
+  const words = allowlist.data();
+  if (words?.kind === "queue_allowlist" && Array.isArray(words.words)) {
+    for (const key of words.words) {
+      if (typeof key === "string" && KEY_RE.test(key)) allowed.add(key);
     }
   }
-  return [...found.values()].sort((a, b) => a.key.localeCompare(b.key));
+  const existing = new Map(content.docs.map((doc) => [doc.id, doc.data()]));
+  const found = new Map();
+  for (const doc of snapshot.docs) {
+    // Only root pattern documents, never evidence pages or other groups.
+    const match = /^users\/([^/]+)\/patterns\/(motif|thread|resistance)$/.exec(doc.ref.path);
+    if (!match) continue;
+    const keyType = doc.id === "thread" ? "word" : doc.id;
+    if (!keyType) continue;
+    for (const [key, count] of Object.entries(doc.data().itemCounts || {})) {
+      if (!Number.isFinite(count) || count < 3 || !allowed.has(key)) continue;
+      if (hasExistingCopy(existing.get(contentId(keyType, key)))) continue;
+      const id = `${keyType}:${key}`;
+      const entry = found.get(id) || { key, keyType, users: new Set(), totalCount: 0 };
+      if (!entry.users.has(match[1])) {
+        entry.users.add(match[1]);
+        entry.totalCount += count;
+      }
+      found.set(id, entry);
+    }
+  }
+  return [...found.values()].map(({ users, ...entry }) => ({
+    ...entry, establishedUsers: users.size,
+  })).sort((a, b) =>
+    b.establishedUsers - a.establishedUsers || b.totalCount - a.totalCount ||
+    stableCompare(`${a.key}:${a.keyType}`, `${b.key}:${b.keyType}`)
+  );
+}
+
+function stableCompare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function hasExistingCopy(data) {
+  // Top-level founder text is a compatibility approval boundary for motif
+  // and resistance. Conservatively preserve it for words as well.
+  return (Array.isArray(data?.passages) && data.passages.length > 0) ||
+    (typeof data?.text === "string" && data.text.trim().length > 0);
+}
+
+function dailyCounts(data, day) {
+  if (data.day !== day) return { draftedCount: 0, attemptedCount: 0 };
+  // Pre-G2b counters counted three-passage batches, not passages. Migrate
+  // conservatively so a same-day deployment cannot reopen spent capacity.
+  const multiplier = data.budgetVersion === 2 ? 1 : 3;
+  const draftedCount = Math.max(0, Math.ceil(Number(data.draftedCount) || 0)) * multiplier;
+  const attemptedCount = Math.max(
+    draftedCount, Math.max(0, Math.ceil(Number(data.attemptedCount) || 0)) * multiplier
+  );
+  return { draftedCount, attemptedCount };
 }
 
 async function acquireDailyLease(db) {
@@ -65,14 +123,7 @@ async function acquireDailyLease(db) {
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.data() || {};
-    const draftedCount =
-      data.day === day && Number.isFinite(data.draftedCount)
-        ? data.draftedCount
-        : 0;
-    const attemptedCount =
-      data.day === day && Number.isFinite(data.attemptedCount)
-        ? data.attemptedCount
-        : draftedCount;
+    const { draftedCount, attemptedCount } = dailyCounts(data, day);
     if (attemptedCount >= DAILY_LIMIT) return { acquired: false };
     if (
       data.day === day &&
@@ -85,11 +136,16 @@ async function acquireDailyLease(db) {
       ref,
       {
         day,
+        budgetVersion: 2,
         draftedCount,
         attemptedCount,
         attemptedKeys:
           data.day === day && Array.isArray(data.attemptedKeys)
             ? data.attemptedKeys
+            : [],
+        storedKeys:
+          data.day === day && Array.isArray(data.storedKeys)
+            ? data.storedKeys
             : [],
         leaseToken: token,
         leaseUntilMs: now + RUN_LEASE_MS,
@@ -101,6 +157,7 @@ async function acquireDailyLease(db) {
       acquired: true,
       ref,
       token,
+      day,
       remainingAttempts: DAILY_LIMIT - attemptedCount,
     };
   });
@@ -118,15 +175,15 @@ async function reserveCandidate(db, run, candidate) {
     const stateData = state.data() || {};
     if (
       stateData.leaseToken !== run.token ||
-      stateData.day !== utcDayKey(Date.now()) ||
-      stateData.attemptedCount >= DAILY_LIMIT
+      stateData.day !== run.day ||
+      run.day !== utcDayKey(Date.now()) ||
+      stateData.attemptedCount >= DAILY_LIMIT ||
+      stateData.draftedCount >= DAILY_LIMIT ||
+      (stateData.attemptedKeys || []).includes(`${candidate.keyType}:${candidate.key}`)
     ) {
       return false;
     }
-    if (
-      Array.isArray(current.data()?.passages) &&
-      current.data().passages.length > 0
-    ) {
+    if (hasExistingCopy(current.data())) {
       return false;
     }
     tx.update(run.ref, {
@@ -142,6 +199,10 @@ async function reserveCandidate(db, run, candidate) {
 }
 
 async function storeDrafts(db, run, candidate, passages) {
+  if (!Array.isArray(passages) || passages.length !== PASSAGES_PER_CALL ||
+      passages.some((p) => p?.status !== "draft" || p?.source !== "generated")) {
+    throw new Error("only one unapproved generated passage may be stored");
+  }
   const ref = db.doc(
     `practitionerContent/${contentId(candidate.keyType, candidate.key)}`
   );
@@ -153,15 +214,15 @@ async function storeDrafts(db, run, candidate, passages) {
     const stateData = state.data() || {};
     if (
       stateData.leaseToken !== run.token ||
-      stateData.day !== utcDayKey(Date.now()) ||
-      stateData.draftedCount >= DAILY_LIMIT
+      stateData.day !== run.day ||
+      run.day !== utcDayKey(Date.now()) ||
+      !(stateData.attemptedKeys || []).includes(`${candidate.keyType}:${candidate.key}`) ||
+      (stateData.storedKeys || []).includes(`${candidate.keyType}:${candidate.key}`) ||
+      stateData.draftedCount + passages.length > DAILY_LIMIT
     ) {
       return false;
     }
-    if (
-      Array.isArray(current.data()?.passages) &&
-      current.data().passages.length > 0
-    ) {
+    if (hasExistingCopy(current.data())) {
       return false;
     }
     tx.set(
@@ -175,7 +236,8 @@ async function storeDrafts(db, run, candidate, passages) {
       { merge: true }
     );
     tx.update(run.ref, {
-      draftedCount: FieldValue.increment(1),
+      draftedCount: FieldValue.increment(passages.length),
+      storedKeys: FieldValue.arrayUnion(`${candidate.keyType}:${candidate.key}`),
       updatedAt: FieldValue.serverTimestamp(),
     });
     return true;
@@ -206,11 +268,6 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
       secrets: [openAiApiKey],
     },
     async () => {
-      // Slice O rider: keep the scheduled function deployed but pause all
-      // generation until G2b replaces this guard with its new protections.
-      console.info("field passage queue is paused");
-      return;
-
       const recipient = founderEmail.value();
       if (!recipient) throw new Error("FOUNDER_DIGEST_EMAIL is not set");
 
@@ -233,7 +290,9 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
 
         const candidates = await establishedCandidates(db);
         for (const candidate of candidates) {
-          if (attempted >= run.remainingAttempts) break;
+          // Exact call-site bound as well as the durable transaction bound.
+          // No SDK retries: every billable request needs its own reservation.
+          if (attempted >= Math.min(DAILY_LIMIT, run.remainingAttempts)) break;
           if (!(await reserveCandidate(db, run, candidate))) continue;
           attempted += 1;
 
@@ -267,8 +326,8 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
                         properties: {
                           passages: {
                             type: "array",
-                            minItems: 3,
-                            maxItems: 3,
+                             minItems: PASSAGES_PER_CALL,
+                             maxItems: PASSAGES_PER_CALL,
                             items: {
                               type: "object",
                               additionalProperties: false,
@@ -285,6 +344,9 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
                   },
                   messages: [
                     { role: "system", content: systemPrompt },
+                     // Leave the stored shared prompt untouched; override only
+                     // its old three-passage batch contract at this call site.
+                     { role: "system", content: BOUNDED_OUTPUT },
                     { role: "user", content: candidate.key },
                   ],
                 }),
@@ -315,12 +377,19 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
         await releaseDailyLease(db, run);
       }
 
-      if (drafted.length) {
+      const totals = await queueCounts(db, run.day);
+      if (drafted.length || totals.pendingCount) {
         await db.collection("mail").add({
           to: recipient,
           message: {
-            subject: `the field drafted ${drafted.length * 3} passages`,
-            text: drafted.join("\n"),
+            subject: `the field · ${totals.pendingCount} awaiting you`,
+            text: [
+              `${totals.pendingCount} pending passages total`,
+              `${drafted.length} generated this run`,
+              `${totals.generatedTodayCount} generated today (${run.day} UTC)`,
+              `${totals.attemptedCount} attempts today (including failures)`,
+              `drafted keys: ${drafted.join(", ") || "none"}`,
+            ].join("\n"),
           },
           createdAt: FieldValue.serverTimestamp(),
         });
@@ -329,8 +398,52 @@ function createFieldPassageQueue({ db, openAiApiKey, founderEmail }) {
   );
 }
 
+async function queueCounts(db, day = utcDayKey(Date.now())) {
+  const [content, state] = await Promise.all([
+    db.collection("practitionerContent").get(),
+    db.doc("_system/fieldPassageQueue").get(),
+  ]);
+  return { ...countPassageQueue(content), ...dailyCounts(state.data() || {}, day) };
+}
+
+function countPassageQueue(snapshot, now = Date.now()) {
+  const dayStart = Date.parse(`${utcDayKey(now)}T00:00:00Z`);
+  let pendingCount = 0, generatedPast24hCount = 0, generatedTodayCount = 0;
+  let hasSchema = false;
+  const keys = new Set();
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    hasSchema ||= data.kind === "offering" || Array.isArray(data.passages);
+    for (const passage of Array.isArray(data.passages) ? data.passages : []) {
+      if (passage?.status === "draft") {
+        pendingCount++;
+        if (typeof data.key === "string") keys.add(data.key);
+      }
+      if (passage?.source !== "generated") continue;
+      const createdAt = passage.createdAt?.toMillis?.() ??
+        (typeof passage.createdAt === "number" ? passage.createdAt :
+          new Date(passage.createdAt || 0).getTime());
+      // Count actual stored generated passages in every approval status, not
+      // documents, attempted calls, or a legacy estimated budget counter.
+      if (!Number.isFinite(createdAt) || createdAt > now) continue;
+      if (createdAt >= now - 24 * 60 * 60 * 1000) generatedPast24hCount++;
+      if (createdAt >= dayStart) generatedTodayCount++;
+    }
+  }
+  return {
+    pendingCount, generatedPast24hCount, generatedTodayCount,
+    keys: [...keys].sort(stableCompare), notRunning: !hasSchema,
+  };
+}
+
 module.exports = {
   createFieldPassageQueue,
   parsePassages,
   utcDayKey,
+  countPassageQueue,
+  __test: {
+    DAILY_LIMIT, PASSAGES_PER_CALL, acquireDailyLease, reserveCandidate,
+    storeDrafts, releaseDailyLease, establishedCandidates, queueCounts,
+    hasExistingCopy, dailyCounts,
+  },
 };

@@ -1206,9 +1206,10 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         eyebrow={sheetMode === "counterweight" ? "KEEP WHAT COMES" : "CAPTURE"}
         // The date and question stay on screen while they are answered.
         contextDate={sheetMode === "counterweight" ? (cw?.dateLabel ?? null) : null}
+        textOnly={sheetMode === "charge"}
         promptText={
           sheetMode === "charge"
-            ? "the heaviest thing in front of you, or the brightest. speak it — the guide holds it against everything you've said."
+            ? "the heaviest thing in front of you, or the brightest. name it — the guide holds it against everything you've said."
             : sheetMode === "counterweight" ? (cw?.question ?? null) : null
         }
         mapRef={

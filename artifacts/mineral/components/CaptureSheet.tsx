@@ -58,6 +58,8 @@ interface CaptureSheetProps {
    */
   contextDate?: string | null;
   promptText?: string | null;
+  /** Text-only capture for the encounter's charge sheet. */
+  textOnly?: boolean;
   /** Cover navigator siblings (the tab bar) while the sheet is up. */
   modal?: boolean;
   onSaved?: () => void;
@@ -86,12 +88,13 @@ export function CaptureSheet({
   eyebrow = "CAPTURE",
   contextDate,
   promptText,
+  textOnly = false,
   modal,
   onSaved,
 }: CaptureSheetProps) {
   const [type, setType] = useState<FieldNoteType | null>(lockedType ?? initialType ?? null);
   const [text, setText] = useState("");
-  const [typeMode, setTypeMode] = useState(false);
+  const [typeMode, setTypeMode] = useState(textOnly);
   const [recording, setRecording] = useState(false);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -137,7 +140,7 @@ export function CaptureSheet({
     if (open) {
       setType(lockedType ?? initialType ?? null);
       setText("");
-      setTypeMode(false);
+      setTypeMode(textOnly);
       setRecording(false);
       setFailed(false);
       setMicrophoneBlocked(false);
@@ -168,7 +171,7 @@ export function CaptureSheet({
   }, [open, type, typeMode]);
 
   const canKeep = type != null && uid != null && !saving &&
-    (typeMode ? text.trim().length > 0 : voiceRef.current != null);
+    (textOnly || typeMode ? text.trim().length > 0 : voiceRef.current != null);
 
   // Do not dismiss/reopen during a pending write: that would reset the busy
   // guard and let a second save or the encounter's map link race the charge.
@@ -224,7 +227,7 @@ export function CaptureSheet({
   };
 
   const beginRecord = async () => {
-    if (busy.current || attemptRef.current || !openRef.current || typeMode || !type || !uid) return;
+    if (textOnly || busy.current || attemptRef.current || !openRef.current || typeMode || !type || !uid) return;
     const attempt: RecordingAttempt = {
       cancelled: false, released: false, prepared: false, audioMode: false, ready: false,
     };
@@ -301,7 +304,7 @@ export function CaptureSheet({
   };
 
   const switchMode = (typing: boolean) => {
-    if (busy.current) return;
+    if (busy.current || (textOnly && !typing)) return;
     const attempt = attemptRef.current;
     if (attempt) {
       attempt.cancelled = true;
@@ -378,7 +381,7 @@ export function CaptureSheet({
 
       {type != null && (
         <View style={styles.inputDock}>
-          {typeMode ? (
+          {textOnly || typeMode ? (
           <>
           <TextInput
             ref={inputRef}
@@ -399,13 +402,13 @@ export function CaptureSheet({
             style={[styles.keep, { opacity: canKeep ? 1 : 0.35 }]}
             testID="capture-keep"
           />
-          <LinkSecondary
+          {!textOnly && <LinkSecondary
             label="speak instead"
             onPress={() => switchMode(false)}
             disabled={saving}
             style={styles.modeLink}
             testID="capture-speak-instead"
-          />
+          />}
           </>
           ) : (
           <View style={styles.recordWrap}>

@@ -7,7 +7,7 @@
     "node": "22"
   },
   "scripts": {
-    "test": "node patternEngine.test.js && node patternOfferings.test.js && node reading.test.js && NODE_ENV=test node letterRequest.test.js && node weeklyUsageReport.test.js",
+    "test": "node patternEngine.test.js && node patternOfferings.test.js && node fieldQueue.test.js && node resistanceVocabulary.test.js && node founderDigest.test.js && node reading.test.js && NODE_ENV=test node letterRequest.test.js && node weeklyUsageReport.test.js",
     "test:weekly-usage": "node weeklyUsageReport.test.js"
   },
   "dependencies": {

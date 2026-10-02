@@ -348,6 +348,17 @@ const {
   rebuildPatternsForUser,
 } = require("./patternEngine");
 
+// Grant fieldContentAdmin=true via Admin Auth only to the confirmed founder;
+// this is not the reading-access flag or mail recipient.
+const { createResistanceVocabulary } = require("./resistanceVocabulary");
+const resistanceVocabulary = createResistanceVocabulary({
+  db: getFirestore(),
+  openAiApiKey,
+  rebuildPatternsForUser,
+});
+exports.draftResistanceVocabulary = resistanceVocabulary.draftResistanceVocabulary;
+exports.approveResistanceVocabulary = resistanceVocabulary.approveResistanceVocabulary;
+
 exports.updatePatterns = onDocumentWritten(
   {
     document: "users/{uid}/fieldNotes/{noteId}",

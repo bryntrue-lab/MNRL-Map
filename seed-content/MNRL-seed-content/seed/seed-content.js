@@ -52,6 +52,7 @@ const TEACHINGS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'teaching
 const COUNTERWEIGHT_POOLS_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'counterweight-pools.json');
 const PASSAGE_PROMPT_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'passage-prompt.json');
 const CONSCIOUSNESS_LEXICON_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'consciousness-lexicon.json');
+const QUEUE_ALLOWLIST_FILE = path.join(CONTENT_ROOT, 'practitioner-content', 'queue-allowlist.json');
 const MOTIF_LEXICON_FILE = path.join(CONTENT_ROOT, 'motif-lexicon', 'lexicon.json');
 
 const VALID_PHASES = new Set(['signal', 'field', 'friction', 'voice']);
@@ -646,6 +647,24 @@ async function seedConsciousnessLexicon(db) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// QUEUE ALLOWLIST — atomic create-only, including concurrent founder edits.
+async function seedQueueAllowlist(db) {
+  const entry = JSON.parse(fs.readFileSync(QUEUE_ALLOWLIST_FILE, 'utf8'));
+  if (entry?.kind !== 'queue_allowlist' || !Array.isArray(entry.words) ||
+      !entry.words.every(word => typeof word === 'string' && /^[a-z]+$/.test(word))) {
+    throw new Error('queue-allowlist.json requires kind "queue_allowlist" and words array');
+  }
+  const ref = db.collection('practitionerContent').doc('queue_allowlist');
+  try {
+    // Unlike get-then-set, create cannot overwrite an edit racing this seed.
+    await ref.create({ kind: entry.kind, words: entry.words });
+    console.log('  ✓ queue_allowlist — created');
+  } catch (error) {
+    if (error?.code !== 6 && error?.code !== 'already-exists') throw error;
+    console.log('  ↻ queue_allowlist — retained founder list');
+  }
+}
+
 // MAIN
 // ─────────────────────────────────────────────────────────────
 
@@ -657,7 +676,13 @@ async function main() {
   const { db, bucket } = initFirebase();
   const practitionerOnly = process.argv.includes('--practitioner-content-only');
   const consciousnessOnly = process.argv.includes('--consciousness-lexicon-only');
+  const queueAllowlistOnly = process.argv.includes('--queue-allowlist-only');
 
+  if (queueAllowlistOnly) {
+    await seedQueueAllowlist(db);
+    console.log('\nDone.\n');
+    process.exit(0);
+  }
   if (consciousnessOnly) {
     await seedConsciousnessLexicon(db);
     console.log('\nDone.\n');
@@ -667,6 +692,7 @@ async function main() {
     await seedPractitionerContent(db);
     await seedPassagePrompt(db);
     await seedConsciousnessLexicon(db);
+    await seedQueueAllowlist(db);
     console.log('\nDone.\n');
     process.exit(0);
   }
@@ -677,6 +703,7 @@ async function main() {
   await seedCounterweightPools(db);
   await seedPassagePrompt(db);
   await seedConsciousnessLexicon(db);
+  await seedQueueAllowlist(db);
   await seedMotifLexicon(db);
 
   console.log('\nDone.\n');
@@ -690,4 +717,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { migrateOffering, validateOffering };
+module.exports = { migrateOffering, validateOffering, seedQueueAllowlist };

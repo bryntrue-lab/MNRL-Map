@@ -2,6 +2,7 @@
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { countPassageQueue } = require("./fieldQueue");
 
 const DAY = 24 * 60 * 60 * 1000;
 const timeMs = (value) => {
@@ -44,21 +45,10 @@ async function fieldNumbers(db, auth, since) {
   return { arrivals, total, kept, completed, noteCount, voice, optIns: optIns.size };
 }
 
-async function passageQueue(db) {
+async function passageQueue(db, now = Date.now()) {
   const docs = await db.collection("practitionerContent").get();
-  const hasSchema = docs.docs.some((doc) => doc.data().kind === "offering" || Array.isArray(doc.data().passages));
-  if (!hasSchema) return { notRunning: true };
-  const drafts = docs.docs
-    .filter((doc) => Array.isArray(doc.data().passages))
-    .map((doc) => ({
-      key: doc.data().key,
-      count: doc.data().passages.filter((p) => p?.status === "draft").length,
-    }))
-    .filter((entry) => typeof entry.key === "string" && entry.count > 0);
-  return {
-    keys: drafts.map((entry) => entry.key).sort(),
-    count: drafts.reduce((sum, entry) => sum + entry.count, 0),
-  };
+  const totals = countPassageQueue(docs, now);
+  return { ...totals, count: totals.pendingCount };
 }
 
 function truncateWork(value) {
@@ -144,7 +134,7 @@ function createFounderDigest({ db, auth, founderEmail }) {
       const [field, door, queue, health, readings, letters] = await Promise.all([
         safe("field", () => fieldNumbers(db, auth, now - DAY)),
         safe("door", () => betaRequests(db, now - DAY)),
-        safe("queue", () => passageQueue(db)),
+        safe("queue", () => passageQueue(db, now)),
         safe("health", () => transcriptionHealth(db, now)),
         safe("readings", () => readingsCount(db, now - DAY)),
         safe("letters", () => letterRequests(db)),
@@ -180,7 +170,11 @@ function createFounderDigest({ db, auth, founderEmail }) {
       else {
         awaiting = queue.value.count;
         cleanQueue = awaiting === 0;
-        lines.push("awaiting you", awaiting ? `  ${awaiting} passages drafted: ${queue.value.keys.join(", ")}` : "  clear");
+        lines.push(
+          "awaiting you",
+          `  ${awaiting} pending passages total${awaiting && queue.value.keys.length ? `: ${queue.value.keys.join(", ")}` : ""}`,
+          `  ${queue.value.generatedPast24hCount} generated in the past 24h · ${queue.value.generatedTodayCount} generated today (UTC)`
+        );
         if (awaiting) lines.push("  → review in the Firestore console (practitionerContent)");
       }
       if (letters.error) lines.push(`  ${unavailable("letter requests")}`);
@@ -221,4 +215,4 @@ function createFounderDigest({ db, auth, founderEmail }) {
   );
 }
 
-module.exports = { betaRequests, createFounderDigest, letterRequests, truncateWork };
+module.exports = { betaRequests, createFounderDigest, letterRequests, passageQueue, truncateWork };

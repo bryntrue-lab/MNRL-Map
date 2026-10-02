@@ -201,7 +201,8 @@ test("close copy and charge metadata; save completes once and bypasses morning-c
   assert.equal(sheet.encounterRef, null);
   assert.equal(sheet.lockedType, null);
   assert.equal(sheet.mapRef, null);
-  assert.equal(sheet.promptText, "the heaviest thing in front of you, or the brightest. speak it — the guide holds it against everything you've said.");
+  assert.equal(sheet.textOnly, true);
+  assert.equal(sheet.promptText, "the heaviest thing in front of you, or the brightest. name it — the guide holds it against everything you've said.");
   const before = reads();
   sheet.onSaved();
   sheet.onClose(); // actual CaptureSheet calls both, in this order
@@ -366,13 +367,14 @@ function voiceCapture({ props = {}, permission, prepare, stop, upload, write, pl
   return { h, calls, callbacks, recorder };
 }
 
-test("spoken charge uploads before persistence; duplicate release/dismiss/map cannot race Guide", async () => {
+test("audio-enabled capture uploads before persistence; duplicate callbacks cannot race navigation", async () => {
   const screen = encounter();
   screen.h.find("close-to-guide").props.onPress();
   screen.h.render();
   const upload = deferred(), write = deferred();
   const { h, calls } = voiceCapture({
-    props: screen.h.type("CaptureSheet").props,
+    // Charge itself is text-only; preserve shared audio persistence coverage.
+    props: { ...screen.h.type("CaptureSheet").props, textOnly: false },
     upload: () => upload.promise, write: () => write.promise,
   });
   h.find("capture-chip-desire").props.onPress();
@@ -628,8 +630,10 @@ test("charge screen plus real CaptureSheet: pending save blocks map, then one Gu
   capture.render(screen.h.type("CaptureSheet").props);
   capture.find("capture-chip-resistance").props.onPress();
   capture.render();
-  capture.find("capture-type-instead").props.onPress();
-  capture.render();
+  assert.ok(!capture.find("capture-record"));
+  assert.ok(!capture.find("capture-speak-instead"));
+  assert.ok(!capture.find("capture-type-instead"));
+  assert.equal(capture.find("capture-keep").props.disabled, true);
   capture.find("capture-input").props.onChangeText("charge");
   capture.render();
   const first = capture.find("capture-keep").props.onPress();

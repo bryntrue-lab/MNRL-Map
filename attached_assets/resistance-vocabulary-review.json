@@ -1,0 +1,39 @@
+{
+  "status": "draft",
+  "version": 1,
+  "requiresFounderApproval": true,
+  "activated": false,
+  "entries": [
+    {
+      "key": "resistance",
+      "terms": [
+        "dragon at the gate",
+        "guardian of the passage",
+        "trial before crossing",
+        "obstacle in the journey",
+        "wilderness challenge",
+        "psychic energy block"
+      ]
+    },
+    {
+      "key": "obstacle",
+      "terms": [
+        "gatekeeper of change",
+        "barrier to movement",
+        "trial of strength",
+        "guardian of the path",
+        "wilderness of the mind"
+      ]
+    },
+    {
+      "key": "energy",
+      "terms": [
+        "gathered psychic energy",
+        "energy of resistance",
+        "energy protecting change",
+        "energy at the gate",
+        "energy of the trial"
+      ]
+    }
+  ]
+}
