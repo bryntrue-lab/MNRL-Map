@@ -682,7 +682,7 @@ function guide(count, enabled, kept) {
   return h;
 }
 
-test("Guide footer exact derived held-lines, serif pairing, canonical order and real door handlers", () => {
+test("Guide reflection held-line and original left-aligned letter link retain order and handlers", () => {
   const h = guide(15, true, true);
   const reading = h.find("guide-reading-link");
   const letter = h.find("guide-letter-link");
@@ -691,16 +691,15 @@ test("Guide footer exact derived held-lines, serif pairing, canonical order and 
   const readingDoor = find(h.tree, (node) => node.type === "View" &&
     text(node).includes("fifteen notes, held together in one reading.") &&
     node.props.style?.alignItems === "center");
-  const letterDoor = find(h.tree, (node) => node.type === "View" &&
-    text(node) === "written by a person, to your field alone.");
   assert.ok(readingDoor);
-  assert.ok(letterDoor);
+  assert.equal(letter.type, "LinkWhisper");
+  assert.equal(letter.props.style.alignSelf, "flex-start");
+  assert.equal(text(h.tree).includes("written by a person, to your field alone."), false);
   assert.equal(text(readingDoor), "fifteen notes, held together in one reading.");
   assert.equal(readingDoor.props.children[1].props.style.textAlign, "center");
   assert.equal(readingDoor.props.children[1].props.style.fontFamily, "CormorantGaramond_500Medium_Italic");
-  assert.equal(letterDoor.props.children[1].props.style.color, "#aaa");
   const rendered = h.type("ScrollView").props.children;
-  assert.ok(rendered.indexOf(readingDoor) < rendered.indexOf(letterDoor));
+  assert.ok(rendered.indexOf(letter) > rendered.indexOf(readingDoor));
   reading.props.onPress();
   h.render();
   assert.equal(h.type("FieldReadingSheet").props.open, true);
@@ -722,7 +721,7 @@ test("Guide held-lines follow actual gates: reflection >=2 + flag; letter >=15 +
     assert.equal(!!h.find("guide-reading-link"), reflection);
     assert.equal(!!h.find("guide-letter-link"), letter);
     assert.equal(text(h.tree).includes("notes, held together in one reading."), reflection);
-    assert.equal(text(h.tree).includes("written by a person, to your field alone."), letter);
+    assert.equal(text(h.tree).includes("written by a person, to your field alone."), false);
     assert.ok(h.find("guide-about-link"));
   }
 });

@@ -812,17 +812,12 @@ export default function GuideScreen() {
           notes.length,
           !user?.isAnonymous && !!user?.email
         ) ? (
-          <View style={styles.footerDoor}>
-            <LinkWhisper
-              label="request a letter →"
-              onPress={() => setLetterOpen(true)}
-              style={styles.letterLink}
-              testID="guide-letter-link"
-            />
-            <Text style={styles.footerHeld}>
-              written by a person, to your field alone.
-            </Text>
-          </View>
+          <LinkWhisper
+            label="request a letter →"
+            onPress={() => setLetterOpen(true)}
+            style={styles.letterLink}
+            testID="guide-letter-link"
+          />
         ) : null}
         {/* Permanent footer whisper — the opening text, summoned as a sheet */}
         <LinkWhisper
@@ -1134,7 +1129,7 @@ const styles = StyleSheet.create({
     marginTop: 44,
   },
   letterLink: {
-    alignSelf: "center",
+    alignSelf: "flex-start",
     marginTop: 16,
   },
 });
