@@ -1,4 +1,5 @@
 # Mineral Memory
+- [Separate charge deliverables](charge-deliverables.md) — encounter capture and map teaching are independent; the amended charge-only prompt does not connect their paths.
 - [Release branches](release-branches.md) — main is approved stable; dev is ongoing work; preserve release tags and verify remote backups before promotion.
 - [Firestore index overrides](firestore-index-overrides.md) — group-only fieldOverrides replace inherited indexes; preserve collection ASC/DESC and verify client queries.
 - [Origin wander scope](origin-wander-scope.md) — season-headline ruling extends to Origin; Today and drag behavior stay unchanged.

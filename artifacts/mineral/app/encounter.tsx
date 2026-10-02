@@ -1176,8 +1176,8 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             style={styles.advance}
             testID="close-return"
           />
-          <LinkWhisper
-            label="or ask where today's charge is — speak it"
+          <LinkSecondary
+            label="before the day takes you — name its charge →"
             onPress={() => {
               if (closingRef.current) return;
               closingRef.current = "charge";
@@ -1206,7 +1206,11 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
         eyebrow={sheetMode === "counterweight" ? "KEEP WHAT COMES" : "CAPTURE"}
         // The date and question stay on screen while they are answered.
         contextDate={sheetMode === "counterweight" ? (cw?.dateLabel ?? null) : null}
-        promptText={sheetMode === "counterweight" ? (cw?.question ?? null) : null}
+        promptText={
+          sheetMode === "charge"
+            ? "the heaviest thing in front of you, or the brightest. speak it — the guide holds it against everything you've said."
+            : sheetMode === "counterweight" ? (cw?.question ?? null) : null
+        }
         mapRef={
           sheetMode === "counterweight" && cw
             ? { date: cw.isoDate, phase: cw.phase }

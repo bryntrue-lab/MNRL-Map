@@ -184,7 +184,8 @@ test("close copy and charge metadata; save completes once and bypasses morning-c
   await tick();
   assert.equal(h.find("close-return").props.label, "return to the map →");
   const whisper = h.find("close-to-guide");
-  assert.equal(whisper.props.label, "or ask where today's charge is — speak it");
+  assert.equal(whisper.type, "LinkSecondary");
+  assert.equal(whisper.props.label, "before the day takes you — name its charge →");
   whisper.props.onPress();
   whisper.props.onPress();
   // Use the stale map handler before a rerender: a state-only guard fails here.
@@ -197,6 +198,7 @@ test("close copy and charge metadata; save completes once and bypasses morning-c
   assert.equal(sheet.encounterRef, null);
   assert.equal(sheet.lockedType, null);
   assert.equal(sheet.mapRef, null);
+  assert.equal(sheet.promptText, "the heaviest thing in front of you, or the brightest. speak it — the guide holds it against everything you've said.");
   const before = reads();
   sheet.onSaved();
   sheet.onClose(); // actual CaptureSheet calls both, in this order
@@ -208,6 +210,7 @@ test("close copy and charge metadata; save completes once and bypasses morning-c
   assert.deepEqual(completions, [["isolated", "encounter", 1, 3]]);
   h.render();
   assert.equal(h.type("CaptureSheet").props.open, false);
+  assert.equal(h.type("CaptureSheet").props.promptText, null);
 });
 
 test("unsaved charge dismissal restores map close and first-close morning-call offer", async () => {
