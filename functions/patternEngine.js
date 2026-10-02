@@ -778,36 +778,70 @@ function deriveConsciousnessPattern(notes, families) {
   };
 }
 
-/** offerings for matched keys, from practitionerContent (id: {keyType}_{slug}) */
-async function loadOfferings(db, motifHits) {
-  const wanted = offeringRequests(motifHits);
-  const result = new Map(); // key → { key, text }
-  await Promise.all(
-    wanted.map(async ({ key, docId }) => {
-      const snap = await db.collection("practitionerContent").doc(docId).get();
-      const text = snap.exists ? snap.data().text : null;
-      if (text) result.set(key, { key, text });
-    })
-  );
-  return result;
+/** Read the same approved-copy boundary in incremental and rebuild paths. */
+async function loadOfferings(db, wanted) {
+  const snaps = await Promise.all(wanted.map(({ docId }) =>
+    db.collection("practitionerContent").doc(docId).get()
+  ));
+  return offeringsFromSnapshots(wanted, snaps);
 }
 
-function offeringRequests(motifHits) {
-  return [...motifHits.entries()].map(([key, { keyType }]) => ({
+function offeringRequests(motifHits, threadItems = new Map()) {
+  const requests = [...motifHits.entries()].map(([key, { keyType }]) => ({
     key,
     keyType,
+    patternType: keyType === "resistance" ? "resistance" : "motif",
     docId: `${keyType}_${key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
   }));
+  // These keys have ALREADY been extracted/stemmed. Never stem them again,
+  // infer a root word, or turn a phrase into a word-doc lookup.
+  for (const key of threadItems.keys()) {
+    if (/^[a-z0-9]+$/.test(key)) {
+      requests.push({ key, keyType: "word", patternType: "thread", docId: `word_${key}` });
+    }
+  }
+  return requests;
+}
+
+function offeringText(data, keyType) {
+  if (!data) return null;
+  const nonempty = (text) => typeof text === "string" && text.trim().length > 0;
+  // Preserve the existing founder-selected, top-level-text-only contract.
+  // Passage approval does not authorize replacing a motif/resistance hero.
+  if (keyType !== "word") {
+    return nonempty(data.text) ? data.text : null;
+  }
+  if (data.status === "draft") return null;
+  if (Array.isArray(data.passages)) {
+    const approved = data.passages.filter((passage) =>
+      passage?.status === "approved" && nonempty(passage.text)
+    );
+    // Preserve a word compatibility selection only if it is approved.
+    // Otherwise choose the first valid approved passage in stored array order.
+    return approved.find((passage) => passage.text === data.text)?.text
+      ?? approved[0]?.text ?? null;
+  }
+  // Word docs are passage-based: an unreviewed top-level text is not approval.
+  return null;
 }
 
 function offeringsFromSnapshots(wanted, snaps) {
-  const result = new Map(); // key → { key, text }
-  wanted.forEach(({ key }, index) => {
+  const result = new Map(); // patternType:key → { key, text }
+  wanted.forEach(({ key, keyType, patternType }, index) => {
     const snap = snaps[index];
-    const text = snap?.exists ? snap.data().text : null;
-    if (text) result.set(key, { key, text });
+    const text = offeringText(snap?.exists ? snap.data() : null, keyType);
+    if (text !== null) result.set(`${patternType}:${key}`, { key, text });
   });
   return result;
+}
+
+function attachOfferings(docs, wanted, offerings) {
+  for (const { key, patternType } of wanted) {
+    const doc = docs[patternType];
+    const offering = offerings.get(`${patternType}:${key}`);
+    // Copy never creates evidence or resurrects an item removed by hygiene.
+    if (offering && doc?.itemCounts[key] > 0) doc.offerings[key] = offering;
+  }
 }
 
 /**
@@ -1104,7 +1138,9 @@ async function rebuildPatternsForUser(uid, options = {}) {
     motifLexiconFromDocs(motifSnap.docs),
     consciousnessLexiconFromData(consciousnessSnap.exists ? consciousnessSnap.data() : null)
   );
-  const wantedOfferings = offeringRequests(built.offeringHits);
+  const wantedOfferings = offeringRequests(
+    built.offeringHits, new Map(Object.keys(built.docs.thread.itemCounts).map((key) => [key, true]))
+  );
   const offeringRefs = wantedOfferings.map(({ docId }) =>
     db.collection("practitionerContent").doc(docId)
   );
@@ -1144,11 +1180,7 @@ async function rebuildPatternsForUser(uid, options = {}) {
     if (!sameRebuildInputs(expectedInputs, liveInputs)) throw staleRebuildInputError();
 
     const offerings = offeringsFromSnapshots(wantedOfferings, liveOfferingSnaps);
-    for (const [key, offering] of offerings) {
-      const hit = built.offeringHits.get(key);
-      if (hit?.keyType === "resistance") built.docs.resistance.offerings[key] = offering;
-      else built.docs.motif.offerings[key] = offering;
-    }
+    attachOfferings(built.docs, wantedOfferings, offerings);
 
     const now = Timestamp.now();
     for (const [index, [type, data]] of Object.entries(built.docs).entries()) {
@@ -1207,8 +1239,9 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
     (keyType === "resistance" ? resistanceItems : motifItems).set(key, sentence);
   }
 
+  const wantedOfferings = offeringRequests(motifHits, language);
   const offerings =
-    direction === "add" ? await loadOfferings(db, motifHits) : new Map();
+    direction === "add" ? await loadOfferings(db, wantedOfferings) : new Map();
 
   const targets = [
     { type: "thread", items: language },
@@ -1247,11 +1280,8 @@ async function updatePatternsForNote(uid, noteId, note, direction) {
         if (floorMs && createdMs && createdMs <= floorMs) return;
         if (items.size === 0) return; // nothing for this lens; no ledger noise
         applyAdd(doc, items, noteId, note);
-        for (const [key] of items) {
-          const offering = offerings.get(key);
-          if (offering) doc.offerings[key] = offering;
-        }
         if (type === "thread") phraseHygiene(doc);
+        attachOfferings({ [type]: doc }, wantedOfferings, offerings);
       } else {
         if (!alreadyProcessed) return; // never counted here; nothing to reverse
         applyRemove(doc, items, noteId);
@@ -1354,5 +1384,10 @@ module.exports = {
     firestoreDocumentBytes,
     rebuildInputFingerprint,
     sameRebuildInputs,
+    offeringRequests,
+    offeringText,
+    offeringsFromSnapshots,
+    attachOfferings,
+    loadOfferings,
   },
 };
