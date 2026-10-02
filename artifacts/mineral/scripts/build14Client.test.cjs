@@ -703,9 +703,12 @@ test("Guide footer exact derived held-lines, serif pairing, canonical order and 
   assert.equal(h.type("FieldLetterSheet").props.open, true);
 });
 
-test("Guide held-lines follow actual gates: reflection >=7 + flag; letter >=15 + kept email", () => {
+test("Guide held-lines follow actual gates: reflection >=2 + flag; letter >=15 + kept email", () => {
   for (const [count, enabled, kept, reflection, letter] of [
-    [6, true, true, false, false], [7, true, false, true, false],
+    [0, true, true, false, false], [1, true, true, false, false],
+    [2, true, true, true, false], [2, true, false, true, false],
+    [2, false, true, false, false], [2, undefined, true, false, false],
+    [6, true, true, true, false], [7, true, false, true, false],
     [14, true, true, true, false], [15, false, true, false, true],
     [15, true, false, true, false],
   ]) {
@@ -716,4 +719,14 @@ test("Guide held-lines follow actual gates: reflection >=7 + flag; letter >=15 +
     assert.equal(text(h.tree).includes("written by a person, to your field alone."), letter);
     assert.ok(h.find("guide-about-link"));
   }
+});
+
+test("Guide reflection door uses existing two-note held-line and opens the reading sheet", () => {
+  const h = guide(2, true, true);
+  assert.equal(h.find("guide-reading-link").props.label, "a reflection →");
+  assert.ok(text(h.tree).includes("two notes, held together in one reading."));
+  h.find("guide-reading-link").props.onPress();
+  h.render();
+  assert.equal(h.type("FieldReadingSheet").props.open, true);
+  assert.equal(h.find("guide-letter-link"), undefined);
 });

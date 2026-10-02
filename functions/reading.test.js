@@ -1,6 +1,9 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 const {
   normalizeReading,
   parseReadingOutput,
@@ -8,6 +11,142 @@ const {
 } = require("./reading");
 
 const notes = ["this morning I found a blue door and stayed with it"];
+
+// Execute the production callable with isolated Firebase/model boundaries.
+// No Admin SDK initialization, accounts, live reads, writes, or API calls.
+function readingCallableFixture({ noteCount = 2, enabled = true, exists = true } = {}) {
+  const calls = [];
+  const writes = [];
+  const noteDocs = Array.from({ length: noteCount }, (_, index) => ({
+    data: () => ({ content: `synthetic field note ${index}`, type: "spark" }),
+  }));
+  const notesRef = {
+    orderBy: (_field, direction) => ({
+      limit: (size) => ({
+        get: async () => {
+          calls.push("notes");
+          const docs = direction === "asc" ? noteDocs.slice(0, size) : noteDocs.slice(-size);
+          return { size: docs.length, docs };
+        },
+      }),
+    }),
+    count: () => ({
+      get: async () => ({ data: () => ({ count: noteCount }) }),
+    }),
+  };
+  const leaseRef = {};
+  const latestQuery = {};
+  const readingsRef = {
+    doc: () => leaseRef,
+    orderBy: () => ({ limit: () => latestQuery }),
+    add: async (reading) => {
+      writes.push(reading);
+      return { id: "synthetic-reading" };
+    },
+  };
+  const userRef = {
+    get: async () => {
+      calls.push("user");
+      return { exists, data: () => ({ readingsEnabled: enabled }) };
+    },
+    collection: (name) => {
+      calls.push(name);
+      if (name === "fieldNotes") return notesRef;
+      if (name === "readings") return readingsRef;
+      assert.equal(name, "patterns");
+      return { doc: () => ({ get: async () => ({ data: () => ({}) }) }) };
+    },
+  };
+  const db = {
+    doc: (docPath) => {
+      if (docPath === "users/test-uid") return userRef;
+      assert.equal(docPath, "practitionerContent/reading_prompt");
+      return { get: async () => ({ exists: false }) };
+    },
+    runTransaction: async (work) => work({
+      get: async (ref) => {
+        if (ref === leaseRef) return { data: () => undefined };
+        assert.equal(ref, latestQuery);
+        return { docs: [] };
+      },
+      set: () => calls.push("lease"),
+    }),
+  };
+  class HttpsError extends Error {
+    constructor(code, message) {
+      super(message);
+      this.code = code;
+    }
+  }
+  const source = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
+  const start = source.indexOf("exports.requestReading = onCall(");
+  const end = source.indexOf("exports.countCompletion =", start);
+  assert.ok(start >= 0 && end > start);
+  const sandbox = {
+    exports: {},
+    onCall: (_options, handler) => handler,
+    HttpsError,
+    getFirestore: () => db,
+    FieldValue: { serverTimestamp: () => "server-time" },
+    openAiApiKey: { value: () => "synthetic-key" },
+    READING_REST_MS: 20 * 60 * 60 * 1000,
+    READING_LEASE_MS: 3 * 60 * 1000,
+    DEFAULT_READING_PROMPT: "synthetic prompt",
+    readingUserMessage: (fieldNotes, _patterns, count) => {
+      assert.equal(fieldNotes.length, noteCount);
+      assert.equal(count, noteCount);
+      return "synthetic field";
+    },
+    requestStructuredReading: async ({ noteTexts }) => {
+      calls.push("generate");
+      assert.equal(noteTexts.length, noteCount);
+      return {
+        paragraphs: [{ spans: [{ text: "synthetic reading", quote: false }] }],
+        question: "",
+      };
+    },
+    releaseReadingLease: async () => calls.push("release"),
+    waitForConcurrentReading: async () => { throw new Error("unexpected concurrent reading"); },
+    fetch: () => { throw new Error("unexpected network call"); },
+    console: { error() {} },
+  };
+  vm.runInNewContext(source.slice(start, end), sandbox);
+  return { handler: sandbox.exports.requestReading, calls, writes };
+}
+
+async function testReflectionEligibilityAndPrivacy() {
+  for (const noteCount of [0, 1]) {
+    const fixture = readingCallableFixture({ noteCount });
+    await assert.rejects(
+      () => fixture.handler({ auth: { uid: "test-uid" } }),
+      (error) => error.code === "failed-precondition" && error.message === "the field needs two notes."
+    );
+    assert.equal(fixture.calls.includes("generate"), false);
+    assert.equal(fixture.writes.length, 0);
+    assert.equal(fixture.calls.at(-1), "release");
+  }
+  for (const noteCount of [2, 6, 7]) {
+    const fixture = readingCallableFixture({ noteCount });
+    const result = await fixture.handler({ auth: { uid: "test-uid" } });
+    assert.equal(result.id, "synthetic-reading");
+    assert.equal(fixture.calls.filter((call) => call === "generate").length, 1);
+    assert.equal(fixture.writes.length, 1);
+    assert.equal(fixture.writes[0].noteCount, noteCount);
+    assert.equal(fixture.calls.at(-1), "release");
+  }
+  for (const options of [{ enabled: false }, { enabled: null }, { exists: false }]) {
+    const fixture = readingCallableFixture(options);
+    await assert.rejects(
+      () => fixture.handler({ auth: { uid: "test-uid" } }),
+      (error) => error.code === "permission-denied"
+    );
+    assert.deepEqual(fixture.calls, ["user"]);
+    assert.equal(fixture.writes.length, 0);
+  }
+  const fixture = readingCallableFixture();
+  await assert.rejects(() => fixture.handler({}), (error) => error.code === "unauthenticated");
+  assert.deepEqual(fixture.calls, []);
+}
 
 async function testMalformedOutputRetriesOnceAndFallsBackToText() {
   const responses = [
@@ -315,6 +454,7 @@ async function testRecoverableWrappedJson() {
 }
 
 (async () => {
+  await testReflectionEligibilityAndPrivacy();
   await testMalformedOutputRetriesOnceAndFallsBackToText();
   await testMalformedShapeRetriesOnceAndUsesSafeFallback();
   testValidFieldsArraysAndQuoteValidation();

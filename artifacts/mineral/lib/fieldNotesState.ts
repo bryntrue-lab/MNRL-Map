@@ -5,7 +5,7 @@ export function shouldShowReflection(
   noteCount: number,
   readingsEnabled: boolean
 ): boolean {
-  return readingsEnabled && noteCount >= 7;
+  return readingsEnabled && noteCount >= 2;
 }
 
 export function shouldShowLetter(

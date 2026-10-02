@@ -462,10 +462,10 @@ exports.requestReading = onCall(
           db.doc("practitionerContent/reading_prompt").get(),
         ]);
 
-      if (notesSnap.size < 7) {
+      if (notesSnap.size < 2) {
         throw new HttpsError(
           "failed-precondition",
-          "the field needs seven notes."
+          "the field needs two notes."
         );
       }
       const notes = notesSnap.docs
