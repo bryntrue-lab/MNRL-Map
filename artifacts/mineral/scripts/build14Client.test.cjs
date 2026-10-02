@@ -10,7 +10,7 @@ const ts = require("typescript");
 function load(file, requireMock, suffix = "") {
   const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   const compiled = ts.transpileModule(source + suffix, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
     reportDiagnostics: true,
   });
   assert.equal(compiled.diagnostics.length, 0);
@@ -43,7 +43,14 @@ function componentHarness(file, { imports = {}, exportName = "default", suffix =
       if (!(i in hooks)) hooks[i] = { current: initial };
       return hooks[i];
     },
-    useMemo(fn) { return fn(); },
+    useMemo(fn, deps) {
+      const i = cursor++;
+      const old = hooks[i];
+      if (old && deps?.every((value, j) => Object.is(value, old.deps[j]))) return old.value;
+      const value = fn();
+      hooks[i] = { deps, value };
+      return value;
+    },
     useEffect(fn, deps) {
       const i = cursor++;
       const old = hooks[i];
@@ -659,14 +666,20 @@ test("charge screen plus real CaptureSheet: pending save blocks map, then one Gu
 const fieldGates = load("lib/fieldNotesState.ts", () => { throw new Error("unexpected import"); });
 const patternText = load("lib/patternText.ts", () => { throw new Error("unexpected import"); });
 
-function guide(count, enabled, kept) {
+function guide(count, enabled, kept, fixture = {}) {
   const notes = Array.from({ length: count }, (_, i) => ({ id: `note-${i}`, type: "spark" }));
   const h = componentHarness("app/(tabs)/guide.tsx", { imports: {
     "expo-router": { router: {} },
     "firebase/firestore": {
-      doc: () => ({}), getDoc: async () => ({ exists: () => false }),
-      onSnapshot: (_query, callback) => {
-        callback({ docs: notes.map((note) => ({ id: note.id, data: () => note })) });
+      doc: (_db, ...parts) => parts.join("/"),
+      getDoc: async (ref) => ({
+        exists: () => Boolean(fixture.teachings?.[ref]),
+        data: () => fixture.teachings?.[ref],
+      }),
+      onSnapshot: (query, callback) => {
+        if (typeof query === "string") {
+          callback({ exists: () => Boolean(fixture.offering), data: () => fixture.offering });
+        } else callback({ docs: notes.map((note) => ({ id: note.id, data: () => note })) });
         return () => {};
       },
     },
@@ -678,7 +691,7 @@ function guide(count, enabled, kept) {
     "@/lib/fieldNotesState": fieldGates,
     "@/lib/firestore": { fieldNotesQuery: () => ({}) },
     "@/lib/patternEvidence": { subscribePatternDocuments: (_uid, callback) => {
-      callback({}); return () => {};
+      callback(fixture.patterns ?? {}); return () => {};
     } },
     "@/lib/patternText": patternText,
   } });
@@ -713,6 +726,47 @@ test("Guide reflection held-line and original left-aligned letter link retain or
   letter.props.onPress();
   h.render();
   assert.equal(h.type("FieldLetterSheet").props.open, true);
+});
+
+test("Returning keeps its word and renders labeled lens teaching when specific copy is missing", async () => {
+  const fixture = {
+    patterns: { thread: { processed: ["note-0", "note-1", "note-2"], itemCounts: { fear: 3 }, exemplars: {}, itemNotes: { fear: ["note-0", "note-1", "note-2"] } } },
+    teachings: { "practitionerContent/teaching_threads": {
+      kind: "teaching", heldLine: "isolated held line", paragraphs: ["isolated general teaching"],
+    } },
+  };
+  const fallback = guide(3, false, false, fixture);
+  await tick(); fallback.render();
+  assert.ok(fallback.find("returning-hero"));
+  assert.equal(text(fallback.find("hero-lens-teaching")),
+    "your recurring languageisolated general teachingFROM THE FIELD");
+  assert.equal(fallback.find("hero-offering"), undefined);
+
+  const specific = guide(3, false, false, {
+    ...fixture, offering: { passages: [{ status: "approved", text: "isolated word-specific passage" }] },
+  });
+  await tick(); specific.render();
+  assert.equal(text(specific.find("hero-offering")), "isolated word-specific passageFROM THE FIELD");
+  assert.equal(specific.find("hero-lens-teaching"), undefined);
+
+  for (const [type, key, lens, label] of [
+    ["thread", "unknown phrase", "threads", "your recurring language"],
+    ["motif", "threshold", "motifs", "mythic motifs"],
+    ["resistance", "fear", "resistance", "recurring resistance"],
+  ]) {
+    const screen = guide(3, false, false, {
+      patterns: { [type]: {
+        processed: ["note-0", "note-1", "note-2"],
+        itemCounts: { [key]: 3 }, exemplars: {},
+        itemNotes: { [key]: ["note-0", "note-1", "note-2"] },
+      } },
+      teachings: { [`practitionerContent/teaching_${lens}`]:
+        fixture.teachings["practitionerContent/teaching_threads"] },
+    });
+    await tick(); screen.render();
+    assert.equal(text(screen.find("hero-lens-teaching")),
+      `${label}isolated general teachingFROM THE FIELD`);
+  }
 });
 
 test("Guide held-lines follow actual gates: reflection >=2 + flag; letter >=15 + kept email", () => {

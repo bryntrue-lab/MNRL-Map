@@ -32,6 +32,8 @@ import {
   guideOfferingReceiver,
   guideOfferingTarget,
   guideOfferingText,
+  guideLensTeachingText,
+  type GuideLensTeaching,
   type GuideOfferingHydration,
 } from "@/lib/guideOfferings";
 import {
@@ -218,7 +220,12 @@ export default function GuideScreen() {
     useState<GuideOfferingHydration | null>(null);
   // Empty state only — each lens row carries its held line, verbatim
   // from the seeded teaching docs.
-  const [heldLines, setHeldLines] = useState<Record<string, string>>({});
+  const [lensTeachings, setLensTeachings] = useState<{
+    uid: string; contents: Record<string, GuideLensTeaching>;
+  } | null>(null);
+  const currentTeachings = lensTeachings?.uid === user?.uid ? lensTeachings?.contents ?? {} : {};
+  const heldLines = Object.fromEntries(Object.entries(currentTeachings)
+    .map(([id, teaching]) => [id, teaching.heldLine ?? ""]));
 
   useEffect(() => {
     if (!user) {
@@ -271,35 +278,33 @@ export default function GuideScreen() {
   // ── Field arithmetic ─────────────────────────────────────────────
   const hasField = notes.length > 0;
 
-  // ── Held lines (fetched once, every field state — quiet rows carry
-  // their held line as subtitle; single source: the seeded teaching docs) ──
-  const heldLinesFetched = useRef(false);
+  // Shared lens teachings supply both quiet rows and Returning's explicitly
+  // lens-level fallback. Reads are independent and scoped to the account.
   useEffect(() => {
-    if (!user || heldLinesFetched.current) return;
-    heldLinesFetched.current = true; // one attempt per mount — empty or
-    // failed reads render name-only rows rather than refetching forever.
+    const uid = user?.uid;
+    if (!uid) return;
     let cancelled = false;
-    Promise.all(
-      LENSES.map((l) =>
+    LENSES.forEach((l) => {
         getDoc(fsDoc(db, "practitionerContent", `teaching_${l.id}`))
           .then((snap) => {
+            if (cancelled) return;
             const data = snap.exists()
-              ? (snap.data() as { kind?: string; heldLine?: string })
+              ? (snap.data() as GuideLensTeaching)
               : null;
-            return [l.id, data?.kind === "teaching" ? data.heldLine ?? "" : ""] as const;
+            if (data?.kind !== "teaching") return;
+            setLensTeachings((current) => ({
+              uid,
+              contents: { ...(current?.uid === uid ? current.contents : {}), [l.id]: data },
+            }));
           })
-          .catch(() => [l.id, ""] as const)
-      )
-    ).then((pairs) => {
-      if (cancelled) return;
-      const next: Record<string, string> = {};
-      for (const [id, line] of pairs) if (line) next[id] = line;
-      setHeldLines(next);
+          .catch((error) => {
+            if (!cancelled) console.warn("guide lens teaching", l.id, error);
+          });
     });
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user?.uid]);
   const noteDates = notes
     .map((n) => n.createdAt?.toDate?.())
     .filter(Boolean) as Date[];
@@ -368,6 +373,10 @@ export default function GuideScreen() {
     ? guideOfferingText(heroContent, heroOfferingTarget.keyType)
     : null;
   const heroOffering = heroOfferingText ? { text: heroOfferingText } : null;
+  const heroTeachingLens = LENSES.find((lens) => lens.pattern === hero?.type);
+  const heroGeneralTeaching = heroTeachingLens
+    ? guideLensTeachingText(currentTeachings[heroTeachingLens.id])
+    : null;
   const heroPassageContent = heroOfferingTarget?.keyType === "motif" ? heroContent : null;
 
   // Founder approvals hydrate only the SAME-KEY hero, independently of rank.
@@ -690,6 +699,12 @@ export default function GuideScreen() {
             ) : heroOffering?.text ? (
               <View style={styles.offeringBox} testID="hero-offering">
                 <Text style={styles.offeringText}>{heroOffering.text}</Text>
+                <Text style={styles.offeringFrom}>FROM THE FIELD</Text>
+              </View>
+            ) : heroGeneralTeaching ? (
+              <View style={styles.offeringBox} testID="hero-lens-teaching">
+                <Text style={styles.offeringFrom}>{heroTeachingLens?.label}</Text>
+                <Text style={styles.offeringText}>{heroGeneralTeaching}</Text>
                 <Text style={styles.offeringFrom}>FROM THE FIELD</Text>
               </View>
             ) : null}

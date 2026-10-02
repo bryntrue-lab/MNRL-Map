@@ -1,5 +1,18 @@
 import type { PatternType, PractitionerContentDoc } from "../types/firestore";
 
+export type GuideLensTeaching = {
+  kind?: string;
+  heldLine?: string;
+  paragraphs?: string[];
+};
+
+/** General lens teaching, never represented as a passage about the hero key. */
+export function guideLensTeachingText(content: GuideLensTeaching | null | undefined): string | null {
+  if (content?.kind !== "teaching") return null;
+  return content.paragraphs?.find((p) => typeof p === "string" && p.trim().length > 0)
+    ?? (content.heldLine?.trim() ? content.heldLine : null);
+}
+
 export type GuideOfferingTarget = {
   docId: string;
   keyType: "word" | "motif" | "resistance";
