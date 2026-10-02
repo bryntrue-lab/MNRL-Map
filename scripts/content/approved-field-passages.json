@@ -1,0 +1,19 @@
+{
+  "description": "Exact founder-supplied offering copy. This manifest does not define detection vocabulary or replace lens teachings.",
+  "entries": [
+    {
+      "documentPath": "practitionerContent/resistance_resistance",
+      "key": "resistance",
+      "keyType": "resistance",
+      "status": "approved",
+      "text": "In mythic traditions, resistance often appears at the gate — the dragon, guardian, wilderness, or trial encountered before a crossing. The obstacle was not always understood as evidence of the wrong path. Often it belonged to the passage itself. Depth psychology carries a similar idea: what resists conscious movement may be protecting something not yet ready to change, or marking a place where considerable psychic energy has gathered."
+    },
+    {
+      "documentPath": "practitionerContent/word_conversation",
+      "key": "conversation",
+      "keyType": "word",
+      "status": "approved",
+      "text": "Across oral and philosophical traditions, conversation has been understood as a way of discovering what cannot be known alone. Socratic dialogue used exchange to uncover assumptions; many Indigenous oral traditions have carried knowledge through story, listening, and communal response. Meaning, in these traditions, is not simply delivered from one person to another. It emerges in the space between voices — each one changing what the other is able to hear."
+    }
+  ]
+}
