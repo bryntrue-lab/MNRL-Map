@@ -5,6 +5,22 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { __test: offeringReaders } = require("./patternEngine");
+
+// Exercise the unchanged client approved-only resolver as well as the server.
+const ts = require("typescript");
+const guideContext = { exports: {} };
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(
+  __dirname, "../artifacts/mineral/lib/guideOfferings.ts"
+), "utf8"), {
+  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
+}).outputText, guideContext);
+const { guideOfferingText } = guideContext.exports;
+
+const POLICY_PATH = "practitionerContent/field_generation_policy";
+const policyData = (enabled) => ({
+  kind: "field_generation_policy", betaAutoApproveGeneratedOfferings: enabled,
+});
 
 function harness(initial = [], options = {}) {
   const store = new Map(initial);
@@ -129,6 +145,13 @@ async function run() {
   assert.equal(parsed[0].status, "draft");
   assert.equal(parsed[0].source, "generated");
   assert.equal(parsed[0].text, "x");
+  for (const policy of [
+    undefined, {}, policyData(false), policyData("true"),
+    { kind: "offering", betaAutoApproveGeneratedOfferings: true },
+  ]) {
+    assert.equal(h.__test.betaAutoApproveGeneratedOfferings(policy), false);
+  }
+  assert.equal(h.__test.betaAutoApproveGeneratedOfferings(policyData(true)), true);
   await Promise.all([h.handler(), h.handler(), h.handler()]);
   assert.equal(h.calls.length, 10, "concurrent scheduled invocations share the hard daily budget");
   assert.equal(h.messages.length, 1);
@@ -162,6 +185,66 @@ async function run() {
   assert.match(h.messages.at(-1).message.subject, /15 awaiting you/);
   assert.match(h.messages.at(-1).message.text, /5 generated this run/);
   assert.match(h.messages.at(-1).message.text, /5 generated today/);
+
+  // Explicit false remains draft-only; true approves offering prose only.
+  // New documents and empty draft shells must both be immediately readable.
+  for (const enabled of [false, true]) {
+    const generated = harness([
+      ...candidateData(1),
+      [POLICY_PATH, policyData(enabled)],
+      ["motifLexicon/water", { key: "water", keyType: "motif", terms: ["water"] }],
+      ["motifLexicon/fear", { key: "fear", keyType: "resistance", terms: ["fear"] }],
+      ["motifLexicon/proposal", { key: "proposal", keyType: "resistance", terms: ["proposal"], status: "draft" }],
+      ["users/offline/patterns/motif", { itemCounts: { water: 3 } }],
+      ["users/offline/patterns/resistance", { itemCounts: { fear: 3, proposal: 99 } }],
+    ]);
+    const lexiconBefore = JSON.stringify([...generated.store].filter(([p]) => p.startsWith("motifLexicon/")));
+    await generated.handler();
+    assert.equal(generated.calls.length, 3);
+    for (const [keyType, key] of [["word", "keya"], ["motif", "water"], ["resistance", "fear"]]) {
+      const content = generated.store.get(`practitionerContent/${keyType}_${key}`);
+      assert.equal(content.passages.length, 1);
+      assert.equal(content.passages[0].status, enabled ? "approved" : "draft");
+      assert.equal(content.passages[0].source, "generated");
+      assert.equal(content.status, enabled ? "approved" : undefined);
+      assert.equal(content.text, enabled && keyType !== "word" ? content.passages[0].text : undefined);
+      const expected = enabled ? content.passages[0].text : null;
+      assert.equal(offeringReaders.offeringText(content, keyType), expected);
+      assert.equal(guideOfferingText(content, keyType), expected);
+    }
+    assert.equal(generated.store.has("practitionerContent/resistance_proposal"), false);
+    assert.equal(JSON.stringify([...generated.store].filter(([p]) => p.startsWith("motifLexicon/"))), lexiconBefore,
+      "offering autoapproval neither approves nor expands resistance vocabulary");
+    assert.equal([...generated.store.keys()].some((p) => p.startsWith("resistanceVocabularyProposals/")), false);
+    assert.equal(generated.store.get(POLICY_PATH).betaAutoApproveGeneratedOfferings, enabled);
+    const counts = await generated.__test.queueCounts(generated.db);
+    assert.equal(counts.pendingCount, enabled ? 0 : 3);
+    assert.equal(counts.generatedTodayCount, 3);
+    assert.equal(counts.attemptedCount, 3);
+
+    const shell = harness([
+      ...candidateData(1), [POLICY_PATH, policyData(enabled)],
+      ["practitionerContent/word_keya", { status: "draft", passages: [], metadata: "preserve" }],
+    ]);
+    await shell.handler();
+    const word = shell.store.get("practitionerContent/word_keya");
+    assert.equal(word.status, enabled ? "approved" : "draft");
+    assert.equal(word.metadata, "preserve");
+    assert.equal(offeringReaders.offeringText(word, "word"), enabled ? word.passages[0].text : null);
+    assert.equal(guideOfferingText(word, "word"), enabled ? word.passages[0].text : null);
+  }
+
+  const betaBudget = harness([...candidateData(), [POLICY_PATH, policyData(true)]]);
+  await Promise.all([betaBudget.handler(), betaBudget.handler(), betaBudget.handler()]);
+  await betaBudget.handler();
+  assert.equal(betaBudget.calls.length, 10, "beta does not relax concurrency or the daily cap");
+  assert.equal(betaBudget.store.get("_system/fieldPassageQueue").attemptedCount, 10);
+  assert.equal(betaBudget.store.get("_system/fieldPassageQueue").draftedCount, 10);
+  for (const call of betaBudget.calls) {
+    assert.match(call.messages.at(-1).content, /^[a-z]+$/);
+    assert.doesNotMatch(JSON.stringify(call), /PRIVATE|exemplars|itemCounts|offline\/patterns|email|betaAutoApprove/);
+  }
+  assert.equal((await betaBudget.__test.queueCounts(betaBudget.db)).pendingCount, 0);
 
   // Failures consume reservations too; parse/network failures must not
   // silently substitute copy or trigger automatic retry calls.
@@ -248,6 +331,37 @@ async function run() {
   assert.equal(await t.reserveCandidate(race.db, replacement, { keyType: "word", key: "keyd" }), false);
   assert.equal(await t.storeDrafts(race.db, replacement, next, parsed), false);
 
+  // The shared policy is read in the final transaction, not cached before a
+  // model call. Founder selections and rejected content win even in beta.
+  const betaRace = harness([...candidateData(), [POLICY_PATH, policyData(true)]]);
+  const betaLease = await betaRace.__test.acquireDailyLease(betaRace.db);
+  for (const keyType of ["word", "motif", "resistance"]) {
+    const item = { keyType, key: "selected" };
+    assert.equal(await betaRace.__test.reserveCandidate(betaRace.db, betaLease, item), true);
+    const selection = { text: `Founder ${keyType} selection`, passages: [] };
+    betaRace.store.set(`practitionerContent/${keyType}_selected`, selection);
+    assert.equal(await betaRace.__test.storeDrafts(betaRace.db, betaLease, item, parsed), false);
+    assert.equal(betaRace.store.get(`practitionerContent/${keyType}_selected`), selection);
+  }
+  for (const rejected of [
+    { status: "rejected", passages: [] },
+    { approval: { status: "rejected" } },
+    { passages: [{ status: "rejected", text: "Rejected copy" }] },
+  ]) {
+    betaRace.store.set("practitionerContent/word_rejected", rejected);
+    const item = { keyType: "word", key: "rejected" };
+    assert.equal(await betaRace.__test.reserveCandidate(betaRace.db, betaLease, item), false);
+    assert.equal(betaRace.store.get("practitionerContent/word_rejected"), rejected);
+  }
+  const revoked = { keyType: "motif", key: "revoked" };
+  assert.equal(await betaRace.__test.reserveCandidate(betaRace.db, betaLease, revoked), true);
+  betaRace.store.set(POLICY_PATH, policyData(false));
+  assert.equal(await betaRace.__test.storeDrafts(betaRace.db, betaLease, revoked, parsed), true);
+  assert.equal(betaRace.store.get("practitionerContent/motif_revoked").passages[0].status, "draft");
+  assert.equal(betaRace.store.get("practitionerContent/motif_revoked").text, undefined);
+  await assert.rejects(betaRace.__test.storeDrafts(betaRace.db, betaLease, revoked,
+    [{ ...parsed[0], status: "approved" }]), /unapproved generated/);
+
   const approvedHistory = {
     key: "history", keyType: "motif", text: "Existing founder selection",
     passages: Array.from({ length: 273 }, (_, index) => ({
@@ -278,7 +392,7 @@ async function run() {
   assert.equal(legacy.store.get("practitionerContent/word_review"), existingDrafts);
   assert.match(legacy.messages[0].message.subject, /3 awaiting you/);
   assert.match(legacy.messages[0].message.text, /10 generated today/);
-  console.log("fieldQueue tests passed (offline daily caps, failures, concurrency, privacy, eligibility, preservation, digest)");
+  console.log("fieldQueue tests passed (offline beta offering policy, server/client usability, daily caps, failures, concurrency, privacy, eligibility, preservation, digest)");
 }
 
 run().catch((error) => { console.error(error); process.exitCode = 1; });

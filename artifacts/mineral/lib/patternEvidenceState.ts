@@ -30,9 +30,14 @@ export class PatternEvidenceListenerState {
   private readonly pagesReady = new Set<PatternType>();
   private stopped = false;
   private readonly onData: (patterns: PatternDocuments) => void;
+  private readonly types: readonly PatternType[];
 
-  constructor(onData: (patterns: PatternDocuments) => void) {
+  constructor(
+    onData: (patterns: PatternDocuments) => void,
+    types: readonly PatternType[] = PATTERN_TYPES
+  ) {
     this.onData = onData;
+    this.types = types;
   }
 
   receiveRoots(roots: PatternDocuments) {
@@ -59,9 +64,9 @@ export class PatternEvidenceListenerState {
   }
 
   private emitIfCoherent() {
-    if (!this.rootsReady || EVIDENCE_TYPES.some((type) => !this.pagesReady.has(type))) return;
+    if (!this.rootsReady) return;
     const hydrated: PatternDocuments = {};
-    for (const type of PATTERN_TYPES) {
+    for (const type of this.types) {
       const root = this.roots[type];
       if (!root) continue;
       const pageCount = Number(root.evidencePageCount ?? 0);
@@ -70,6 +75,7 @@ export class PatternEvidenceListenerState {
         hydrated[type] = root;
         continue;
       }
+      if (!this.pagesReady.has(type)) return;
       const generation = root.evidenceGeneration;
       const matching = (this.pages.get(type) ?? [])
         .filter((page) => page.evidenceGeneration === generation)

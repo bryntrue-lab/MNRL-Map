@@ -98,9 +98,18 @@ function stableCompare(a, b) {
 
 function hasExistingCopy(data) {
   // Top-level founder text is a compatibility approval boundary for motif
-  // and resistance. Conservatively preserve it for words as well.
-  return (Array.isArray(data?.passages) && data.passages.length > 0) ||
+  // and resistance. Conservatively preserve it for words as well, and never
+  // regenerate explicitly rejected documents even if their copy was removed.
+  return data?.status === "rejected" || data?.approval?.status === "rejected" ||
+    (Array.isArray(data?.passages) && data.passages.length > 0) ||
     (typeof data?.text === "string" && data.text.trim().length > 0);
+}
+
+function betaAutoApproveGeneratedOfferings(policy) {
+  // Server-owned shared policy, never model output or a client preference.
+  // Missing/malformed configuration keeps the normal review gate in place.
+  return policy?.kind === "field_generation_policy" &&
+    policy.betaAutoApproveGeneratedOfferings === true;
 }
 
 function dailyCounts(data, day) {
@@ -207,9 +216,10 @@ async function storeDrafts(db, run, candidate, passages) {
     `practitionerContent/${contentId(candidate.keyType, candidate.key)}`
   );
   return db.runTransaction(async (tx) => {
-    const [current, state] = await Promise.all([
+    const [current, state, policy] = await Promise.all([
       tx.get(ref),
       tx.get(run.ref),
+      tx.get(db.doc("practitionerContent/field_generation_policy")),
     ]);
     const stateData = state.data() || {};
     if (
@@ -225,14 +235,28 @@ async function storeDrafts(db, run, candidate, passages) {
     if (hasExistingCopy(current.data())) {
       return false;
     }
+    // Decide approval at publication time inside the transaction. The model
+    // parser always produces drafts; only this server policy may approve them.
+    const autoApprove = betaAutoApproveGeneratedOfferings(policy.data());
+    const offering = {
+      key: candidate.key,
+      keyType: candidate.keyType,
+      kind: "offering",
+      passages: passages.map((passage) => ({
+        ...passage, status: autoApprove ? "approved" : "draft",
+      })),
+    };
+    if (autoApprove) {
+      // No competing copy remains after the preservation check above. A legacy
+      // empty word shell with status:draft must not hide the approved passage.
+      offering.status = "approved";
+      if (["motif", "resistance"].includes(candidate.keyType)) {
+        offering.text = passages[0].text;
+      }
+    }
     tx.set(
       ref,
-      {
-        key: candidate.key,
-        keyType: candidate.keyType,
-        kind: "offering",
-        passages,
-      },
+      offering,
       { merge: true }
     );
     tx.update(run.ref, {
@@ -444,6 +468,6 @@ module.exports = {
   __test: {
     DAILY_LIMIT, PASSAGES_PER_CALL, acquireDailyLease, reserveCandidate,
     storeDrafts, releaseDailyLease, establishedCandidates, queueCounts,
-    hasExistingCopy, dailyCounts,
+    hasExistingCopy, dailyCounts, betaAutoApproveGeneratedOfferings,
   },
 };

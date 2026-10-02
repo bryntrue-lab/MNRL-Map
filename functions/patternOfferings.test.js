@@ -271,8 +271,50 @@ async function run() {
   assert.equal(received[receivedHero.type].offerings[receivedHero.key].text, approvedText,
     "actual Guide listener preserves the root offering and its lookup key");
   assert.match(guideSource, /heroOffering\?\.text[\s\S]*testID="hero-offering"/);
-  assert.match(guideSource, /patterns\[hero\.type\]\?\.offerings\?\.\[hero\.key\]/);
-  console.log("pattern offering tests passed (offline server paths + unchanged Guide selection)");
+  const liveResolver = evaluateTs(fs.readFileSync(path.join(
+    __dirname, "../artifacts/mineral/lib/guideOfferings.ts"
+  ), "utf8")).exports;
+  const target = liveResolver.guideOfferingTarget(receivedHero);
+  assert.equal(target.docId, "word_fear", "live lookup uses the selected engine key");
+  assert.equal(target.keyType, "word");
+  assert.equal(liveResolver.guideOfferingTarget({ type: "thread", key: "return" }).docId,
+    "word_return", "already-stemmed return is never re-stemmed");
+  assert.equal(liveResolver.guideOfferingTarget({ type: "thread", key: "unknown phrase" }), null,
+    "unsupported phrase cannot borrow another word's copy");
+  for (const keyType of ["word", "motif", "resistance"]) {
+    for (const content of [
+      null,
+      { text: approvedText },
+      { text: approvedText, passages: [approved] },
+      { text: spaced, passages: [approved, { ...approved, text: spaced }] },
+      { text: approvedText, passages: [{ ...approved, status: "draft" }] },
+      { status: "draft", text: approvedText, passages: [approved] },
+    ]) {
+      assert.equal(liveResolver.guideOfferingText(content, keyType),
+        __test.offeringText(content, keyType), `live ${keyType} approval mirrors server`);
+    }
+  }
+  let hydration = null;
+  const receiver = liveResolver.guideOfferingReceiver(target, (next) => { hydration = next; });
+  receiver.receive({ passages: [approved] });
+  assert.equal(liveResolver.guideOfferingText(
+    liveResolver.currentGuideOfferingContent(target, hydration), target.keyType
+  ), approvedText);
+  receiver.receive(null);
+  assert.equal(liveResolver.currentGuideOfferingContent(target, hydration), null,
+    "a missing live document does not preserve the still-present cached root offering");
+  receiver.close();
+  receiver.receive({ passages: [approved] });
+  assert.equal(liveResolver.currentGuideOfferingContent(target, hydration), null,
+    "late callbacks cannot resurrect withdrawn copy");
+  assert.match(guideSource, /currentGuideOfferingContent\(heroOfferingTarget, heroHydration\)/);
+  assert.match(guideSource, /guideOfferingText\(heroContent, heroOfferingTarget\.keyType\)/);
+  assert.match(guideSource, /fsDoc\(db, "practitionerContent", heroOfferingTarget\.docId\)/);
+  assert.match(guideSource, /const heroOfferingTarget = useMemo\([\s\S]*?\[hero\?\.key, hero\?\.type, user\?\.uid\]/,
+    "target identity is stable across ordinary hero object re-renders");
+  assert.match(guideSource, /}, \[heroOfferingTarget\]\)/,
+    "live subscription depends on the memoized target, not the recreated hero object");
+  console.log("pattern offering tests passed (offline server paths + live Guide approval boundary)");
 }
 
 run().catch((error) => { console.error(error); process.exitCode = 1; });

@@ -103,16 +103,23 @@ export default function LensScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { profile } = useUser();
-  const { lens } = useLocalSearchParams<{ lens: string }>();
+  const { lens: lensParam } = useLocalSearchParams<{ lens: string | string[] }>();
+  const lens = Array.isArray(lensParam) ? lensParam[0] : lensParam;
   const meta = LENS_META[lens ?? ""];
+  const uid = user?.uid;
+  const scope = `${uid ?? ""}:${lens ?? ""}`;
 
-  const [doc, setDoc] = useState<PatternDoc | null>(null);
-  const [resistanceNoteCount, setResistanceNoteCount] = useState(0);
-  const [teaching, setTeaching] = useState<{
+  const [patternState, setPatternState] = useState<{ scope: string; doc: PatternDoc | null } | null>(null);
+  const doc = patternState?.scope === scope ? patternState.doc : null;
+  const [resistanceState, setResistanceState] = useState<{ scope: string; count: number } | null>(null);
+  const resistanceNoteCount = resistanceState?.scope === scope ? resistanceState.count : 0;
+  const [loadError, setLoadError] = useState<{ scope: string; error: Error } | null>(null);
+  const [teachingState, setTeachingState] = useState<{ scope: string; content: {
     heldLine?: string;
     paragraphs?: string[];
     closingParagraphIndex?: number;
-  } | null>(null);
+  } } | null>(null);
+  const teaching = teachingState?.scope === scope ? teachingState.content : null;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [fieldPassageItem, setFieldPassageItem] = useState<string | null>(null);
   const [motifPassageContent, setMotifPassageContent] = useState<
@@ -123,22 +130,28 @@ export default function LensScreen() {
   // B9 AMENDED — teachings render as a sheet, not inline. Doc:
   // practitionerContent/teaching_{lens} (kind:'teaching').
   useEffect(() => {
-    if (!user || !lens) return;
+    setTeachingState(null);
+    setSheetOpen(false);
+    setFieldPassageItem(null);
+    firstVisitLens.current = null;
+    if (!uid || !meta || !lens) return;
+    let active = true;
     getDoc(fsDoc(db, "practitionerContent", `teaching_${lens}`))
       .then((snap) => {
-        if (!snap.exists()) return;
+        if (!active || !snap.exists()) return;
         const data = snap.data() as {
           kind?: string;
           heldLine?: string;
           paragraphs?: string[];
           closingParagraphIndex?: number;
         };
-        if (data.kind === "teaching") setTeaching(data);
+        if (data.kind === "teaching") setTeachingState({ scope, content: data });
       })
-      .catch(() => {
-        /* locked or absent — everything renders as today */
+      .catch((error: Error) => {
+        if (active) setLoadError({ scope, error });
       });
-  }, [user, lens]);
+    return () => { active = false; };
+  }, [uid, lens, meta, scope]);
 
   // First visit per lens: the sheet presents itself once (after the view
   // settles), then never again uninvited — the map-label doctrine.
@@ -163,38 +176,47 @@ export default function LensScreen() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [teaching, lens]);
+  }, [teaching, lens, uid]);
 
   useEffect(() => {
-    if (!user || !meta?.pattern) return;
+    setPatternState(null);
+    setResistanceState(null);
+    setLoadError(null);
+    if (!uid || !meta?.pattern) return;
+    let active = true;
     const unsubPatterns = subscribePatternDocuments(
-      user.uid,
+      uid,
       (patterns) => {
-        setDoc(patterns[meta.pattern!] ?? null);
+        if (active) setPatternState({ scope, doc: patterns[meta.pattern!] ?? null });
       },
       (err) => {
-        setDoc(null);
-        console.warn("lens patterns", err);
-      }
+        if (active) setLoadError({ scope, error: err });
+      },
+      [meta.pattern]
     );
     const unsubNotes =
       lens === "resistance"
         ? onSnapshot(
-            fieldNotesQuery(user.uid),
-            (snap) =>
-              setResistanceNoteCount(
-                snap.docs.filter(
+            fieldNotesQuery(uid),
+            (snap) => {
+              if (active) setResistanceState({
+                scope,
+                count: snap.docs.filter(
                   (d) => (d.data() as FieldNoteDoc).type === "resistance"
-                ).length
-              ),
-            (err) => console.warn("lens notes", err)
+                ).length,
+              });
+            },
+            (error) => {
+              if (active) setLoadError({ scope, error });
+            }
           )
         : null;
     return () => {
+      active = false;
       unsubPatterns();
       unsubNotes?.();
     };
-  }, [user, meta, lens]);
+  }, [uid, meta, lens, scope]);
 
   // Ordering per §2: threads — items ≥ 3, phrases before single words,
   // top 7 by count. motifs/resistance — items ≥ 1, count-ordered.
@@ -236,22 +258,28 @@ export default function LensScreen() {
   }, [lens, motifKeys]);
   useEffect(() => {
     if (lens !== "motifs") return;
+    let active = true;
     const unsubscribes = motifKeys.map((key) =>
       onSnapshot(
         fsDoc(db, "practitionerContent", `motif_${key}`),
-        (snap) =>
-          setMotifPassageContent((current) => ({
+        (snap) => {
+          if (active) setMotifPassageContent((current) => ({
             ...current,
             [key]: snap.exists() ? (snap.data() as PractitionerContentDoc) : null,
-          })),
-        () =>
-          setMotifPassageContent((current) => ({
+          }));
+        },
+        () => {
+          if (active) setMotifPassageContent((current) => ({
             ...current,
             [key]: null,
-          }))
+          }));
+        }
       )
     );
-    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+    return () => {
+      active = false;
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
   }, [lens, motifKeys]);
   const selectedPassageContent = fieldPassageItem
     ? motifPassageContent[fieldPassageItem] ?? null
@@ -288,6 +316,7 @@ export default function LensScreen() {
     (lens === "consciousness" && consciousnessRows.length > 0) ||
     (lens === "conditions" && conditions.length > 0);
 
+  if (loadError?.scope === scope) throw loadError.error;
   if (!meta) return null;
 
   return (

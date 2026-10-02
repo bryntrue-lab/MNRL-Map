@@ -33,6 +33,7 @@ import { CaptureSheet } from "@/components/CaptureSheet";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { QuietToast } from "@/components/OriginSheets";
 import { FontFamily, TypeScale } from "@/constants/typography";
+import colors from "@/constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { AccountForm } from "@/components/AccountForm";
@@ -1178,12 +1179,14 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
               setSheetMode("charge");
             }}
             style={styles.advance}
+            textStyle={{ color: colors.light.textPrimary }}
             testID="close-to-guide"
           />
           <LinkSecondary
             label="return to the map →"
             onPress={() => closeOut()}
             style={{ alignSelf: "flex-start", marginTop: 14 }}
+            textStyle={{ color: colors.light.textMuted }}
             testID="close-return"
           />
         </View>

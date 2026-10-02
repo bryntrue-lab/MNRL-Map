@@ -87,7 +87,7 @@ function componentHarness(file, { imports = {}, exportName = "default", suffix =
     if (name === "@/constants/typography") return load("constants/typography.ts", () => {
       throw new Error("unexpected typography import");
     });
-    if (name === "@/constants/colors") return { default: { light: { textSecondary: "#aaa", textMuted: "#777" } } };
+    if (name === "@/constants/colors") return { default: { light: { textPrimary: "#FFFFFF", textSecondary: "#aaa", textMuted: "#777" } } };
     if (name === "@/lib/firebase") return { db: {}, functions: {} };
     if (name.startsWith("@/components/")) return new Proxy({}, { get: (_target, key) => String(key) });
     throw new Error(`Unexpected boundary: ${name}`);
@@ -185,6 +185,8 @@ test("close copy and charge metadata; save completes once and bypasses morning-c
   assert.equal(h.find("close-return").props.label, "return to the map →");
   const whisper = h.find("close-to-guide");
   assert.equal(whisper.type, "LinkWhisper");
+  assert.equal(whisper.props.textStyle.color, "#FFFFFF");
+  assert.equal(h.find("close-return").props.textStyle.color, "#777");
   assert.equal(whisper.props.style.alignSelf, "flex-start");
   assert.equal(h.find("close-return").type, "LinkSecondary");
   assert.equal(h.find("close-return").props.style.alignSelf, "flex-start");
@@ -672,6 +674,7 @@ function guide(count, enabled, kept) {
     "@/context/AuthContext": { useAuth: () => ({ user: guideUser }) },
     "@/context/UserContext": { useUser: () => ({ profile: guideProfile }) },
     "@/lib/fieldPassages": { firstApprovedFieldPassage: () => null },
+    "@/lib/guideOfferings": load("lib/guideOfferings.ts", () => { throw new Error("unexpected offering import"); }),
     "@/lib/fieldNotesState": fieldGates,
     "@/lib/firestore": { fieldNotesQuery: () => ({}) },
     "@/lib/patternEvidence": { subscribePatternDocuments: (_uid, callback) => {

@@ -31,6 +31,57 @@ session duration.
 On a day that creates field-passage drafts, the queue writes an immediate draft
 notice and the digest still writes its independent daily message.
 
+## Beta autoapproval: generated offering copy only
+
+The server-only shared document `practitionerContent/field_generation_policy`
+has this configuration (the explicit default is **false**):
+
+```json
+{
+  "kind": "field_generation_policy",
+  "betaAutoApproveGeneratedOfferings": false
+}
+```
+
+This document is intentionally not part of the general content seeder. An
+authorized operator should create it **create-only** if absent, without replacing
+an existing policy. After offline tests and the authorized narrow deployment,
+the operator may explicitly set the boolean to `true` for beta. Missing policy,
+wrong kind, missing boolean, and non-boolean values all retain draft-only
+generation. A failed policy read surfaces as a generation/storage error rather
+than authorizing approval. Keep this kind out of client-readable rules
+whitelists; clients cannot write practitioner content.
+
+Only `fieldPassageQueue` changes: the model parser always produces a draft,
+and its final Firestore transaction reads the policy and stores the one new
+generated passage with `status: "approved"` when enabled (`"draft"` otherwise).
+It retains `source: "generated"`, `text`, `locator`, and `createdAt`. With beta
+enabled and no competing copy, the offering document gets `status: "approved"`
+so an empty legacy word document marked draft cannot hide its approved passage.
+For motif/resistance only, missing usable top-level `text` is filled from that
+approved passage so the unchanged server and live Guide readers can use it.
+Existing founder text, any existing passages (including drafts/rejections),
+and explicitly rejected documents are never overwritten or bulk-approved.
+Disabling beta affects future publications only; it does not revoke prior
+approval or promote existing drafts.
+
+The ten-passage/ten-attempt UTC daily limits, failed-attempt accounting,
+concurrent lease, conservative legacy counter migration, established-pattern
+ranking, lexicon/word allowlist, and single-key-only model privacy boundary
+are unchanged. The policy does not approve or expand resistance vocabulary,
+write proposals or lexicon entries, change approved-only readers, or bypass any
+reading or vocabulary approval gate. Queue metrics keep counting generated
+passages in every status; only drafts count as pending review.
+
+Narrow function deployment when authorized:
+`firebase deploy --only functions:mineral:fieldPassageQueue`.
+No app, pattern-engine, vocabulary, or digest export deployment is required by
+this switch. No deployment or live policy mutation is performed by the tests.
+
+Offline focused tests:
+`cd functions && node fieldQueue.test.js && node patternOfferings.test.js`.
+Full offline Functions suite: `cd functions && npm test`.
+
 ## Resistance vocabulary: explicit founder review
 
 `draftResistanceVocabulary` and `approveResistanceVocabulary` require a signed-in

@@ -258,8 +258,10 @@ export type ConditionFinding =
 
 export interface PractitionerContentDoc {
   key: string;
-  keyType: "motif" | "resistance" | "condition";
+  keyType: "motif" | "resistance" | "condition" | "word";
   text: string;
+  /** Word documents marked draft cannot supply an offering. */
+  status?: FieldPassageStatus;
   /** G2 — only approved passages are ever shown to a member. */
   passages?: FieldPassage[];
 }

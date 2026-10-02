@@ -15,6 +15,12 @@ service cloud.firestore {
         && (resource.data.kind == 'teaching'
           || resource.data.kind == 'counterweight_pools'
           || resource.data.kind == 'offering');
+      // SAME-KEY live listeners must observe a missing offering as absent.
+      // Get-only, normalized offering IDs, and strictly nonexistent documents:
+      // this never grants access to existing prompts or adds list/query access.
+      allow get: if request.auth != null
+        && contentId.matches('^(word_[a-z0-9]+|(motif|resistance)_[a-z0-9]+(-[a-z0-9]+)*)$')
+        && !exists(/databases/$(database)/documents/practitionerContent/$(contentId));
       allow write: if false;
     }
 

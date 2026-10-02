@@ -86,3 +86,36 @@ function ready(state) {
 }
 
 console.log("pattern evidence listener state tests passed");
+
+// Conditions need no evidence pages, even while an unrelated thread generation
+// has not arrived. A lens never hydrates documents outside its requested scope.
+{
+  const outputs = [];
+  const state = new PatternEvidenceListenerState((value) => outputs.push(value), ["conditions"]);
+  const conditions = { notesRead: 53, daysRead: 22, findings: [
+    { kind: "gap", type: "reflection", matchingCount: 15, totalQualifying: 25 },
+  ] };
+  state.receiveRoots({ ...root(8), conditions });
+  assert.deepEqual(outputs, [{ conditions }]);
+}
+
+// Empty resistance is a coherent result without waiting on thread/motif pages.
+{
+  const outputs = [];
+  const state = new PatternEvidenceListenerState((value) => outputs.push(value), ["resistance"]);
+  const resistance = { itemCounts: {}, evidencePageCount: 0 };
+  state.receiveRoots({ ...root(8), resistance });
+  assert.deepEqual(outputs, [{ resistance }]);
+}
+
+// A paged lens still waits for its own complete, matching evidence generation.
+{
+  const outputs = [];
+  const state = new PatternEvidenceListenerState((value) => outputs.push(value), ["thread"]);
+  state.receiveRoots(root(8));
+  state.receivePages("thread", [page(7)]);
+  assert.equal(outputs.length, 0);
+  state.receivePages("thread", [page(8)]);
+  assert.equal(outputs.length, 1);
+  assert.deepEqual(Object.keys(outputs[0]), ["thread"]);
+}

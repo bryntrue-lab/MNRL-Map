@@ -9,6 +9,8 @@ description: Founder's standing rules for user-facing strings in Mineral
 
 **How to apply:** When a request implies new visible text ("say something about…"), propose wording in chat via a question and wait for approval, or implement everything else and leave the copy slot empty pending founder wording.
 
+**Beta exception (2026-10-02):** The founder explicitly authorized autoapproval of generated offering passages during beta. See [field generation budget](field-generation-budget.md). This limited exception does not authorize invented UI copy or automatic activation of detection vocabulary.
+
 **Detection versus display:** The engine may detect additional patterns, but only findings with founder-approved wording may be rendered. Unworded findings stay hidden and are reported in checkpoint summaries, never given invented or neutral labels.
 
 **Why:** The founder explicitly established this boundary when clarifying Conditions findings: evidence detection does not authorize new language.

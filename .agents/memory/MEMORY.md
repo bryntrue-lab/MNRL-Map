@@ -1,4 +1,5 @@
 # Mineral Memory
+- [Returning editorial role](returning-editorial-role.md) — the Guide's featured word should carry a field teaching; missing coverage needs an explicit product decision.
 - [Field generation budget](field-generation-budget.md) — ten passages/day, separate vocabulary approval, and verify deployed queue state rather than assuming local parity.
 - [Separate charge deliverables](charge-deliverables.md) — encounter capture and map teaching are independent; the amended charge-only prompt does not connect their paths.
 - [Release branches](release-branches.md) — main is approved stable; dev is ongoing work; preserve release tags and verify remote backups before promotion.

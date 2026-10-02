@@ -28,6 +28,13 @@ import { useUser } from "@/context/UserContext";
 import { db, functions } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import {
+  currentGuideOfferingContent,
+  guideOfferingReceiver,
+  guideOfferingTarget,
+  guideOfferingText,
+  type GuideOfferingHydration,
+} from "@/lib/guideOfferings";
+import {
   shouldShowLetter,
   shouldShowReflection,
 } from "@/lib/fieldNotesState";
@@ -207,8 +214,8 @@ export default function GuideScreen() {
   const [readingOpen, setReadingOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [fieldPassageOpen, setFieldPassageOpen] = useState(false);
-  const [heroPassageContent, setHeroPassageContent] =
-    useState<PractitionerContentDoc | null>(null);
+  const [heroHydration, setHeroHydration] =
+    useState<GuideOfferingHydration | null>(null);
   // Empty state only — each lens row carries its held line, verbatim
   // from the seeded teaching docs.
   const [heldLines, setHeldLines] = useState<Record<string, string>>({});
@@ -350,25 +357,40 @@ export default function GuideScreen() {
     );
   }, [hero, patterns]);
   const freshestId = heroExemplars[heroExemplars.length - 1]?.fieldNoteId;
-  const heroOffering = hero ? patterns[hero.type]?.offerings?.[hero.key] : null;
+  // A new target instance also scopes A → B → A transitions and user changes.
+  // Cached pattern offerings cannot establish current approval.
+  const heroOfferingTarget = useMemo(
+    () => user ? guideOfferingTarget(hero) : null,
+    [hero?.key, hero?.type, user?.uid]
+  );
+  const heroContent = currentGuideOfferingContent(heroOfferingTarget, heroHydration);
+  const heroOfferingText = heroOfferingTarget
+    ? guideOfferingText(heroContent, heroOfferingTarget.keyType)
+    : null;
+  const heroOffering = heroOfferingText ? { text: heroOfferingText } : null;
+  const heroPassageContent = heroOfferingTarget?.keyType === "motif" ? heroContent : null;
 
-  // G2 — passage availability is live, so a founder approval can open this
-  // door without a client deploy. Only motif content has a field passage sheet.
+  // Founder approvals hydrate only the SAME-KEY hero, independently of rank.
+  // Only motif content retains the existing field passage sheet.
   useEffect(() => {
-    if (!hero || hero.type !== "motif") {
-      setHeroPassageContent(null);
-      setFieldPassageOpen(false);
-      return;
-    }
-    return onSnapshot(
-      fsDoc(db, "practitionerContent", `motif_${hero.key}`),
-      (snap) =>
-        setHeroPassageContent(
-          snap.exists() ? (snap.data() as PractitionerContentDoc) : null
-        ),
-      () => setHeroPassageContent(null)
+    setFieldPassageOpen(false);
+    if (!heroOfferingTarget) return;
+    const receiver = guideOfferingReceiver(heroOfferingTarget, setHeroHydration);
+    const unsubscribe = onSnapshot(
+      fsDoc(db, "practitionerContent", heroOfferingTarget.docId),
+      (snap) => receiver.receive(
+        snap.exists() ? (snap.data() as PractitionerContentDoc) : null
+      ),
+      (error) => {
+        receiver.receive(null);
+        console.warn("guide offering", error);
+      }
     );
-  }, [hero?.key, hero?.type]);
+    return () => {
+      receiver.close();
+      unsubscribe();
+    };
+  }, [heroOfferingTarget]);
   const heroApprovedPassage = firstApprovedFieldPassage(heroPassageContent);
 
   const heroSpan = useMemo(() => {
@@ -859,7 +881,7 @@ export default function GuideScreen() {
         bottomPad={insets.bottom}
       />
       <FieldPassageSheet
-        open={fieldPassageOpen}
+        open={fieldPassageOpen && !!heroApprovedPassage}
         onClose={() => setFieldPassageOpen(false)}
         bottomPad={insets.bottom}
         motifName={hero ? displayItem(hero.key) : ""}
