@@ -1170,21 +1170,21 @@ function EncounterFlow({ session, uid }: { session: EncounterSession; uid: strin
             </View>
           )}
 
-          <LinkPrimary
-            label="return to the map →"
-            onPress={() => closeOut()}
-            style={styles.advance}
-            testID="close-return"
-          />
-          <LinkSecondary
+          <LinkWhisper
             label="before the day takes you — name its charge →"
             onPress={() => {
               if (closingRef.current) return;
               closingRef.current = "charge";
               setSheetMode("charge");
             }}
-            style={{ alignSelf: "center", marginTop: 14 }}
+            style={styles.advance}
             testID="close-to-guide"
+          />
+          <LinkSecondary
+            label="return to the map →"
+            onPress={() => closeOut()}
+            style={{ alignSelf: "flex-start", marginTop: 14 }}
+            testID="close-return"
           />
         </View>
       )}

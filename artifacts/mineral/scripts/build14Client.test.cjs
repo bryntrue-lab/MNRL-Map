@@ -184,7 +184,10 @@ test("close copy and charge metadata; save completes once and bypasses morning-c
   await tick();
   assert.equal(h.find("close-return").props.label, "return to the map →");
   const whisper = h.find("close-to-guide");
-  assert.equal(whisper.type, "LinkSecondary");
+  assert.equal(whisper.type, "LinkWhisper");
+  assert.equal(whisper.props.style.alignSelf, "flex-start");
+  assert.equal(h.find("close-return").type, "LinkSecondary");
+  assert.equal(h.find("close-return").props.style.alignSelf, "flex-start");
   assert.equal(whisper.props.label, "before the day takes you — name its charge →");
   whisper.props.onPress();
   whisper.props.onPress();
