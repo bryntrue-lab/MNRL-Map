@@ -22,7 +22,7 @@ function load(file, requireMock, suffix = "") {
   return module.exports;
 }
 
-function componentHarness(file, { imports = {}, exportName = "default", suffix = "" } = {}) {
+function componentHarness(file, { imports = {}, exportName = "default", suffix = "", platform = "ios" } = {}) {
   const hooks = [];
   let cursor = 0;
   let effects = [];
@@ -48,14 +48,19 @@ function componentHarness(file, { imports = {}, exportName = "default", suffix =
       const i = cursor++;
       const old = hooks[i];
       if (old && deps?.every((value, j) => Object.is(value, old.deps[j]))) return;
-      hooks[i] = { deps };
-      effects.push(fn);
+      hooks[i] = { deps, cleanup: old?.cleanup };
+      effects.push(() => {
+        old?.cleanup?.();
+        hooks[i].cleanup = fn();
+      });
     },
   };
   const jsx = (type, props) => ({ type, props: props || {} });
   const native = {
-    Platform: { OS: "ios" }, View: "View", Text: "Text", Pressable: "Pressable",
+    Platform: { OS: platform }, View: "View", Text: "Text", Pressable: "Pressable",
     TextInput: "TextInput", ScrollView: "ScrollView",
+    Keyboard: { dismiss() {} },
+    Linking: { openSettings: async () => {} },
     Dimensions: { get: () => ({ height: 874, width: 402 }) },
     StyleSheet: { create: (styles) => styles },
     PanResponder: { create: () => ({ panHandlers: {} }) },
@@ -70,6 +75,10 @@ function componentHarness(file, { imports = {}, exportName = "default", suffix =
     if (name === "react") return { ...React, default: React };
     if (name === "react/jsx-runtime") return { jsx, jsxs: jsx };
     if (name === "react-native") return native;
+    if (name === "expo-audio") return {
+      RecordingPresets: { HIGH_QUALITY: {} },
+      useAudioRecorder: () => ({}),
+    };
     if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) };
     if (name === "react-native-svg") return { default: "Svg", Circle: "Circle", Path: "Path" };
     if (name === "@react-native-async-storage/async-storage") return { default: {
@@ -101,6 +110,9 @@ function componentHarness(file, { imports = {}, exportName = "default", suffix =
     find(id) { return find(tree, (node) => node.props.testID === id); },
     type(name) { return find(tree, (node) => node.type === name); },
     get tree() { return tree; },
+    unmount() {
+      for (const hook of hooks) hook?.cleanup?.();
+    },
   };
 }
 
@@ -254,6 +266,8 @@ test("real CaptureSheet keep excludes duplicate writes and every dismissal until
     onClose: () => callbacks.push("closed") });
   h.find("capture-chip-spark").props.onPress();
   h.render();
+  h.find("capture-type-instead").props.onPress();
+  h.render();
   h.find("capture-input").props.onChangeText("  today's charge  ");
   h.render();
   const keep = h.find("capture-keep").props.onPress;
@@ -286,6 +300,8 @@ test("failed CaptureSheet write releases save/dismiss guard without reporting sa
   });
   h.render({ open: true, uid: "isolated", source: "spontaneous", initialType: "spark",
     atmosphere: "signal", bottomPad: 0, onSaved: () => saved++, onClose: () => closed++ });
+  h.find("capture-type-instead").props.onPress();
+  h.render();
   h.find("capture-input").props.onChangeText("charge");
   h.render();
   const first = h.find("capture-keep").props.onPress();
@@ -294,6 +310,300 @@ test("failed CaptureSheet write releases save/dismiss guard without reporting sa
   h.find("capture-close").props.onPress();
   assert.equal(saved, 0);
   assert.equal(closed, 1);
+});
+
+function voiceCapture({ props = {}, permission, prepare, stop, upload, write, platform } = {}) {
+  const calls = [];
+  const callbacks = [];
+  const recorder = {
+    uri: "file:///isolated-charge.m4a",
+    currentTime: 1.4,
+    prepareToRecordAsync: async () => {
+      calls.push(["prepare"]);
+      if (prepare) await prepare();
+    },
+    record: () => calls.push(["record"]),
+    stop: async () => {
+      calls.push(["stop"]);
+      if (stop) await stop();
+    },
+  };
+  const h = componentHarness("components/CaptureSheet.tsx", {
+    exportName: "CaptureSheet",
+    platform,
+    imports: {
+      "expo-audio": {
+        RecordingPresets: { HIGH_QUALITY: {} },
+        useAudioRecorder: () => recorder,
+        requestRecordingPermissionsAsync: async () => {
+          calls.push(["permission"]);
+          return permission ? permission() : { granted: true };
+        },
+        setAudioModeAsync: async (mode) => { calls.push(["mode", mode.allowsRecording]); },
+      },
+      "@/lib/firestore": {
+        newFieldNoteId: () => { calls.push(["id"]); return "isolated-voice"; },
+        uploadCaptureAudio: async (...args) => {
+          calls.push(["upload", ...args]);
+          return upload ? upload(...args) : "users/isolated/fieldNotes/isolated-voice/audio.m4a";
+        },
+        createFieldNote: async (...args) => {
+          calls.push(["write", ...args]);
+          return write ? write(...args) : "isolated-voice";
+        },
+      },
+    },
+  });
+  h.render({ open: true, uid: "isolated", source: "spontaneous", encounterRef: null,
+    mapRef: null, initialType: "spark", atmosphere: "signal", bottomPad: 0,
+    onSaved: () => callbacks.push("saved"), onClose: () => callbacks.push("closed"), ...props });
+  return { h, calls, callbacks, recorder };
+}
+
+test("spoken charge uploads before persistence; duplicate release/dismiss/map cannot race Guide", async () => {
+  const screen = encounter();
+  screen.h.find("close-to-guide").props.onPress();
+  screen.h.render();
+  const upload = deferred(), write = deferred();
+  const { h, calls } = voiceCapture({
+    props: screen.h.type("CaptureSheet").props,
+    upload: () => upload.promise, write: () => write.promise,
+  });
+  h.find("capture-chip-desire").props.onPress();
+  h.render();
+  assert.equal(text(h.tree).includes("hold to speak"), true);
+  const button = h.find("capture-record");
+  await button.props.onPressIn();
+  await button.props.onPressIn(); // synchronous attempt latch
+  h.render();
+  assert.equal(text(h.tree).includes("listening"), true);
+  const released = button.props.onPressOut();
+  await button.props.onPressOut();
+  await tick();
+  h.find("capture-close").props.onPress();
+  h.type("SheetShell").props.onClose();
+  await screen.h.find("close-return").props.onPress();
+  assert.equal(calls.filter((call) => call[0] === "upload").length, 1);
+  assert.equal(calls.some((call) => call[0] === "write"), false);
+  assert.deepEqual(screen.routes, []);
+  upload.resolve("users/isolated/fieldNotes/isolated-voice/audio.m4a");
+  await tick();
+  assert.deepEqual(screen.routes, []);
+  const saved = calls.find((call) => call[0] === "write");
+  assert.equal(saved[1], "isolated");
+  assert.equal(saved[2].type, "desire");
+  assert.equal(saved[2].captureMode, "audio");
+  assert.equal(saved[2].source, "spontaneous");
+  assert.equal(saved[2].encounterRef, undefined);
+  assert.equal(saved[2].mapRef, null);
+  assert.equal(saved[2].questionId, undefined);
+  assert.equal(saved[2].content, undefined);
+  assert.equal(saved[2].audioPath, "users/isolated/fieldNotes/isolated-voice/audio.m4a");
+  assert.equal(saved[3], "isolated-voice");
+  write.resolve("isolated-voice");
+  await released;
+  await button.props.onPressOut();
+  await screen.h.find("close-return").props.onPress();
+  assert.deepEqual(screen.routes, ["/(tabs)/guide"]);
+  assert.equal(screen.completions.length, 1);
+  assert.equal(calls.filter((call) => call[0] === "write").length, 1);
+  assert.deepEqual(calls.filter((call) => call[0] === "mode"), [["mode", true], ["mode", false]]);
+});
+
+test("voice permission denial and missing microphone quietly offer the exact existing text path", async () => {
+  for (const options of [
+    { permission: () => ({ granted: false, canAskAgain: false }) },
+    { prepare: () => { throw new Error("no microphone device"); } },
+  ]) {
+    const { h, calls, callbacks } = voiceCapture(options);
+    await h.find("capture-record").props.onPressIn();
+    h.render();
+    assert.ok(h.find("capture-input"));
+    assert.equal(h.find("capture-input").props.placeholder, "when you're ready");
+    assert.equal(h.find("capture-speak-instead").props.label, "speak instead");
+    assert.equal(calls.some((call) => call[0] === "record"), false);
+    assert.deepEqual(callbacks, []);
+    if (options.permission) {
+      assert.equal(h.find("capture-microphone-settings").props.accessibilityLabel, "Open settings");
+      await h.find("capture-microphone-settings").props.onPress();
+    }
+    if (options.prepare) assert.ok(calls.some((call) => call[0] === "mode" && call[1] === false));
+    h.find("capture-input").props.onChangeText("  typed charge  ");
+    h.render();
+    await h.find("capture-keep").props.onPress();
+    const note = calls.find((call) => call[0] === "write")[2];
+    assert.equal(note.type, "spark");
+    assert.equal(note.content, "typed charge");
+    assert.equal(note.captureMode, "text");
+    assert.deepEqual(callbacks, ["saved", "closed"]);
+  }
+});
+
+test("web permanent microphone denial uses type fallback without native Settings", async () => {
+  const { h } = voiceCapture({ platform: "web", permission: () => ({ granted: false, canAskAgain: false }) });
+  await h.find("capture-record").props.onPressIn();
+  h.render();
+  assert.ok(h.find("capture-input"));
+  assert.equal(h.find("capture-microphone-settings"), undefined);
+});
+
+test("press-out/dismiss/type switch during asynchronous permission or preparation never records or saves", async () => {
+  for (const phase of ["permission", "prepare"]) {
+    for (const action of ["release", "dismiss", "type", "unmount"]) {
+      const gate = deferred();
+      const { h, calls, callbacks } = voiceCapture({
+        [phase]: () => gate.promise,
+      });
+      const button = h.find("capture-record");
+      const started = button.props.onPressIn();
+      await tick();
+      if (action === "release") await button.props.onPressOut();
+      if (action === "dismiss") h.find("capture-close").props.onPress();
+      if (action === "type") h.find("capture-type-instead").props.onPress();
+      if (action === "unmount") h.unmount();
+      gate.resolve({ granted: true });
+      await started;
+      assert.equal(calls.some((call) => call[0] === "record"), false, `${phase}/${action}`);
+      assert.equal(calls.some((call) => call[0] === "write" || call[0] === "upload"), false);
+      assert.deepEqual(callbacks, action === "dismiss" ? ["closed"] : []);
+      if (phase === "prepare") {
+        assert.equal(calls.filter((call) => call[0] === "stop").length, 1);
+        assert.equal(calls.filter((call) => call[0] === "mode" && call[1] === false).length, 1);
+      }
+    }
+  }
+});
+
+test("dismiss/type switch/unmount while listening stops microphone without saving", async () => {
+  for (const action of ["dismiss", "type", "unmount"]) {
+    const { h, calls, callbacks } = voiceCapture();
+    const button = h.find("capture-record");
+    await button.props.onPressIn();
+    if (action === "dismiss") h.type("SheetShell").props.onClose();
+    if (action === "type") h.find("capture-type-instead").props.onPress();
+    if (action === "unmount") h.unmount();
+    await button.props.onPressOut();
+    await tick();
+    assert.equal(calls.filter((call) => call[0] === "stop").length, 1);
+    assert.equal(calls.filter((call) => call[0] === "mode" && call[1] === false).length, 1);
+    assert.equal(calls.some((call) => call[0] === "write" || call[0] === "upload"), false);
+    assert.deepEqual(callbacks, action === "dismiss" ? ["closed"] : []);
+  }
+});
+
+test("grazed recording and failed stop do not upload; dismissal remains available", async () => {
+  for (const options of [{}, { stop: () => { throw new Error("stop failed"); } }]) {
+    const { h, calls, recorder, callbacks } = voiceCapture(options);
+    if (!options.stop) recorder.currentTime = 0.3;
+    await h.find("capture-record").props.onPressIn();
+    await h.find("capture-record").props.onPressOut();
+    h.render();
+    if (options.stop) assert.equal(text(h.find("capture-failed")), "not kept — try again");
+    assert.equal(calls.some((call) => call[0] === "upload" || call[0] === "write"), false);
+    h.find("capture-close").props.onPress();
+    assert.deepEqual(callbacks, ["closed"]);
+  }
+});
+
+test("native recorder getter failure still stops microphone and restores playback mode", async () => {
+  const { h, recorder, calls, callbacks } = voiceCapture();
+  await h.find("capture-record").props.onPressIn();
+  Object.defineProperty(recorder, "currentTime", { get() { throw new Error("released recorder"); } });
+  await h.find("capture-record").props.onPressOut();
+  h.render();
+  assert.equal(text(h.find("capture-failed")), "not kept — try again");
+  assert.equal(calls.filter((call) => call[0] === "stop").length, 1);
+  assert.equal(calls.filter((call) => call[0] === "mode" && call[1] === false).length, 1);
+  assert.equal(calls.some((call) => call[0] === "upload"), false);
+  h.find("capture-close").props.onPress();
+  assert.deepEqual(callbacks, ["closed"]);
+});
+
+test("voice stop promise itself excludes duplicate save and dismissal", async () => {
+  const gate = deferred();
+  const { h, calls, callbacks } = voiceCapture({ stop: () => gate.promise });
+  const button = h.find("capture-record");
+  await button.props.onPressIn();
+  const ended = button.props.onPressOut();
+  await button.props.onPressOut();
+  h.find("capture-close").props.onPress();
+  h.type("SheetShell").props.onClose();
+  assert.deepEqual(callbacks, []);
+  assert.equal(calls.filter((call) => call[0] === "stop").length, 1);
+  assert.equal(calls.some((call) => call[0] === "upload"), false);
+  gate.resolve();
+  await ended;
+  assert.deepEqual(callbacks, ["saved", "closed"]);
+});
+
+test("dismiss and reopen resets type/text; an old permission response cannot start a new-session recording", async () => {
+  const gate = deferred();
+  const { h, calls, callbacks } = voiceCapture({ permission: () => gate.promise });
+  const started = h.find("capture-record").props.onPressIn();
+  h.find("capture-close").props.onPress();
+  h.render({ open: false, uid: "isolated", source: "spontaneous", atmosphere: "signal", bottomPad: 0 });
+  h.render({ open: true, uid: "isolated", source: "spontaneous", atmosphere: "signal", bottomPad: 0,
+    initialType: "fear" });
+  gate.resolve({ granted: true });
+  await started;
+  assert.equal(calls.some((call) => call[0] === "record" || call[0] === "upload"), false);
+  assert.deepEqual(callbacks, ["closed"]);
+  h.find("capture-type-instead").props.onPress();
+  h.render();
+  assert.equal(h.find("capture-input").props.value, "");
+  assert.equal(h.find("capture-chip-fear").props.style[1].borderColor, "rgba(255,255,255,0.28)");
+});
+
+test("real web recording uses the existing webm upload format", async () => {
+  const { h, calls } = voiceCapture({ platform: "web" });
+  await h.find("capture-record").props.onPressIn();
+  await h.find("capture-record").props.onPressOut();
+  assert.equal(calls.find((call) => call[0] === "upload")[4], "audio/webm");
+});
+
+test("voice upload/write failure stays unsaved, retries same id, and never writes pending without audio", async () => {
+  for (const failure of ["upload", "write"]) {
+    let tries = 0;
+    const { h, calls, callbacks } = voiceCapture({
+      [failure]: () => {
+        if (++tries === 1) throw new Error(`isolated ${failure} failure`);
+        return failure === "upload" ? "isolated-audio-path" : "isolated-voice";
+      },
+    });
+    await h.find("capture-record").props.onPressIn();
+    await h.find("capture-record").props.onPressOut();
+    h.render();
+    assert.equal(text(h.find("capture-failed")), "not kept — try again");
+    assert.deepEqual(callbacks, []);
+    if (failure === "upload") assert.equal(calls.some((call) => call[0] === "write"), false);
+    const retry = h.find("capture-keep").props.onPress;
+    const retried = retry();
+    await retry();
+    await retried;
+    await retry(); // success latch remains set before parent rerenders
+    assert.deepEqual(callbacks, ["saved", "closed"]);
+    assert.equal(calls.filter((call) => call[0] === "id").length, 1);
+    assert.equal(calls.filter((call) => call[0] === "upload").length, failure === "upload" ? 2 : 1);
+    const writes = calls.filter((call) => call[0] === "write");
+    assert.equal(writes.length, failure === "write" ? 2 : 1);
+    for (const call of writes) {
+      assert.ok(call[2].audioPath);
+      assert.equal(call[3], "isolated-voice");
+      assert.equal(call[2].transcriptStatus, undefined); // normal pending → server transcription
+    }
+  }
+});
+
+test("locked counterweight voice capture preserves reflection/map metadata and hides chips", async () => {
+  const { h, calls } = voiceCapture({ props: {
+    lockedType: "reflection", mapRef: { date: "2026-08-01", phase: "signal" },
+  } });
+  assert.equal(h.find("capture-chip-spark"), undefined);
+  await h.find("capture-record").props.onPressIn();
+  await h.find("capture-record").props.onPressOut();
+  const note = calls.find((call) => call[0] === "write")[2];
+  assert.equal(note.type, "reflection");
+  assert.equal(note.mapRef.date, "2026-08-01");
 });
 
 test("charge screen plus real CaptureSheet: pending save blocks map, then one Guide completion", async () => {
@@ -311,6 +621,8 @@ test("charge screen plus real CaptureSheet: pending save blocks map, then one Gu
   });
   capture.render(screen.h.type("CaptureSheet").props);
   capture.find("capture-chip-resistance").props.onPress();
+  capture.render();
+  capture.find("capture-type-instead").props.onPress();
   capture.render();
   capture.find("capture-input").props.onChangeText("charge");
   capture.render();
