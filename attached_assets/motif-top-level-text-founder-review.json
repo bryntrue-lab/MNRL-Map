@@ -1,0 +1,1168 @@
+{
+  "schemaVersion": 1,
+  "purpose": "founder-content-review-only",
+  "authorization": {
+    "remoteWritesAuthorized": false,
+    "founderApprovalRequired": true,
+    "engineChangeAuthorized": false,
+    "deploymentAuthorized": false,
+    "backfillAuthorized": false
+  },
+  "project": "mineral-resonance",
+  "database": "(default)",
+  "generatedAt": "2026-10-02T01:14:16.773Z",
+  "readTimes": {
+    "practitionerContent": "2026-10-02T01:12:50.146Z",
+    "motifLexicon": "2026-10-02T01:12:50.165Z"
+  },
+  "sourceFingerprintAlgorithm": "sha256 of UTF-8 JSON with recursively sorted object keys; arrays retain order; Firestore Timestamp JSON uses _seconds and _nanoseconds. Text fingerprints hash raw UTF-8 text.",
+  "snapshots": {
+    "contentDocumentCount": 112,
+    "lexiconDocumentCount": 20,
+    "practitionerContentSha256": "dd063c0d42c0e08a04a498a9f0e2885ff29ea8900a3899b77383b7ccf27a2cd7",
+    "motifLexiconSha256": "ed6faf59d945c10979a21fc7aeaf571c89d374c78078d7a1049a4f68c9513e1c"
+  },
+  "coverage": {
+    "currentKeys": 20,
+    "preserved": 6,
+    "proposed": 2,
+    "uncovered": 12,
+    "potentialCoveredAfterSeparateApproval": 8
+  },
+  "validation": {
+    "proposalsAllExactApprovedSubstrings": true,
+    "allCurrentKeysAccountedFor": true,
+    "preservedExistingTextsUnchanged": true,
+    "remoteCollectionsRead": [
+      "practitionerContent",
+      "motifLexicon"
+    ],
+    "accountDataRead": false,
+    "remoteWritesPerformed": false
+  },
+  "laterApprovalSafeWriteRequirements": [
+    "This JSON is a proposal, not an executable patch or authorization. Obtain explicit founder approval for each proposedText.",
+    "Re-read the current lexicon and each target/source document before any later write. Compare exact update-time seconds/nanoseconds and canonical fingerprints; abort on any mismatch and review again.",
+    "Re-check source passage status === approved, exact source key and allowed own/exact-sibling ID, full passage hash, UTF-16 extraction bounds, and exact proposed text hash.",
+    "Preserve all six existing top-level texts and all passages, statuses, metadata, word documents, and lexicon records. Only separately approved proposed target text fields are eligible for later mutation.",
+    "Uncovered entries carry no proposedText and must never be synthesized from draft passages, stems, synonyms, related motifs, teachings, or external copy.",
+    "No engine changes, deploys or account recomputes are authorized here. Thread/word stem integration requires a separate later decision."
+  ],
+  "entries": [
+    {
+      "key": "ache",
+      "keyType": "motif",
+      "lexiconDocumentId": "ache",
+      "lexiconDocumentSha256": "d76d7a117eb03c72f5e9525ef7b1d6b16bb93d567867f2e31a8d6766425d1326",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719045,
+        "nanoseconds": 800555000
+      },
+      "targetDocumentId": "motif_ache",
+      "siblingDocumentId": "word_ache",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "balance",
+      "keyType": "motif",
+      "lexiconDocumentId": "balance",
+      "lexiconDocumentSha256": "0a0e213c9d8fbbccbaa7ff0aa9420da1ecbc5077936932388dd1cfa18de84175",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 612718000
+      },
+      "targetDocumentId": "motif_balance",
+      "siblingDocumentId": "word_balance",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-09-22T17:58:22.580Z",
+        "updateTimeExact": {
+          "seconds": 1790099902,
+          "nanoseconds": 580205000
+        },
+        "documentSha256": "2a06d468d34ea2549afa292e54157ce743873de011ce691c5e6a8310077d9c2a",
+        "kind": "offering",
+        "key": "balance",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": false,
+        "topLevelText": null,
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "ff179cc4c15dba8677b3c9d1792fbbc60fe9cdb4e7c0768fec1c9db71fce0ad4",
+            "textSha256": "549d9d5e16ca2c9f61e498cfc1816bdaa0db3f724911c67a70e1204f10460db0"
+          },
+          {
+            "passageIndex": 1,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "c9adb0d6e157eaaa1147514a40bcbdd28734bd7def6982c3ccf475ddfd5e26bb",
+            "textSha256": "4ea150fbdec5263ddffa70f9c0f9422b7c5f9b7415a68998fc68f41d98ad0c4e"
+          },
+          {
+            "passageIndex": 2,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "9f9ec9d12b6fdbf38bc386075e606a4f06b8b1ec2e109a9f6300c7d928f6c56b",
+            "textSha256": "679d8ddecb69de3bc824642af1d510dc1c8076af60b64e9a5abf43339d315bff"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": true,
+        "updateTime": "2026-10-02T00:39:36.084Z",
+        "updateTimeExact": {
+          "seconds": 1790901576,
+          "nanoseconds": 83888000
+        },
+        "documentSha256": "274425f52eb559f3e97303b7568f89af57974781e9af5f025008012b6e40a8e6",
+        "kind": "offering",
+        "key": "balance",
+        "keyType": "word",
+        "topLevelTextFieldPresent": false,
+        "topLevelText": null,
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "23f1eb3cba4d303ccce3696b3ac89f2c2cded3684d78d8f527b8692d2783eca4",
+            "textSha256": "2f6040ebfafc8c4bae28cceb01980aad2fe837cc3f2424a4e4966cec229f794d"
+          },
+          {
+            "passageIndex": 1,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "de30f7ba56258e9082e46dca8982180208b6e186aa5496971cb136b6d4f2af5c",
+            "textSha256": "9ce1ea8106dff73c0002ef5d516db0024612ba560fe8fd398f3264bcd1fdae05"
+          },
+          {
+            "passageIndex": 2,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "f1930eda8d7c227f8c8d8de16b57b0739b6eadb96fb670f31e825e75b6904e56",
+            "textSha256": "c3d70032fd699318983f1af6935118bbd3f1bebb2593b225314040a161f4e62b"
+          }
+        ]
+      },
+      "outcome": "propose-text",
+      "proposedText": "The Buddhist tradition speaks of the Middle Way, a path that avoids extremes and seeks balance in all aspects of life.",
+      "approval": {
+        "status": "pending",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": {
+        "collection": "practitionerContent",
+        "documentId": "motif_balance",
+        "documentKey": "balance",
+        "documentKeyType": "motif",
+        "sourceRelationship": "own-motif",
+        "passageIndex": 2,
+        "statusAtReview": "approved",
+        "source": "generated",
+        "locator": "buddhist-teachings",
+        "createdAt": {
+          "_seconds": 1789729230,
+          "_nanoseconds": 830000000
+        },
+        "originalPassageText": "The Buddhist tradition speaks of the Middle Way, a path that avoids extremes and seeks balance in all aspects of life. This approach has been read as a means to attain enlightenment, emphasizing the importance of moderation in thought, action, and desire. — in Buddhist teachings",
+        "documentSha256": "2a06d468d34ea2549afa292e54157ce743873de011ce691c5e6a8310077d9c2a",
+        "passageSha256": "9f9ec9d12b6fdbf38bc386075e606a4f06b8b1ec2e109a9f6300c7d928f6c56b",
+        "originalPassageTextSha256": "679d8ddecb69de3bc824642af1d510dc1c8076af60b64e9a5abf43339d315bff",
+        "documentUpdateTime": "2026-09-22T17:58:22.580Z",
+        "documentUpdateTimeExact": {
+          "seconds": 1790099902,
+          "nanoseconds": 580205000
+        },
+        "extraction": {
+          "type": "exact-sentence",
+          "startUtf16": 0,
+          "endUtf16Exclusive": 118
+        },
+        "validation": {
+          "approvedStatusExact": true,
+          "exactSubstring": true,
+          "exactKeyMatch": true,
+          "permittedSourceDocument": true
+        }
+      },
+      "rationale": "A complete, concise sentence directly naming balance and retaining its Buddhist framing. More immediately usable as a held line than the longer Greek philosophical explanation or Feng Shui prosperity claim; selected from the motif’s own approved passage.",
+      "eligibleApprovedPassages": [
+        {
+          "documentId": "motif_balance",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "generated",
+          "locator": "greek-philosophy",
+          "originalPassageText": "The ancient Greeks honored the concept of harmony, where balance was understood as the measure of beauty and virtue. In their philosophy, the golden mean represented a midpoint between excess and deficiency, suggesting that true excellence arises from moderation. This balance has been read as a guiding principle in both ethics and aesthetics. — in Greek philosophy traditions",
+          "passageSha256": "ff179cc4c15dba8677b3c9d1792fbbc60fe9cdb4e7c0768fec1c9db71fce0ad4",
+          "textSha256": "549d9d5e16ca2c9f61e498cfc1816bdaa0db3f724911c67a70e1204f10460db0"
+        },
+        {
+          "documentId": "motif_balance",
+          "passageIndex": 1,
+          "status": "approved",
+          "source": "generated",
+          "locator": "feng-shui-practices",
+          "originalPassageText": "In the practice of Feng Shui, balance is seen as essential for the flow of life energy, or chi. Spaces are arranged to create harmony between opposing forces, such as yin and yang. This balance has been honored as a way to cultivate tranquility and prosperity in one’s environment. — in Feng Shui practices",
+          "passageSha256": "c9adb0d6e157eaaa1147514a40bcbdd28734bd7def6982c3ccf475ddfd5e26bb",
+          "textSha256": "4ea150fbdec5263ddffa70f9c0f9422b7c5f9b7415a68998fc68f41d98ad0c4e"
+        },
+        {
+          "documentId": "motif_balance",
+          "passageIndex": 2,
+          "status": "approved",
+          "source": "generated",
+          "locator": "buddhist-teachings",
+          "originalPassageText": "The Buddhist tradition speaks of the Middle Way, a path that avoids extremes and seeks balance in all aspects of life. This approach has been read as a means to attain enlightenment, emphasizing the importance of moderation in thought, action, and desire. — in Buddhist teachings",
+          "passageSha256": "9f9ec9d12b6fdbf38bc386075e606a4f06b8b1ec2e109a9f6300c7d928f6c56b",
+          "textSha256": "679d8ddecb69de3bc824642af1d510dc1c8076af60b64e9a5abf43339d315bff"
+        },
+        {
+          "documentId": "word_balance",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in ancient Greek philosophy",
+          "originalPassageText": "In the teachings of the ancient Greeks, harmony was understood as the alignment of opposites. The Pythagoreans celebrated balance not just in music but in life, where every note had its place, and every silence held meaning. This equilibrium was read as essential to the cosmos itself, a guiding principle for all things. — as the Pythagoreans taught it",
+          "passageSha256": "23f1eb3cba4d303ccce3696b3ac89f2c2cded3684d78d8f527b8692d2783eca4",
+          "textSha256": "2f6040ebfafc8c4bae28cceb01980aad2fe837cc3f2424a4e4966cec229f794d"
+        },
+        {
+          "documentId": "word_balance",
+          "passageIndex": 1,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in Japanese aesthetics",
+          "originalPassageText": "The Japanese concept of wabi-sabi honors the beauty found in imperfection and transience. Balance in this tradition is seen in the asymmetry of a tea bowl or the gentle curve of a garden path. It has been read as a celebration of life's fleeting moments, inviting reflection and presence. — in Japanese aesthetics",
+          "passageSha256": "de30f7ba56258e9082e46dca8982180208b6e186aa5496971cb136b6d4f2af5c",
+          "textSha256": "9ce1ea8106dff73c0002ef5d516db0024612ba560fe8fd398f3264bcd1fdae05"
+        },
+        {
+          "documentId": "word_balance",
+          "passageIndex": 2,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in indigenous wisdom",
+          "originalPassageText": "In the teachings of the indigenous peoples, balance is often sought through the understanding of interconnectedness. The cycle of seasons, the harmony between predator and prey, and the reciprocity with nature have been read as vital relationships that sustain life. This balance is seen not as a fixed state but as a dynamic flow. — in indigenous wisdom",
+          "passageSha256": "f1930eda8d7c227f8c8d8de16b57b0739b6eadb96fb670f31e825e75b6904e56",
+          "textSha256": "c3d70032fd699318983f1af6935118bbd3f1bebb2593b225314040a161f4e62b"
+        }
+      ],
+      "proposedTextSha256": "cb5ae1acddee415b60a708ad212642018c7da0882964fa63055dfe60c9bce46a"
+    },
+    {
+      "key": "body",
+      "keyType": "motif",
+      "lexiconDocumentId": "body",
+      "lexiconDocumentSha256": "af0402422a5e80b7015cee19cd5bd2d747fd2857539342dd9bfbd27c357fba59",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719047,
+        "nanoseconds": 26907000
+      },
+      "targetDocumentId": "motif_body",
+      "siblingDocumentId": "word_body",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-10-02T00:39:28.721Z",
+        "updateTimeExact": {
+          "seconds": 1790901568,
+          "nanoseconds": 721371000
+        },
+        "documentSha256": "8b72435f9f10ba416070e4a30bc13995e9067d63bb95cb6a74b64c0748cbf8cb",
+        "kind": "offering",
+        "key": "body",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": false,
+        "topLevelText": null,
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "3c0922794a3abd70be9c3cf085a5bad8fa9f6de48b2793becb9b1e25172eeece",
+            "textSha256": "4c5e6726871d32a14019961d4ce31b9ee5c8ee6edebfaf54d53955021c6e3c0e"
+          },
+          {
+            "passageIndex": 1,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "9954d6abf96898294da19bf3cbc81815db85d15f8b3293545449b586701f1a1e",
+            "textSha256": "9d3aae70ee9ef2259b06e0f078279990739bc4585b071752f42b9384769ca3cd"
+          },
+          {
+            "passageIndex": 2,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "bb5687d797a5669f9ff8bbb82da8539c256f63d0f61ee14feb8f7f1b257c52de",
+            "textSha256": "43023fd7aa09b829de70a945392b2c57fd7f631a452e7f92cf7d3ad3a4a70aa7"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": true,
+        "updateTime": "2026-10-02T00:39:37.473Z",
+        "updateTimeExact": {
+          "seconds": 1790901577,
+          "nanoseconds": 473162000
+        },
+        "documentSha256": "76a376eb1fb8102623abf94fe5bf3946a8a3bcffcb2023e5490d97ca9e2dd874",
+        "kind": "offering",
+        "key": "body",
+        "keyType": "word",
+        "topLevelTextFieldPresent": false,
+        "topLevelText": null,
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "78626c130a7d4b6e8211145b8c4c3a3e2608018d590fd2c22303f8fc2d22779c",
+            "textSha256": "9a2c2223862a392e8d64752b2f45ebe3fb7952022d5362b250dde5126c8041c8"
+          },
+          {
+            "passageIndex": 1,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "2b8ae327ba9c09cc1a7fb94e4ced7d0a6634b61763c5e9213e2e45b8de7c3afa",
+            "textSha256": "268506eebc51f9ae51e9071e771db419736bafd08bc4338c44ca98e85cf538f2"
+          },
+          {
+            "passageIndex": 2,
+            "status": "approved",
+            "source": "generated",
+            "passageSha256": "2feaf6abf4f08db315e5c3eae3ad4f444f5c701f66a7d6c1db7cbf7cdf4f4410",
+            "textSha256": "309024a902a66ae640da6a6307f1d4397e9780702b3a3a43e731d4c388e13eef"
+          }
+        ]
+      },
+      "outcome": "propose-text",
+      "proposedText": "In the practice of yoga, the body has been honored as a temple, a space where breath and movement unite.",
+      "approval": {
+        "status": "pending",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": {
+        "collection": "practitionerContent",
+        "documentId": "word_body",
+        "documentKey": "body",
+        "documentKeyType": "word",
+        "sourceRelationship": "exact-word-sibling",
+        "passageIndex": 1,
+        "statusAtReview": "approved",
+        "source": "generated",
+        "locator": "in the yoga tradition",
+        "createdAt": {
+          "_seconds": 1790420421,
+          "_nanoseconds": 450000000
+        },
+        "originalPassageText": "In the practice of yoga, the body has been honored as a temple, a space where breath and movement unite. This tradition has read the body not only as physical but as a bridge to deeper awareness and connection. — in the yoga tradition",
+        "documentSha256": "76a376eb1fb8102623abf94fe5bf3946a8a3bcffcb2023e5490d97ca9e2dd874",
+        "passageSha256": "2b8ae327ba9c09cc1a7fb94e4ced7d0a6634b61763c5e9213e2e45b8de7c3afa",
+        "originalPassageTextSha256": "268506eebc51f9ae51e9071e771db419736bafd08bc4338c44ca98e85cf538f2",
+        "documentUpdateTime": "2026-10-02T00:39:37.473Z",
+        "documentUpdateTimeExact": {
+          "seconds": 1790901577,
+          "nanoseconds": 473162000
+        },
+        "extraction": {
+          "type": "exact-sentence",
+          "startUtf16": 0,
+          "endUtf16Exclusive": 104
+        },
+        "validation": {
+          "approvedStatusExact": true,
+          "exactSubstring": true,
+          "exactKeyMatch": true,
+          "permittedSourceDocument": true
+        }
+      },
+      "rationale": "A concrete, embodied sentence joining breath and movement while preserving its yoga attribution. Stronger as a standalone line than the own-document soul-vessel framing or broader metaphysical claims. The exact word_body sibling is allowed as source; this does not relabel or alter that document.",
+      "eligibleApprovedPassages": [
+        {
+          "documentId": "motif_body",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in ancient greek philosophy",
+          "originalPassageText": "In ancient Greek philosophy, the body has been read as the vessel of the soul — a temporary dwelling that shapes experience but does not confine it. The relationship has been honored as one of both tension and harmony, where the physical form serves as a canvas for the inner life. — as the Greeks understood it",
+          "passageSha256": "3c0922794a3abd70be9c3cf085a5bad8fa9f6de48b2793becb9b1e25172eeece",
+          "textSha256": "4c5e6726871d32a14019961d4ce31b9ee5c8ee6edebfaf54d53955021c6e3c0e"
+        },
+        {
+          "documentId": "motif_body",
+          "passageIndex": 1,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in ayurvedic texts",
+          "originalPassageText": "The Ayurvedic texts speak of the body as a sacred temple, a microcosm of the universe that reflects the greater whole. Caring for the body has been read there not merely as self-care, but as an act of reverence toward the interconnectedness of all life. — in Ayurvedic traditions",
+          "passageSha256": "9954d6abf96898294da19bf3cbc81815db85d15f8b3293545449b586701f1a1e",
+          "textSha256": "9d3aae70ee9ef2259b06e0f078279990739bc4585b071752f42b9384769ca3cd"
+        },
+        {
+          "documentId": "motif_body",
+          "passageIndex": 2,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in the writings of rumi",
+          "originalPassageText": "In the writings of Rumi, the body is often celebrated as a beloved, a manifestation of the divine. The physical form has been honored as a source of joy and longing, where every sensation can lead to a deeper experience of love and connection. — as Rumi expressed it",
+          "passageSha256": "bb5687d797a5669f9ff8bbb82da8539c256f63d0f61ee14feb8f7f1b257c52de",
+          "textSha256": "43023fd7aa09b829de70a945392b2c57fd7f631a452e7f92cf7d3ad3a4a70aa7"
+        },
+        {
+          "documentId": "word_body",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in ancient Greek philosophy",
+          "originalPassageText": "The ancient Greeks revered the body as a vessel of the soul, a concept that has been read in the works of Plato, where the physical form is seen as a reflection of inner truth. The harmony of body and spirit was understood as essential for the flourishing of both. — as the Greeks understood it",
+          "passageSha256": "78626c130a7d4b6e8211145b8c4c3a3e2608018d590fd2c22303f8fc2d22779c",
+          "textSha256": "9a2c2223862a392e8d64752b2f45ebe3fb7952022d5362b250dde5126c8041c8"
+        },
+        {
+          "documentId": "word_body",
+          "passageIndex": 1,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in the yoga tradition",
+          "originalPassageText": "In the practice of yoga, the body has been honored as a temple, a space where breath and movement unite. This tradition has read the body not only as physical but as a bridge to deeper awareness and connection. — in the yoga tradition",
+          "passageSha256": "2b8ae327ba9c09cc1a7fb94e4ced7d0a6634b61763c5e9213e2e45b8de7c3afa",
+          "textSha256": "268506eebc51f9ae51e9071e771db419736bafd08bc4338c44ca98e85cf538f2"
+        },
+        {
+          "documentId": "word_body",
+          "passageIndex": 2,
+          "status": "approved",
+          "source": "generated",
+          "locator": "in indigenous healing practices",
+          "originalPassageText": "The indigenous healing practices often view the body as a living archive, holding stories of ancestors and the land. This understanding has been passed down through generations, emphasizing the body as a site of memory and resilience. — as the indigenous healers teach",
+          "passageSha256": "2feaf6abf4f08db315e5c3eae3ad4f444f5c701f66a7d6c1db7cbf7cdf4f4410",
+          "textSha256": "309024a902a66ae640da6a6307f1d4397e9780702b3a3a43e731d4c388e13eef"
+        }
+      ],
+      "proposedTextSha256": "c551461c5e4acd4a22efd9b7c5d14de3890b4cbebae77772a27f1f4b9d6e0bdd"
+    },
+    {
+      "key": "compass",
+      "keyType": "motif",
+      "lexiconDocumentId": "compass",
+      "lexiconDocumentSha256": "93e7e9d82a9e1f40b9b411c22b5bac655306df13eaa1556689e8940ce7f3b3d3",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719045,
+        "nanoseconds": 705084000
+      },
+      "targetDocumentId": "motif_compass",
+      "siblingDocumentId": "word_compass",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "fire",
+      "keyType": "motif",
+      "lexiconDocumentId": "fire",
+      "lexiconDocumentSha256": "88a86043ef26cb904ec5e48e20eb2b258c51abfadcee6a6f0380c1ea79886341",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719047,
+        "nanoseconds": 126288000
+      },
+      "targetDocumentId": "motif_fire",
+      "siblingDocumentId": "word_fire",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-08-31T21:07:09.696Z",
+        "updateTimeExact": {
+          "seconds": 1788210429,
+          "nanoseconds": 696009000
+        },
+        "documentSha256": "95277f8a80feafd292c2c40d2eb47af95fd6c22193145e1281119b4bfca581e1",
+        "kind": "offering",
+        "key": "fire",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": true,
+        "topLevelText": "Fire appears across traditions as both destroyer and clarifier — the element that ends one form so another can begin. In alchemical imagery, burning is a stage of the work, not its failure. What goes into the fire is often read as what was already finished.",
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "19091bb152572fe8197b843c5be14a0dc1962ad834680d27b011d9ef24f4e826",
+            "textSha256": "bad6b2c817632173014903f470e031491fed98daff19ca429556724876fa3c8a"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "preserve-existing",
+      "proposedText": null,
+      "approval": {
+        "status": "not-applicable-preserve",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Existing usable top-level text is preserved verbatim; no replacement is proposed.",
+      "eligibleApprovedPassages": [],
+      "existingTextApprovedMatches": [
+        {
+          "documentId": "motif_fire",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "founder",
+          "locator": null,
+          "originalPassageText": "Fire appears across traditions as both destroyer and clarifier — the element that ends one form so another can begin. In alchemical imagery, burning is a stage of the work, not its failure. What goes into the fire is often read as what was already finished.",
+          "passageSha256": "19091bb152572fe8197b843c5be14a0dc1962ad834680d27b011d9ef24f4e826",
+          "textSha256": "bad6b2c817632173014903f470e031491fed98daff19ca429556724876fa3c8a"
+        }
+      ]
+    },
+    {
+      "key": "home",
+      "keyType": "motif",
+      "lexiconDocumentId": "home",
+      "lexiconDocumentSha256": "de25cda365b9477bfa84661dfa9fb2c6c891460a44083ae9dbd9eef7ed4fa10d",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719047,
+        "nanoseconds": 587875000
+      },
+      "targetDocumentId": "motif_home",
+      "siblingDocumentId": "word_home",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "invitation",
+      "keyType": "motif",
+      "lexiconDocumentId": "invitation",
+      "lexiconDocumentSha256": "ea67a450eab58867636426f5e3bae01f09b63b2176b809247a218df5e3faa2da",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 162473000
+      },
+      "targetDocumentId": "motif_invitation",
+      "siblingDocumentId": "word_invitation",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "light",
+      "keyType": "motif",
+      "lexiconDocumentId": "light",
+      "lexiconDocumentSha256": "7f3b25a5936e7c1c7c29ebc45a336bfde40406e58a11edf3c2a817a8b4fbbbd2",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719047,
+        "nanoseconds": 408503000
+      },
+      "targetDocumentId": "motif_light",
+      "siblingDocumentId": "word_light",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "mirror",
+      "keyType": "motif",
+      "lexiconDocumentId": "mirror",
+      "lexiconDocumentSha256": "d67d7791232236472b07c2bb196a83aa7b735cbc155d689af4056eb0c8f3a4f4",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 926450000
+      },
+      "targetDocumentId": "motif_mirror",
+      "siblingDocumentId": "word_mirror",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-08-31T21:07:09.957Z",
+        "updateTimeExact": {
+          "seconds": 1788210429,
+          "nanoseconds": 957098000
+        },
+        "documentSha256": "424f90f31184ed77cb3ded688dc06d9b80949c90f09f9d3597b6c6b81bb8bdd8",
+        "kind": "offering",
+        "key": "mirror",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": true,
+        "topLevelText": "In Taoist thought, the soul has been described in two aspects — one turned toward spirit, one toward the body — and the cultivated mind as a still mirror that reflects without grasping. Disharmony, in this tradition, tends to show up first as imbalance in the body and its surroundings; clarity returns through stillness, breath, and observation rather than force.",
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "ae69be937571ff2ff5bf1b40e193a50ea8b674191bacca0f9f450fb4088971a0",
+            "textSha256": "2b6820421c1f7dfa0d2f0b43bb9f707522b1aae81f35960a803d6779c5372a68"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "preserve-existing",
+      "proposedText": null,
+      "approval": {
+        "status": "not-applicable-preserve",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Existing usable top-level text is preserved verbatim; no replacement is proposed.",
+      "eligibleApprovedPassages": [],
+      "existingTextApprovedMatches": [
+        {
+          "documentId": "motif_mirror",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "founder",
+          "locator": null,
+          "originalPassageText": "In Taoist thought, the soul has been described in two aspects — one turned toward spirit, one toward the body — and the cultivated mind as a still mirror that reflects without grasping. Disharmony, in this tradition, tends to show up first as imbalance in the body and its surroundings; clarity returns through stillness, breath, and observation rather than force.",
+          "passageSha256": "ae69be937571ff2ff5bf1b40e193a50ea8b674191bacca0f9f450fb4088971a0",
+          "textSha256": "2b6820421c1f7dfa0d2f0b43bb9f707522b1aae81f35960a803d6779c5372a68"
+        }
+      ]
+    },
+    {
+      "key": "path",
+      "keyType": "motif",
+      "lexiconDocumentId": "path",
+      "lexiconDocumentSha256": "8df7e587a08b80bbba8154be009f2ff516a42a1a9ab2aed6da6d13ea99811113",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 360638000
+      },
+      "targetDocumentId": "motif_path",
+      "siblingDocumentId": "word_path",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "posture",
+      "keyType": "motif",
+      "lexiconDocumentId": "posture",
+      "lexiconDocumentSha256": "989d71e969461b9f325c0c84227efe2e3b1a282f4903c237c2491cfdbb84e9a0",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719045,
+        "nanoseconds": 885362000
+      },
+      "targetDocumentId": "motif_posture",
+      "siblingDocumentId": "word_posture",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "question",
+      "keyType": "motif",
+      "lexiconDocumentId": "question",
+      "lexiconDocumentSha256": "b0a8401541834018702225914a5fa561d807ec1c44afcaa24525cb70d3489ff9",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 45773000
+      },
+      "targetDocumentId": "motif_question",
+      "siblingDocumentId": "word_question",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "room",
+      "keyType": "motif",
+      "lexiconDocumentId": "room",
+      "lexiconDocumentSha256": "65ecf5446ba4d46e68abbd99579a42ee0a1d84f1066c1e9cee4f3b35982f2178",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 841545000
+      },
+      "targetDocumentId": "motif_room",
+      "siblingDocumentId": "word_room",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "seed",
+      "keyType": "motif",
+      "lexiconDocumentId": "seed",
+      "lexiconDocumentSha256": "658b9fe6d8d9500d6397e3222c187cf2cf994e59e35db6275bb1b07f73dfa889",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719045,
+        "nanoseconds": 445864000
+      },
+      "targetDocumentId": "motif_seed",
+      "siblingDocumentId": "word_seed",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-08-31T21:07:09.320Z",
+        "updateTimeExact": {
+          "seconds": 1788210429,
+          "nanoseconds": 319795000
+        },
+        "documentSha256": "88235e0557669cf5e2d446d1de809b092007e16ad750afb11aea6d68b33a589b",
+        "kind": "offering",
+        "key": "seed",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": true,
+        "topLevelText": "In many Indigenous traditions, the soul has been understood to arrive already carrying a purpose — like a seed encoded with an original intention. Life, in these traditions, is less about inventing a direction than about listening, remembering, and unfolding what was already planted. The seed is often said to be drawn out not alone, but by community and land together.",
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "520f4123be13a6d55d2301de5129750c8bfa4d4cb24eb729cf99b9f61a877a43",
+            "textSha256": "7a21f45ac40e85acc82d0c60a2b9681e58a70d2c1907e35bb6ae0db1206e6942"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "preserve-existing",
+      "proposedText": null,
+      "approval": {
+        "status": "not-applicable-preserve",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Existing usable top-level text is preserved verbatim; no replacement is proposed.",
+      "eligibleApprovedPassages": [],
+      "existingTextApprovedMatches": [
+        {
+          "documentId": "motif_seed",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "founder",
+          "locator": null,
+          "originalPassageText": "In many Indigenous traditions, the soul has been understood to arrive already carrying a purpose — like a seed encoded with an original intention. Life, in these traditions, is less about inventing a direction than about listening, remembering, and unfolding what was already planted. The seed is often said to be drawn out not alone, but by community and land together.",
+          "passageSha256": "520f4123be13a6d55d2301de5129750c8bfa4d4cb24eb729cf99b9f61a877a43",
+          "textSha256": "7a21f45ac40e85acc82d0c60a2b9681e58a70d2c1907e35bb6ae0db1206e6942"
+        }
+      ]
+    },
+    {
+      "key": "support",
+      "keyType": "motif",
+      "lexiconDocumentId": "support",
+      "lexiconDocumentSha256": "b68046ff3a400c93668c88a0fc12be06ea4b9626cd785bb7336f461ca4ad904a",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 467170000
+      },
+      "targetDocumentId": "motif_support",
+      "siblingDocumentId": "word_support",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-08-31T21:19:51.674Z",
+        "updateTimeExact": {
+          "seconds": 1788211191,
+          "nanoseconds": 673940000
+        },
+        "documentSha256": "402908c3b13fc9cd8a7dc4f49dc87a8cad140961fe0c38f45a4765f99184c55f",
+        "kind": "offering",
+        "key": "support",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": true,
+        "topLevelText": "The old builders understood that nothing rises without bearing. An arch stands because every stone in it leans — each one held exactly where it presses hardest. What carries weight has been read, again and again, as a thing that is itself carried.",
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "37db36147d77a29f2b76bdd9dfb4e79c85a988b20cefc0f817fd71daf76e6f98",
+            "textSha256": "b5b86e53aa63feac6e9d6a17ab30a8c800dd96df513266b20b3ef3cef3b7b8d1"
+          },
+          {
+            "passageIndex": 1,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "2a2c646034b27a0cf4dd1019b7659c9e97adbdae3a50d30fe2ca815ac2cea5a5",
+            "textSha256": "1e1fc76e9f553fc7d1adcc701da904d30965a7318b877ef7b372d855cc4e090e"
+          },
+          {
+            "passageIndex": 2,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "024f575d205bfc5d9002bd41c77b9909bdcfedb846c7a63387c26397e34fecc9",
+            "textSha256": "3d84f027ca42458fe16a1beca297648f468e6393aed960df5cb4c11677a32516"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "preserve-existing",
+      "proposedText": null,
+      "approval": {
+        "status": "not-applicable-preserve",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Existing usable top-level text is preserved verbatim; no replacement is proposed.",
+      "eligibleApprovedPassages": [],
+      "existingTextApprovedMatches": [
+        {
+          "documentId": "motif_support",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "founder",
+          "locator": "as the cathedral builders knew",
+          "originalPassageText": "The old builders understood that nothing rises without bearing. An arch stands because every stone in it leans — each one held exactly where it presses hardest. What carries weight has been read, again and again, as a thing that is itself carried.",
+          "passageSha256": "37db36147d77a29f2b76bdd9dfb4e79c85a988b20cefc0f817fd71daf76e6f98",
+          "textSha256": "b5b86e53aa63feac6e9d6a17ab30a8c800dd96df513266b20b3ef3cef3b7b8d1"
+        }
+      ]
+    },
+    {
+      "key": "threshold",
+      "keyType": "motif",
+      "lexiconDocumentId": "threshold",
+      "lexiconDocumentSha256": "86fdbee845e371c2f92b9941355a643fd4217d0afc7cc13b9af417b6264e4cfd",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719070,
+        "nanoseconds": 146609000
+      },
+      "targetDocumentId": "motif_threshold",
+      "siblingDocumentId": "word_threshold",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-08-31T21:07:10.799Z",
+        "updateTimeExact": {
+          "seconds": 1788210430,
+          "nanoseconds": 799162000
+        },
+        "documentSha256": "aaef611c5d73dc16785ec26dd9b961187947d4b12e97ced8569958c501de349b",
+        "kind": "offering",
+        "key": "threshold",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": true,
+        "topLevelText": "In mythic literature, the threshold has been read as the moment of crossing — where one identity ends and another begins. It appears in initiation stories across cultures, often guarded, and the guardian has been understood less as an obstacle than as part of the crossing itself.",
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "1798fddd8c05782f68def6d29a6d83606ad9036b395d21d4749f24ef5a41d12d",
+            "textSha256": "fcdc482cd474ab97ff6b3355ad17aa9fb2debb88893ea8a3d0a3b45b334e3bbc"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "preserve-existing",
+      "proposedText": null,
+      "approval": {
+        "status": "not-applicable-preserve",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Existing usable top-level text is preserved verbatim; no replacement is proposed.",
+      "eligibleApprovedPassages": [],
+      "existingTextApprovedMatches": [
+        {
+          "documentId": "motif_threshold",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "founder",
+          "locator": null,
+          "originalPassageText": "In mythic literature, the threshold has been read as the moment of crossing — where one identity ends and another begins. It appears in initiation stories across cultures, often guarded, and the guardian has been understood less as an obstacle than as part of the crossing itself.",
+          "passageSha256": "1798fddd8c05782f68def6d29a6d83606ad9036b395d21d4749f24ef5a41d12d",
+          "textSha256": "fcdc482cd474ab97ff6b3355ad17aa9fb2debb88893ea8a3d0a3b45b334e3bbc"
+        }
+      ]
+    },
+    {
+      "key": "tree",
+      "keyType": "motif",
+      "lexiconDocumentId": "tree",
+      "lexiconDocumentSha256": "f8e67c5bd4b484d1e996c0b6fde354080f3dc7b26e323790d00c948e72bbba2f",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719045,
+        "nanoseconds": 547305000
+      },
+      "targetDocumentId": "motif_tree",
+      "siblingDocumentId": "word_tree",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "voice",
+      "keyType": "motif",
+      "lexiconDocumentId": "voice",
+      "lexiconDocumentSha256": "e1761396113b2f92731225d6ae8bfe4bcbcc6d3f3580bf67bf26ecc37133c442",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719046,
+        "nanoseconds": 256161000
+      },
+      "targetDocumentId": "motif_voice",
+      "siblingDocumentId": "word_voice",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    },
+    {
+      "key": "water",
+      "keyType": "motif",
+      "lexiconDocumentId": "water",
+      "lexiconDocumentSha256": "530a86782e2721aa8f516079c10a47db6baa5594e01e70bcfe70d48cc8c7ce48",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719047,
+        "nanoseconds": 319582000
+      },
+      "targetDocumentId": "motif_water",
+      "siblingDocumentId": "word_water",
+      "targetBefore": {
+        "exists": true,
+        "updateTime": "2026-08-31T21:07:10.232Z",
+        "updateTimeExact": {
+          "seconds": 1788210430,
+          "nanoseconds": 231517000
+        },
+        "documentSha256": "08fd93b72f1c884bbbe72e6126547bdff9ee7c9e2f3fcbd5f0819fa6d2d51f7f",
+        "kind": "offering",
+        "key": "water",
+        "keyType": "motif",
+        "topLevelTextFieldPresent": true,
+        "topLevelText": "Water has long been read as the element of the unconscious — the depth under the surface of the day. In Taoist imagery it is the teacher of non-forcing: the soft thing that shapes stone. Dreams of water have often been taken as reports from the deep well rather than messages to decode.",
+        "passages": [
+          {
+            "passageIndex": 0,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "3e264d00af2ba20ef018766b3657e2f6835bfd49244d67238bdcd13b0eae4535",
+            "textSha256": "1e64d94ef8606f5e8a312be53c2b7bc5e84d4c7229a11bb9b71ba65295a22229"
+          },
+          {
+            "passageIndex": 1,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "43e4a4d696c01acbeb8f1bb70d5e58c702029df7be7a914376a92e5542627f70",
+            "textSha256": "57bcd3f08f3d8a47dc503dfd157dc54cc2bedddf3a343fdd4390da8291231681"
+          },
+          {
+            "passageIndex": 2,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "e698ee9ac9269912c8eb84b26729ada8a5f245071d68deed7e51c698bae6222c",
+            "textSha256": "0f28acf32b3a81b6e533045484c19dbb3afbf02f68c3371148acd10f699de9d6"
+          },
+          {
+            "passageIndex": 3,
+            "status": "approved",
+            "source": "founder",
+            "passageSha256": "952d20b8a3c26ad0b14531ac2746d44a23e3c43bb2e9849955b44cf2e6957b29",
+            "textSha256": "78692e4bbbd75c58b6844e446f9993b104ab011ddab53a5fa5d6ec5c5fb9a4f2"
+          }
+        ]
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "preserve-existing",
+      "proposedText": null,
+      "approval": {
+        "status": "not-applicable-preserve",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Existing usable top-level text is preserved verbatim; no replacement is proposed.",
+      "eligibleApprovedPassages": [],
+      "existingTextApprovedMatches": [
+        {
+          "documentId": "motif_water",
+          "passageIndex": 0,
+          "status": "approved",
+          "source": "founder",
+          "locator": null,
+          "originalPassageText": "Water has long been read as the element of the unconscious — the depth under the surface of the day. In Taoist imagery it is the teacher of non-forcing: the soft thing that shapes stone. Dreams of water have often been taken as reports from the deep well rather than messages to decode.",
+          "passageSha256": "3e264d00af2ba20ef018766b3657e2f6835bfd49244d67238bdcd13b0eae4535",
+          "textSha256": "1e64d94ef8606f5e8a312be53c2b7bc5e84d4c7229a11bb9b71ba65295a22229"
+        }
+      ]
+    },
+    {
+      "key": "weight",
+      "keyType": "motif",
+      "lexiconDocumentId": "weight",
+      "lexiconDocumentSha256": "14d897f3509ed42087fcf8095813cd4ebd04afbb6036baa4446bd80e95d712da",
+      "lexiconUpdateTimeExact": {
+        "seconds": 1785719047,
+        "nanoseconds": 491491000
+      },
+      "targetDocumentId": "motif_weight",
+      "siblingDocumentId": "word_weight",
+      "targetBefore": {
+        "exists": false
+      },
+      "siblingBefore": {
+        "exists": false
+      },
+      "outcome": "uncovered",
+      "proposedText": null,
+      "approval": {
+        "status": "blocked-no-approved-source",
+        "approvedBy": null,
+        "approvedAt": null
+      },
+      "provenance": null,
+      "rationale": "Neither the own motif document nor the exact word sibling exists. No permitted approved text is available; founder copy or separately approved content is required.",
+      "eligibleApprovedPassages": []
+    }
+  ]
+}

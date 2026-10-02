@@ -33,3 +33,17 @@ mtime_ms = 1790898111712
 storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:b62f97a3-f220-4d48-8a98-ec1fd082bc46/32a7de5f-13d7-4273-9bb0-664b6fcbeb34/4510d59a-38c7-4a44-981a-88069bbdda33"
 storage_version_token = "1790898387965409"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "jOsJB_RynU1RWc9VD2XZy"
+uri = "file://attached_assets/motif-top-level-text-founder-review.html"
+type = "html"
+title = "Motif offering text — founder review"
+description = "All 20 motif keys: six existing texts preserved, two proposed excerpts with source context, and twelve gaps with no eligible approved source."
+logical_id = "5c9d6be4-f95f-4da5-b1c3-b9be40c5a516"
+content_hash = "sha256:531b30ffd3818ed7d89f653ef8cf7130ff1c321b6cc3370e631bc8f8cf3470a0"
+size = 25866
+mtime_ms = 1790903656774
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:b62f97a3-f220-4d48-8a98-ec1fd082bc46/5c9d6be4-f95f-4da5-b1c3-b9be40c5a516/67cf4c71-144e-4147-b130-a4f560fefde8"
+storage_version_token = "1790903685772107"
+content_type = "text/html"
