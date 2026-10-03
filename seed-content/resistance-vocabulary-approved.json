@@ -1,0 +1,15 @@
+{
+  "source": "founder-supplied",
+  "entries": [
+    {"key":"fear","keyType":"resistance","terms":["fear","afraid","scared","terrified","dread","dreading","failure","fail","failing"]},
+    {"key":"doubt","keyType":"resistance","terms":["doubt","doubting","not good enough","imposter","fraud","who am i to","second-guessing"]},
+    {"key":"avoidance","keyType":"resistance","terms":["avoiding","avoid","put off","putting off","procrastinating","later","stalling","can't start"]},
+    {"key":"perfectionism","keyType":"resistance","terms":["perfect","perfecting","not ready","needs more work","polish","redo","redoing"]},
+    {"key":"overwhelm","keyType":"resistance","terms":["overwhelmed","too much","drowning","buried","swamped","scattered"]},
+    {"key":"depletion","keyType":"resistance","terms":["tired","exhausted","drained","depleted","burnt out","burned out","no energy"]},
+    {"key":"stuckness","keyType":"resistance","terms":["stuck","frozen","paralyzed","blocked","the block","the wall","can't move"]},
+    {"key":"waiting","keyType":"resistance","terms":["waiting","permission","allowed","not allowed","not yet","when i finally"]},
+    {"key":"hiding","keyType":"resistance","terms":["hiding","hide","invisible","shrinking","staying small","don't want to be seen"]},
+    {"key":"comparison","keyType":"resistance","terms":["comparing","comparison","envy","jealous","everyone else","behind"]}
+  ]
+}

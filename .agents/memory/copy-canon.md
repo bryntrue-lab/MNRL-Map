@@ -17,6 +17,12 @@ description: Founder's standing rules for user-facing strings in Mineral
 
 **How to apply:** On every engine extension, separately check the evidence gate and approved-copy coverage. Neither alone is sufficient to display a finding.
 
+**Conditions approval unit:** Review and approve the complete type × time-bucket copy matrix in one batch, not one detected cell at a time.
+
+**Why:** The founder explicitly rejected repeated individual-cell approval questions. This does not waive the requirement for founder-approved Conditions wording.
+
+**How to apply:** Request the full matrix together if missing; update the whitelist and matching display copy from that single approved source. Do not auto-generate missing phrasings under the beta offering-copy exception.
+
 **Copy must follow computation:** When approved detection and descriptive copy disagree, request corrected copy rather than narrowing the computation to preserve an aesthetic word.
 
 **Why:** The founder explicitly rejected adding a morning restriction to a day-based gap finding merely to retain “morning” in its evidence sentence.

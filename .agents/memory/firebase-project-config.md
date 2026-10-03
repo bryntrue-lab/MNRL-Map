@@ -23,3 +23,9 @@ Firebase console — the Identity Toolkit Admin API works with the service accou
 provider/config issue, check and fix it via these APIs instead of asking the user to
 open the console. Quick provider probe: `POST /v1/accounts:signUp?key=$EXPO_PUBLIC_FIREBASE_API_KEY`
 → `ADMIN_ONLY_OPERATION` means the anonymous provider is off.
+
+**Operator identity verification:** Verify the returned Firebase ID token and compare its verified UID with the authorized target before invoking self-only callables.
+
+**Why:** Identity Toolkit custom-token exchange can succeed without a `localId` response field. Treating that optional field as identity proof incorrectly rejects a valid session.
+
+**How to apply:** Use Admin Auth token verification in operator scripts; never log the token or replace verification with a successful HTTP status alone.
