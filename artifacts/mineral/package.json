@@ -15,6 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:origin-wander": "node --experimental-strip-types lib/originWander.test.mjs",
     "test:pattern-evidence": "node --experimental-strip-types lib/patternEvidenceState.test.mjs",
+    "test:conditions": "node --experimental-strip-types lib/conditionsCopy.test.mjs",
     "test:reading": "node --experimental-strip-types lib/reading.test.mjs"
   },
   "devDependencies": {

@@ -23,6 +23,12 @@ description: Founder's standing rules for user-facing strings in Mineral
 
 **How to apply:** Request the full matrix together if missing; update the whitelist and matching display copy from that single approved source. Do not auto-generate missing phrasings under the beta offering-copy exception.
 
+**Approved matrix scope (2026-10-03):** The founder supplied the complete 36-cell hour matrix as the batch approval source. `other` is deliberately excluded; gap copy is unchanged. The original resistance/night and reflection/morning cells must remain verbatim.
+
+**Why:** Approval covers wording, not evidence: it must never lower thresholds, infer legacy hours, or authorize new types automatically.
+
+**How to apply:** Use the supplied Conditions matrix as the copy authority; future types require separate wording approval. Keep detection and client copy coverage aligned.
+
 **Copy must follow computation:** When approved detection and descriptive copy disagree, request corrected copy rather than narrowing the computation to preserve an aesthetic word.
 
 **Why:** The founder explicitly rejected adding a morning restriction to a day-based gap finding merely to retain “morning” in its evidence sentence.

@@ -637,14 +637,15 @@ function timeBucket(hour) {
 }
 
 /**
- * Every evidence-valid weather is retained internally. Only the two hour
- * phrasings that the founder has approved become `findings`; other detected
+ * Every evidence-valid weather is retained internally. Only hour cells in
+ * the founder-approved 36-cell matrix become `findings`; other detected
  * weather is counted as unsupported and is never exposed as invented copy.
  */
 function isApprovedHourFinding(finding) {
   return (
-    (finding.type === "resistance" && finding.bucket === "night") ||
-    (finding.type === "reflection" && finding.bucket === "morning")
+    ["dream", "spark", "resistance", "symbol", "synchronicity", "vision",
+      "desire", "fear", "reflection"].includes(finding.type) &&
+    ["morning", "midday", "evening", "night"].includes(finding.bucket)
   );
 }
 

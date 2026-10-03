@@ -19,6 +19,7 @@ import { fieldNotesQuery } from "@/lib/firestore";
 import { subscribePatternDocuments } from "@/lib/patternEvidence";
 import { ageAt, resolve } from "@/lib/spiral";
 import { spellNumber } from "@/lib/patternText";
+import { hourConditionCopy } from "@/lib/conditionsCopy";
 import type {
   ConditionFinding,
   ConsciousnessStructure,
@@ -82,18 +83,11 @@ function conditionCopy(finding: ConditionFinding): { line: string; evidence: str
       evidence: `${spellNumber(finding.matchingCount)} arrived after a day away`,
     };
   }
-  if (finding.type === "resistance" && finding.bucket === "night") {
-    return {
-      line: "resistance arrives at night",
-      evidence: `${spellNumber(finding.matchingCount)} of ${spellNumber(finding.totalWithHour)} walls · named after nine`,
-    };
-  }
-  if (finding.type === "reflection" && finding.bucket === "morning") {
-    return {
-      line: "reflection belongs to your mornings",
-      evidence: `${spellNumber(finding.matchingCount)} of ${spellNumber(finding.totalWithHour)} · before ten`,
-    };
-  }
+  const copy = hourConditionCopy(
+    finding.type, finding.bucket,
+    spellNumber(finding.matchingCount), spellNumber(finding.totalWithHour),
+  );
+  if (copy) return copy;
   // Detection is broader than founder-approved language. This should remain
   // unreachable for the current engine output, and protects future data.
   return null;
