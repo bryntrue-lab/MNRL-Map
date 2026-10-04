@@ -1,11 +1,10 @@
 # Mineral static build configuration
 
 Mineral uses checked-in static Expo configuration. There is no dynamic
-`app.config.js` or `app.config.ts`, and the active `app.json` is intentionally
-kept on the production identity until the connected dashboard source branch is
-confirmed.
+`app.config.js` or `app.config.ts`. The release branch `main` selects the
+production identity; `dev` uses the development identity for Mineral Dev.
 
-- `app.production.json` is an exact byte-for-byte snapshot of `app.json`.
+- `app.production.json` is the approved production variant.
 - `app.development.json` is the Mineral Dev variant:
   - display name: `Mineral Dev`
   - iOS bundle identifier: `com.madebymineral.quartz.dev`
@@ -47,3 +46,18 @@ Do not select the development config on a production source branch. Do not use
 the production Publish flow for the development branch. Production remains
 protected by selecting `app.production.json` explicitly on its production
 source branch.
+
+## TestFlight releases
+
+TestFlight is the current production distribution channel. Promote only an
+approved candidate to `main`, select the production static variant, run the
+configuration checks, and commit before publishing. Preserve the prior stable
+build's exact source on a remote backup branch or immutable tag.
+
+The production profile pins the same verified pnpm and Xcode image as the
+development profile and uses remote build-number auto-increment. Record the
+actual successful build number and source commit after upload; do not infer
+the Apple build number from the static config.
+
+GitHub's older uploaded patch-file commits are retained in main's merge
+history. No force-push is needed for the release alignment.

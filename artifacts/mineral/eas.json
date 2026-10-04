@@ -22,6 +22,10 @@
       }
     },
     "production": {
+      "pnpm": "10.26.1",
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-26.0"
+      },
       "autoIncrement": true,
       "env": {
     "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic",
