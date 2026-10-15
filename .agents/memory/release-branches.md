@@ -1,9 +1,15 @@
 ---
-name: Stable and development release branches
-description: Approved Git release convention and preservation requirements.
+name: Release branch discipline
+description: Founder-approved feature-branch workflow and version-based release planning.
 ---
-Use main for the founder-approved stable Apple baseline, dev for ongoing development, and immutable release tags for the source commit recorded by each uploaded build.
+Use feature branches off main, not a standing dev branch. Production submissions come from main only. A long-lived feat/subscription branch must merge origin/main after other features merge; short-lived UI branches merge early and are then deleted. Branch-cut TestFlight builds are for internal sandbox testing only.
 
-**Why:** The founder wants a stable backup before testing a new candidate. Existing branch names did not reliably identify installed TestFlight source.
+**Why:** The founder's October release ledger supersedes the earlier main/dev convention after branch divergence. App identity is selected by build profile, not branch.
 
-**How to apply:** Match the Apple build number to the build service's recorded commit, check for build-time uncommitted changes, and preserve old branch tips before alignment. The founder uses TestFlight as the current production workflow and explicitly approved promoting the selected development release to main; public App Store review is not a prerequisite. Do not promote later candidates without approval. Confirm remote pushes succeed; local tags are not off-workspace backups. Git references do not preserve deployed Firebase state or the signed binary.
+**How to apply:** Check the current branch before commits and establish the intended feature branch. Retire dev only after confirming it has no unmerged work; do not delete it merely because it still exists. Plan and tag by semantic version; EAS build numbers are recorded after a build, never predicted. Preserve release references and verify remote backups before promotion. Git references do not preserve deployed Firebase state or signed binaries.
+
+Keep rejection resubmissions hotfix-only. Do not make incompatible server/schema changes underneath a binary in review. A quiet initial App Store release precedes the subscription/public launch.
+
+**Why:** The founder explicitly separates the submitted release from the revenue-enabling release to protect review scope.
+
+**How to apply:** Subscription scope is RevenueCat, a gate-8 paywall, and offer codes. Obtain the referenced subscription plan before treating prices, entitlements, trials, or founder access as decided.
