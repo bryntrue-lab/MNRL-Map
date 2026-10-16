@@ -2,7 +2,8 @@
 - [Returning editorial role](returning-editorial-role.md) — the Guide's featured word should carry a field teaching; missing coverage needs an explicit product decision.
 - [Field generation budget](field-generation-budget.md) — ten passages/day, separate vocabulary approval, and verify deployed queue state rather than assuming local parity.
 - [Separate charge deliverables](charge-deliverables.md) — encounter capture and map teaching are independent; the amended charge-only prompt does not connect their paths.
-- [Release branches](release-branches.md) — main is approved stable; dev is ongoing work; preserve release tags and verify remote backups before promotion.
+- [Release branches](release-branches.md) — feature branches off main; no standing dev; production submissions from main and release plans use versions.
+- [Subscription policy](subscription-policy.md) — gate at encounter eight; lapse closes new encounters, never access to notes or Guide; pricing intent and draft conflicts.
 - [Firestore index overrides](firestore-index-overrides.md) — group-only fieldOverrides replace inherited indexes; preserve collection ASC/DESC and verify client queries.
 - [Origin wander scope](origin-wander-scope.md) — season-headline ruling extends to Origin; Today and drag behavior stay unchanged.
 - [Reading recovery](reading-recovery.md) — restrict legacy unwrapping; preserve prose atomically and validate recovered serif claims against exact note text.
