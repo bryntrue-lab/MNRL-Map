@@ -3,7 +3,7 @@ name: Subscription product policy
 description: Founder-supplied subscription scope, access promises, pricing intent, and inconsistent draft wording.
 ---
 
-The founder explicitly confirmed $108 per year and $11 monthly; the earlier $111 monthly instruction was a typo. These prices supersede conflicting draft notes. One subscription group, Mineral Practice, with annual and monthly products; one practice entitlement. The existing eighth-encounter gate is the paywall, after seven free encounters, not an elapsed calendar-week timer. No introductory product trial; the launch promotion is one free month via monthly-product offer codes.
+The founder's latest approved US prices are $107.99 annually and $12.99 per month. These supersede the earlier $108/year and $11/month targets and all conflicting draft prices. This records the founder's pricing decision, not independent verification of the live Apple product duration or mappings. One subscription group, Mineral Practice, with annual and monthly products; one practice entitlement. The existing eighth-encounter gate is the paywall, after seven free encounters, not an elapsed calendar-week timer. No introductory product trial; the launch promotion is one free month via monthly-product offer codes.
 
 **Why:** The founder wants recurring App Store revenue without stacking a subscription trial on the existing free experience.
 
