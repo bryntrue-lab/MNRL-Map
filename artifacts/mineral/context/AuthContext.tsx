@@ -18,6 +18,7 @@ import React, {
 } from "react";
 
 import { auth } from "@/lib/firebase";
+import { clearSubscriptionIdentity } from "@/lib/subscriptions";
 
 interface AuthContextValue {
   user: User | null;
@@ -62,6 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logOut = useCallback(async () => {
     await signOut(auth);
+    // A purchase already in flight remains tied to its original UID. Clearing
+    // the SDK identity is serialized after it; a failed clear cannot block
+    // Firebase sign-out or account deletion.
+    await clearSubscriptionIdentity().catch(() => {});
   }, []);
 
   const linkWithEmail = useCallback(async (email: string, password: string) => {

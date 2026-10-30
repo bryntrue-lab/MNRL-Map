@@ -20,3 +20,15 @@ RevenueCat is the purchase authority; the plan calls for a server-managed Fireba
 **Why:** The founder wants access decisions consistent with the app's existing server-authoritative model.
 
 **How to apply:** Treat Firebase state as a verified projection, never an independent purchase authority. The founder explicitly approved adding secure event processing, reconciliation, expiry handling, and purchase/restore synchronization. Older build-number labels in the plan are superseded by version-based release planning.
+
+Reuse the existing RevenueCat membership entitlement rather than creating a second entitlement merely to obtain the name `practice`.
+
+**Why:** The intended access level is one membership; a second entitlement would split product mappings and purchase validation unnecessarily.
+
+**How to apply:** Keep client and server pointed at the same live entitlement. Only the approved Apple annual/monthly products grant this membership; retain unrelated Test Store setup without displaying lifetime offers in the paid app.
+
+The founder supplied final subscription and deletion screen wording directly, replacing the proposed batch. Preserve its sentence case, punctuation, and wording; use store-localized price values in the annual/monthly slots.
+
+**Why:** The founder rejected the earlier proposed wording and provided the complete screen-state copy instead.
+
+**How to apply:** Do not reintroduce the earlier “seven mornings” draft or lowercase the approved copy through shared button styles. Reuse existing approved deletion-error copy rather than mislabel deletion failures as subscription failures.

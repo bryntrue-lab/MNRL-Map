@@ -35,3 +35,4 @@ externalPort = 3000
 
 [userenv.shared]
 FOUNDER_DIGEST_EMAIL = "bryn@madebymineral.com"
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = "appl_impsmdPubzOtxmSQdvIOyNErYyC"

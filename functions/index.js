@@ -40,6 +40,16 @@ setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const openAiApiKey = defineSecret("OPENAI_API_KEY");
 const founderDigestEmail = defineString("FOUNDER_DIGEST_EMAIL");
+const revenueCatApiKey = defineSecret("REVENUECAT_SERVER_API_KEY");
+const revenueCatWebhookSecret = defineSecret("REVENUECAT_WEBHOOK_SECRET");
+const { createSubscriptions } = require("./subscriptions");
+const subscriptions = createSubscriptions({
+  db: getFirestore(), apiKey: revenueCatApiKey, webhookSecret: revenueCatWebhookSecret,
+});
+exports.syncSubscription = subscriptions.syncSubscription;
+exports.revenueCatWebhook = subscriptions.revenueCatWebhook;
+exports.reconcileSubscriptions = subscriptions.reconcileSubscriptions;
+exports.authorizePracticeEncounter = subscriptions.authorizePracticeEncounter;
 const { createBetaRequest } = require("./betaRequest");
 const { createFieldPassageQueue } = require("./fieldQueue");
 const { createFounderDigest } = require("./founderDigest");
@@ -321,6 +331,13 @@ exports.deleteAccount = onCall(
     if (!uid) {
       throw new HttpsError("unauthenticated", "sign in to release a field.");
     }
+
+    // Fence late/in-flight subscription updates before deleting anything.
+    // RevenueCat/Apple purchase records are not equivalent to journal data;
+    // this does not cancel billing or erase Apple's transaction history.
+    await getFirestore().doc(`subscriptionAccounts/${uid}`).set({
+      deleting: true, pending: false, nextSyncAt: FieldValue.delete(),
+    }, { merge: true });
 
     // 1. Storage — every object under users/{uid}/ (voice captures).
     await getStorage().bucket().deleteFiles({ prefix: `users/${uid}/` });

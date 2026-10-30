@@ -15,6 +15,8 @@ import { SpiralIndicator } from "@/components/SpiralComponents";
 import TabTopBar from "@/components/TabTopBar";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
+import { MembershipRequired } from "@/lib/subscriptionGate";
+import { SubscriptionError } from "@/lib/subscriptions";
 import { useUser } from "@/context/UserContext";
 import {
   buildEncounterSession,
@@ -286,6 +288,11 @@ export default function TodayScreen() {
         params: encounterRouteParams(session),
       });
     } catch (err) {
+      if (err instanceof MembershipRequired || err instanceof SubscriptionError) {
+        busy.current = false;
+        router.push("/subscription");
+        return;
+      }
       console.warn("threshold begin failed", err);
       // Offline or missing audio — the soft refusal (§4). showNotReady's
       // timer releases the busy latch when the moment passes.

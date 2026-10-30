@@ -3,6 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +18,7 @@ import { AccountForm } from "@/components/AccountForm";
 import { LinkPrimary, LinkSecondary } from "@/components/Links";
 import { SignInGuard } from "@/components/SignInGuard";
 import colors from "@/constants/colors";
+import { SubscriptionCopy } from "@/constants/subscriptionCopy";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { functions } from "@/lib/firebase";
@@ -36,6 +38,16 @@ export default function SettingsScreen() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [linked, setLinked] = useState(false); // post-link confirmation line
+  const [manageError, setManageError] = useState(false);
+
+  const openManage = async () => {
+    setManageError(false);
+    try {
+      await Linking.openURL("https://apps.apple.com/account/subscriptions");
+    } catch {
+      setManageError(true);
+    }
+  };
 
   const isAnon = user?.isAnonymous ?? true;
 
@@ -175,47 +187,68 @@ export default function SettingsScreen() {
           />
         )}
 
-        {/* ── Release ── */}
-        <Text style={[styles.sectionLabel, styles.releaseLabel]}>RELEASE</Text>
-        <Text style={styles.bodyLine}>
-          Releasing your field deletes everything — every note, every
-          recording, the account itself — permanently. There is no way back.
-        </Text>
+        {/* ── Membership ── */}
+        <LinkSecondary
+          label={SubscriptionCopy.settings.restore}
+          onPress={() => router.push("/subscription?restore=1")}
+          style={styles.actionLine}
+          textStyle={styles.asWritten}
+          testID="settings-restore"
+        />
+
+        {/* ── Delete account ── */}
+        <Text style={[styles.confirmHeadline, styles.releaseLabel]}>{SubscriptionCopy.settings.deleteTitle}</Text>
+        <Text style={styles.bodyLine}>{SubscriptionCopy.settings.deleteBody}</Text>
+        <Text style={styles.bodyLine}>{SubscriptionCopy.settings.deleteSubscription}</Text>
+        {Platform.OS === "ios" && (
+          <LinkSecondary
+            label={SubscriptionCopy.settings.manage}
+            onPress={openManage}
+            style={styles.actionLine}
+            textStyle={styles.asWritten}
+            testID="settings-manage-subscription"
+          />
+        )}
+        {manageError && (
+          <>
+            <Text style={styles.errorLine}>{SubscriptionCopy.unavailable.title}</Text>
+            <Text style={styles.errorLine}>{SubscriptionCopy.unavailable.body}</Text>
+          </>
+        )}
         {!confirmingDelete ? (
           <LinkSecondary
-            label="release this field →"
+            label={SubscriptionCopy.settings.deleteAction}
             onPress={() => setConfirmingDelete(true)}
             style={styles.actionLine}
+            textStyle={styles.asWritten}
             testID="settings-delete"
           />
         ) : (
-          <>
-            {/* CS §1 — confirm headline */}
-            <Text style={styles.confirmHeadline}>release this field.</Text>
           <View style={styles.confirmRow}>
             {deleting ? (
-              <Pressable style={styles.actionLine} disabled testID="settings-delete-confirm">
+              <Pressable style={styles.actionLine} disabled accessibilityState={{ busy: true }} testID="settings-delete-confirm">
                 <ActivityIndicator size="small" color="rgba(224,138,175,0.9)" />
               </Pressable>
             ) : (
               <LinkSecondary
-                label="yes — release everything"
+                label={SubscriptionCopy.settings.deleteAction}
                 onPress={releaseField}
                 disabled={deleting}
                 style={styles.actionLine}
+                textStyle={[styles.asWritten, styles.dangerText]}
                 testID="settings-delete-confirm"
               />
             )}
             {!deleting && (
               <LinkSecondary
-                label="keep it"
+                label={SubscriptionCopy.settings.keepAction}
                 onPress={() => setConfirmingDelete(false)}
                 style={styles.actionLine}
+                textStyle={styles.asWritten}
                 testID="settings-delete-cancel"
               />
             )}
           </View>
-          </>
         )}
         {deleteError && <Text style={styles.errorLine}>{deleteError}</Text>}
       </ScrollView>
@@ -285,6 +318,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 28,
     alignItems: "center",
+  },
+  asWritten: {
+    textTransform: "none",
+  },
+  dangerText: {
+    color: "#E08AAF",
   },
   errorLine: {
     ...TypeScale.serifSmall,

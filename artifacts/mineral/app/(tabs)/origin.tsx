@@ -32,6 +32,8 @@ import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralC
 import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
+import { MembershipRequired } from "@/lib/subscriptionGate";
+import { SubscriptionError } from "@/lib/subscriptions";
 import { useUser } from "@/context/UserContext";
 import {
   dayOfEncounter,
@@ -632,6 +634,10 @@ export default function OriginScreen() {
         params: encounterRouteParams(session),
       });
     } catch (err) {
+      if (err instanceof MembershipRequired || err instanceof SubscriptionError) {
+        router.push("/subscription");
+        return;
+      }
       // Offline or missing audio — never a dead end. Today owns the soft
       // refusal (§4), so hand the moment back to it.
       console.warn("[origin] continue failed", err);

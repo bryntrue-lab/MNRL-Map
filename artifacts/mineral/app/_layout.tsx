@@ -19,6 +19,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MorningCallScheduler from "@/components/MorningCallScheduler";
+import SubscriptionSync from "@/components/SubscriptionSync";
 import { AuthProvider } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
 
@@ -78,6 +79,7 @@ export default function RootLayout() {
               <AuthProvider>
                 <UserProvider>
                   <MorningCallScheduler />
+                  <SubscriptionSync />
                   <RootLayoutNav />
                 </UserProvider>
               </AuthProvider>

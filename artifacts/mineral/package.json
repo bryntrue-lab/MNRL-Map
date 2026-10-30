@@ -16,6 +16,7 @@
     "test:origin-wander": "node --experimental-strip-types lib/originWander.test.mjs",
     "test:pattern-evidence": "node --experimental-strip-types lib/patternEvidenceState.test.mjs",
     "test:conditions": "node --experimental-strip-types lib/conditionsCopy.test.mjs",
+    "test:subscriptions": "node --test scripts/subscriptions.test.cjs",
     "test:reading": "node --experimental-strip-types lib/reading.test.mjs"
   },
   "devDependencies": {
@@ -76,6 +77,7 @@
     "expo-build-properties": "~1.0.10",
     "expo-notifications": "~0.32.17",
     "firebase": "^12.13.0",
+    "react-native-purchases": "^9.15.3",
     "suncalc": "^2.0.1"
   }
 }

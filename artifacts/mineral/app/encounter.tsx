@@ -40,6 +40,8 @@ import { AccountForm } from "@/components/AccountForm";
 import { LinkPrimary, LinkWhisper, LinkSecondary } from "@/components/Links";
 import { wasMorningCallOffered } from "@/lib/notifications";
 import { useAuth } from "@/context/AuthContext";
+import { MembershipRequired } from "@/lib/subscriptionGate";
+import { SubscriptionError } from "@/lib/subscriptions";
 import { useUser } from "@/context/UserContext";
 import {
   HELD_SILENCE_MS,
@@ -142,6 +144,10 @@ export default function EncounterScreen() {
         const s = await buildEncounterSession(user.uid, encounter, turn, { visiting });
         if (on) setRebuilt(s);
       } catch (err) {
+        if (on && (err instanceof MembershipRequired || err instanceof SubscriptionError)) {
+          router.replace("/subscription");
+          return;
+        }
         console.warn("[encounter] session rebuild failed", err);
         if (on) setUnrecoverable(true);
       }
