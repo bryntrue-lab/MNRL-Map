@@ -25,6 +25,7 @@ import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
+import { useMembership } from "@/hooks/useMembership";
 import { db, functions } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import {
@@ -208,6 +209,11 @@ export default function GuideScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { profile } = useUser();
+  // Model B — depth (lenses, from-the-field passages) needs practice; the
+  // header, arrivals, hero offering and held lens rows stay free.
+  const { active: depthOpen } = useMembership();
+  const openInvitation = () => router.push("/subscription");
+  const goLens = (id: string) => (depthOpen ? router.push(`/lens/${id}`) : openInvitation());
 
   const [notes, setNotes] = useState<FieldNoteWithId[]>([]);
   const [patterns, setPatterns] = useState<Patterns>({});
@@ -612,7 +618,7 @@ export default function GuideScreen() {
                 <View style={styles.lensBody}>
                   <Pressable
                     style={({ pressed }) => [styles.emptyLensPress, { opacity: pressed ? 0.7 : 1 }]}
-                    onPress={() => router.push(`/lens/${lens.id}`)}
+                    onPress={() => goLens(lens.id)}
                     hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                     testID={`empty-lens-press-${lens.id}`}
                   >
@@ -678,7 +684,7 @@ export default function GuideScreen() {
                 label={
                   hero.count === 2 ? "both notes" : `all ${spellNumber(hero.count)} notes`
                 }
-                onPress={() => router.push(`/lens/${heroLensId}`)}
+                onPress={() => goLens(heroLensId)}
                 style={styles.heroWhisper}
                 testID="hero-all-notes"
               />
@@ -687,7 +693,7 @@ export default function GuideScreen() {
             {heroApprovedPassage ? (
               <Pressable
                 style={({ pressed }) => [styles.offeringBox, pressed && styles.offeringPressDim]}
-                onPress={() => setFieldPassageOpen(true)}
+                onPress={() => (depthOpen ? setFieldPassageOpen(true) : openInvitation())}
                 accessibilityRole="button"
                 accessibilityLabel={`More from the field: ${displayItem(hero.key)}`}
                 testID="hero-field-passage-card"
@@ -784,7 +790,7 @@ export default function GuideScreen() {
               <Pressable
                 key={lens.id}
                 style={({ pressed }) => [styles.lensRow, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => router.push(`/lens/${lens.id}`)}
+                onPress={() => goLens(lens.id)}
                 testID={`lens-${lens.id}`}
               >
                 <View style={[styles.lensDot, { backgroundColor: lens.color }]} />
@@ -804,7 +810,7 @@ export default function GuideScreen() {
                 <View style={styles.lensBody}>
                   <Pressable
                     style={({ pressed }) => [styles.emptyLensPress, { opacity: pressed ? 0.7 : 1 }]}
-                    onPress={() => router.push(`/lens/${lens.id}`)}
+                    onPress={() => goLens(lens.id)}
                     hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                     testID={`quiet-lens-press-${lens.id}`}
                   >
@@ -896,7 +902,7 @@ export default function GuideScreen() {
         bottomPad={insets.bottom}
       />
       <FieldPassageSheet
-        open={fieldPassageOpen && !!heroApprovedPassage}
+        open={fieldPassageOpen && depthOpen && !!heroApprovedPassage}
         onClose={() => setFieldPassageOpen(false)}
         bottomPad={insets.bottom}
         motifName={hero ? displayItem(hero.key) : ""}

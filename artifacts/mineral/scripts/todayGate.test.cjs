@@ -94,8 +94,6 @@ function harness() {
       },
     };
     if (name === "@/context/AuthContext") return { useAuth: () => ({ user: { uid: "synthetic" } }) };
-    if (name === "@/lib/subscriptionGate") return { MembershipRequired: class extends Error {} };
-    if (name === "@/lib/subscriptions") return { SubscriptionError: class extends Error {} };
     if (name === "@/context/UserContext") return { useUser: () => ({ profile: { sequenceDay: 2 } }) };
     if (name === "@/lib/firestore") return {
       fetchEncounterLibrary: async () => [{ id: "synthetic-encounter", phase: "signal" }],
@@ -104,6 +102,7 @@ function harness() {
       userEncounterRef: () => ({}),
       recordVisit: async () => {},
     };
+    if (name === "@/lib/membership") return { shouldOfferThresholdInvitation: () => false };
     if (name === "@/lib/encounter") return {
       buildEncounterSession: async () => { builds++; return {}; },
       encounterRouteParams: () => ({}),

@@ -15,9 +15,8 @@ import { SpiralIndicator } from "@/components/SpiralComponents";
 import TabTopBar from "@/components/TabTopBar";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
-import { MembershipRequired } from "@/lib/subscriptionGate";
-import { SubscriptionError } from "@/lib/subscriptions";
 import { useUser } from "@/context/UserContext";
+import { shouldOfferThresholdInvitation } from "@/lib/membership";
 import {
   buildEncounterSession,
   encounterRouteParams,
@@ -281,6 +280,16 @@ export default function TodayScreen() {
       );
       setEncounterSession(session);
       busy.current = false;
+      // Model B — the day-eight invitation is orchestration, not a gate. The
+      // session is already built and handed off; the invitation's Not Now
+      // continues into exactly this encounter.
+      if (shouldOfferThresholdInvitation({ profile, now: Date.now(), visiting })) {
+        router.push({
+          pathname: "/subscription",
+          params: { from: "day8", ...encounterRouteParams(session) },
+        });
+        return;
+      }
       // The params are the durable record: they let the encounter screen
       // rebuild itself if the module hand-off is lost to a backgrounded app.
       router.push({
@@ -288,11 +297,6 @@ export default function TodayScreen() {
         params: encounterRouteParams(session),
       });
     } catch (err) {
-      if (err instanceof MembershipRequired || err instanceof SubscriptionError) {
-        busy.current = false;
-        router.push("/subscription");
-        return;
-      }
       console.warn("threshold begin failed", err);
       // Offline or missing audio — the soft refusal (§4). showNotReady's
       // timer releases the busy latch when the moment passes.

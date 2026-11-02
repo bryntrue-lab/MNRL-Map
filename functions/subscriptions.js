@@ -4,7 +4,7 @@ const { createHash, timingSafeEqual } = require("node:crypto");
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { Timestamp, FieldValue } = require("firebase-admin/firestore");
-const { membershipFromSubscriber, eventUserIds, canStartEncounter, canOpenEncounter } = require("./subscriptionPolicy");
+const { membershipFromSubscriber, eventUserIds } = require("./subscriptionPolicy");
 
 function authorized(actual, expected) {
   if (!expected || !actual) return false;
@@ -68,28 +68,6 @@ function createSubscriptionService({ db, apiKey, fetchImpl = fetch }) {
 
 function createSubscriptions({ db, apiKey, webhookSecret }) {
   const service = createSubscriptionService({ db, apiKey: () => apiKey.value() });
-  const authorizePracticeEncounter = onCall(async request => {
-    const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError("unauthenticated", "Authentication required");
-    const { encounterId, turn } = request.data ?? {};
-    if (typeof encounterId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(encounterId) ||
-        !Number.isInteger(turn) || turn < 1 || turn > 10000) {
-      throw new HttpsError("invalid-argument", "Invalid encounter");
-    }
-    const [config, user, encounter, existing, account] = await Promise.all([
-      db.doc("subscriptionConfig/runtime").get(), db.doc(`users/${uid}`).get(),
-      db.doc(`encounters/${encounterId}`).get(),
-      db.doc(`users/${uid}/userEncounters/${encounterId}_t${turn}`).get(),
-      db.doc(`subscriptionAccounts/${uid}`).get(),
-    ]);
-    if (!user.exists || account.data()?.deleting) throw new HttpsError("failed-precondition", "Account unavailable");
-    if (!encounter.exists) throw new HttpsError("not-found", "Encounter unavailable");
-    if (config.data()?.enabled !== true) return { allowed: true, enforced: false };
-    if (!canOpenEncounter(user.data(), encounter.data(), turn, existing.data())) {
-      throw new HttpsError("permission-denied", "Membership required");
-    }
-    return { allowed: true, enforced: true };
-  });
   const syncSubscription = onCall(
     { secrets: [apiKey], timeoutSeconds: 60, maxInstances: 10 },
     async request => {
@@ -165,7 +143,7 @@ function createSubscriptions({ db, apiKey, webhookSecret }) {
       if (failures) throw new Error(`Subscription reconciliation failed for ${failures} accounts`);
     }
   );
-  return { syncSubscription, revenueCatWebhook, reconcileSubscriptions, authorizePracticeEncounter };
+  return { syncSubscription, revenueCatWebhook, reconcileSubscriptions };
 }
 
-module.exports = { createSubscriptions, createSubscriptionService, authorized, fetchSubscriber, canStartEncounter };
+module.exports = { createSubscriptions, createSubscriptionService, authorized, fetchSubscriber };

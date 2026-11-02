@@ -1,34 +1,22 @@
 ---
-name: Subscription product policy
-description: Founder-supplied subscription scope, access promises, pricing intent, and inconsistent draft wording.
+name: Subscription product policy — Model B
+description: Final founder decision: practice always free, membership gates Guide depth only.
 ---
 
-The founder's latest approved US prices are $107.99 annually and $12.99 per month. These supersede the earlier $108/year and $11/month targets and all conflicting draft prices. This records the founder's pricing decision, not independent verification of the live Apple product duration or mappings. One subscription group, Mineral Practice, with annual and monthly products; one practice entitlement. The existing eighth-encounter gate is the paywall, after seven free encounters, not an elapsed calendar-week timer. No introductory product trial; the launch promotion is one free month via monthly-product offer codes.
+Model B supersedes every encounter-eight paywall implementation. Daily encounters, past-encounter revisits and all Notes remain free forever. No entitlement checks belong in encounter begin/build or its calendar gate.
 
-**Why:** The founder wants recurring App Store revenue without stacking a subscription trial on the existing free experience.
+**Why:** The founder explicitly designated Model B FINAL for v1.1.0; the close screen promises revisits.
 
-**How to apply:** The founder explicitly said conflicting draft notes are irrelevant and inaccurate. Do not reuse their prices, savings claims, or draft paywall copy. Use actual localized store prices for billing disclosures and obtain approval for corrected user-facing copy.
+**How to apply:** Membership gates five full lens routes, from-the-field passage sheets, and Origin wander/date-picker travel beyond today. Free users retain Guide header, arrivals, hero pattern INCLUDING its inline FROM THE FIELD offering, lens rows/held lines, today's map position and counterweight. Lapse closes depth only.
 
-Lapse closes only new encounters: notes and Guide remain readable. There is no founding circle and no founding-circle complimentary-access requirement.
+The day-eight screen is a once-per-user invitation, not a wall. “Not now” continues into the encounter. Gated surfaces re-present that same invitation. Use the approved reference's evidence block with actual user evidence, benefits, localized monthly/annual CTAs, restore/terms/privacy and dismiss. Replace “what others have recorded” with “passages left by the practitioner”; replace “past encounters” with “the reflection · your field, read whole”.
 
-**Why:** The founder's explicit promise is "lapse never locks a person out of their own words."
+**Why:** Founder-approved Model B specification and reference supersede prior invitation copy and access promises.
 
-**How to apply:** Preserve this boundary in client and server authorization. Do not grandfather testers or implement complimentary access based on the superseded draft. Protect entitlement grants from client edits.
+**How to apply:** Never fabricate evidence or hardcode rounded price labels. The US pricing decision remains $107.99/year and $12.99/month, but display only fetched store-localized strings. No founding circle or complimentary grandfathering. Launch offer codes grant one monthly period; no stacked introductory product trial.
 
-RevenueCat is the purchase authority; the plan calls for a server-managed Firebase entitlement projection used by client gates and rules, with purchases tied to Firebase UID.
+One logical entitlement, practice, is a server-written profile field. RevenueCat remains purchase authority, tied to Firebase UID; SDK state is never the app's access authority.
 
-**Why:** The founder wants access decisions consistent with the app's existing server-authoritative model.
+**Why:** The founder requires consistent webhook-written access, expiry and recovery.
 
-**How to apply:** Treat Firebase state as a verified projection, never an independent purchase authority. The founder explicitly approved adding secure event processing, reconciliation, expiry handling, and purchase/restore synchronization. Older build-number labels in the plan are superseded by version-based release planning.
-
-Reuse the existing RevenueCat membership entitlement rather than creating a second entitlement merely to obtain the name `practice`.
-
-**Why:** The intended access level is one membership; a second entitlement would split product mappings and purchase validation unnecessarily.
-
-**How to apply:** Keep client and server pointed at the same live entitlement. Only the approved Apple annual/monthly products grant this membership; retain unrelated Test Store setup without displaying lifetime offers in the paid app.
-
-The founder supplied final subscription and deletion screen wording directly, replacing the proposed batch. Preserve its sentence case, punctuation, and wording; use store-localized price values in the annual/monthly slots.
-
-**Why:** The founder rejected the earlier proposed wording and provided the complete screen-state copy instead.
-
-**How to apply:** Do not reintroduce the earlier “seven mornings” draft or lowercase the approved copy through shared button styles. Reuse existing approved deletion-error copy rather than mislabel deletion failures as subscription failures.
+**How to apply:** Protect the profile grant from clients and check its verified expiry. Existing provider mapping may feed the single practice projection; never introduce a second competing access tier. Sandbox demonstration must cover annual, monthly, offer-code redemption, second-device restore, and lapse closing depth while practice continues. Production release from main remains required.

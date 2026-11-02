@@ -1,5 +1,4 @@
 import type { EncounterBlock, ReflectionPrompt } from "@/types/firestore";
-import { assertEncounterSubscription } from "@/lib/subscriptionGate";
 import {
   beginSequenceEncounter,
   findCrystallizingNote,
@@ -65,7 +64,6 @@ export async function buildEncounterSession(
   turn: number,
   opts: { visiting?: boolean } = {}
 ): Promise<EncounterSession> {
-  await assertEncounterSubscription(encounter.id, turn, opts.visiting === true);
   // Resolve the Storage URL first — a missing file surfaces to the caller and
   // ends in the quiet return, never inside the held space (§11, §4).
   const audioUrl = await resolveAudioUrl(encounter.audioPath);

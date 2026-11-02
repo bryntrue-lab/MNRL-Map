@@ -3,7 +3,11 @@ import { httpsCallable } from "firebase/functions";
 import type { PurchasesPackage } from "react-native-purchases";
 import { auth, functions } from "@/lib/firebase";
 
+// Model B — `practice` is the one logical entitlement, returned by the
+// server sync callable (which owns the RevenueCat provider-ID mapping).
+// The controller trusts ONLY this bool; native SDK entitlements never grant.
 export type SubscriptionAccess = {
+  practice: boolean;
   membershipStatus: "free" | "member";
   membershipSince: number | null;
   membershipExpiresAt: number | null;
@@ -71,7 +75,7 @@ async function refreshAccess(uid: string, waitForPurchase: boolean): Promise<Sub
     try {
       const { data } = await call({});
       assertIdentity(uid);
-      if (!waitForPurchase || data.membershipStatus === "member") return data;
+      if (!waitForPurchase || data.practice === true) return data;
     } catch (error) {
       if (error instanceof SubscriptionError) throw error;
       if (!waitForPurchase) throw error;
@@ -112,8 +116,10 @@ export function restoreSubscription(uid: string): Promise<SubscriptionAccess> {
     const Purchases = await purchasesFor(uid);
     const restored = await Purchases.restorePurchases();
     assertIdentity(uid);
-    const hasEntitlement = Boolean(restored.entitlements.active.mineral_a_creative_practice_pro);
-    return refreshAccess(uid, hasEntitlement);
+    // The SDK result is only a hint for how long to wait on server
+    // projection — it never grants. Access comes from the server bool.
+    const projectionLikely = Object.keys(restored.entitlements.active).length > 0;
+    return refreshAccess(uid, projectionLikely);
   });
 }
 
@@ -126,13 +132,14 @@ export function manageSubscription(uid: string): Promise<void> {
   });
 }
 
-export function redeemSubscriptionCode(uid: string): Promise<void> {
+export function redeemSubscriptionCode(uid: string): Promise<SubscriptionAccess> {
   return serial(async () => {
     const Purchases = await purchasesFor(uid);
     await Purchases.presentCodeRedemptionSheet();
-    // Native dismissal does not signal a completed redemption; the paywall
-    // must refresh on foreground and expose restore, not announce success.
+    // Native dismissal does not signal a completed redemption; ask the server
+    // (and refresh again on foreground) rather than announcing success.
     assertIdentity(uid);
+    return refreshAccess(uid, false);
   });
 }
 

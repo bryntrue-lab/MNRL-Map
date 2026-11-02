@@ -82,6 +82,14 @@ export interface UserDoc {
   membershipExpiresAt: Timestamp | null;
   membershipProductId: string | null;
   completedEncounterCount: number;
+  /** Model B — the ONE logical entitlement, server-written by the
+   *  subscription sync. Depth opens only when true AND membershipExpiresAt
+   *  is in the future. New users start false. */
+  practice?: boolean;
+
+  // Model B — the day-eight invitation was displayed. Client-writable,
+  // monotonic (only ever set to true). Absent on older docs.
+  membershipInvitationSeen?: boolean;
 
   // Slice L — server-controlled founder gate. Absent/false for everyone
   // unless set by an administrator; Firestore rules forbid client changes.

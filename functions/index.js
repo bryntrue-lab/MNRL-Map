@@ -49,7 +49,6 @@ const subscriptions = createSubscriptions({
 exports.syncSubscription = subscriptions.syncSubscription;
 exports.revenueCatWebhook = subscriptions.revenueCatWebhook;
 exports.reconcileSubscriptions = subscriptions.reconcileSubscriptions;
-exports.authorizePracticeEncounter = subscriptions.authorizePracticeEncounter;
 const { createBetaRequest } = require("./betaRequest");
 const { createFieldPassageQueue } = require("./fieldQueue");
 const { createFounderDigest } = require("./founderDigest");

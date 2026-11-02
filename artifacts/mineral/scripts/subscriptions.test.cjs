@@ -12,6 +12,7 @@ function harness() {
   let purchaseError;
   let active = true;
   let period = "P1M";
+  let serverPractice;
   const sdk = {
     isConfigured:async()=>Boolean(identity),
     configure:({appUserID})=>{identity=appUserID;calls.push(["configure",appUserID]);},
@@ -41,12 +42,12 @@ function harness() {
       if(id==="react-native-purchases")return {default:sdk};
       if(id==="firebase/functions")return {httpsCallable:()=>async()=>{
         calls.push(["verify",auth.currentUser?.uid]);
-        return {data:{membershipStatus:active?"member":"free",membershipExpiresAt:null,membershipSince:null,membershipProductId:null}};
+        return {data:{practice:serverPractice??active,membershipStatus:active?"member":"free",membershipExpiresAt:null,membershipSince:null,membershipProductId:null}};
       }};
       throw Error(`Unexpected import: ${id}`);
     },
   });
-  return {api:exports,auth,calls,setActive:v=>active=v,setPeriod:v=>period=v,setError:v=>purchaseError=v};
+  return {api:exports,auth,calls,setServer:v=>serverPractice=v,setActive:v=>active=v,setPeriod:v=>period=v,setError:v=>purchaseError=v};
 }
 test("offering uses real Apple packages and localized prices, excluding lifetime",async()=>{
   const h=harness();const plans=await h.api.loadSubscriptionPlans("alice");
@@ -76,11 +77,11 @@ test("delayed entitlement stays pending and can be restored",async()=>{
   h.setActive(false);
   await assert.rejects(h.api.purchaseSubscription("alice",plans.annual),e=>e.code==="pending");
   h.setActive(true);
-  assert.equal((await h.api.restoreSubscription("alice")).membershipStatus,"member");
+  assert.equal((await h.api.restoreSubscription("alice")).practice,true);
 });
 test("restoring an empty account returns free, not a success",async()=>{
   const h=harness();h.setActive(false);
-  assert.equal((await h.api.restoreSubscription("alice")).membershipStatus,"free");
+  assert.equal((await h.api.restoreSubscription("alice")).practice,false);
 });
 test("identity switch rejects stale operations and reidentifies SDK",async()=>{
   const h=harness();await h.api.loadSubscriptionPlans("alice");
@@ -93,4 +94,14 @@ test("signout clears SDK identity",async()=>{
   const h=harness();await h.api.loadSubscriptionPlans("alice");
   await h.api.clearSubscriptionIdentity();
   assert.ok(h.calls.some(c=>c[0]==="logout"));
+});
+test("SDK entitlement never grants: server practice=false wins over active SDK",async()=>{
+  const h=harness();h.setActive(true);h.setServer(false);
+  await assert.rejects(h.api.restoreSubscription("alice"),e=>e.code==="pending");
+});
+test("offer code redemption refreshes the server",async()=>{
+  const h=harness();
+  const access=await h.api.redeemSubscriptionCode("alice");
+  assert.deepEqual(h.calls.slice(-2),[["redeem"],["verify","alice"]]);
+  assert.equal(access.practice,true);
 });

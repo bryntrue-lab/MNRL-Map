@@ -122,6 +122,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           membershipExpiresAt: null,
           membershipProductId: null,
           completedEncounterCount: 0,
+          practice: false,
         };
         setDoc(ref, newDoc).catch(() => {});
         // Optimistic local state while the write resolves.

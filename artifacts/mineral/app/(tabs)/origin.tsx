@@ -32,9 +32,9 @@ import { OriginMap, TurnWheel, type OriginMapVisual } from "@/components/SpiralC
 import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
-import { MembershipRequired } from "@/lib/subscriptionGate";
-import { SubscriptionError } from "@/lib/subscriptions";
+import { shouldOfferThresholdInvitation } from "@/lib/membership";
 import { useUser } from "@/context/UserContext";
+import { useMembership } from "@/hooks/useMembership";
 import {
   dayOfEncounter,
   fetchEncounterLibrary,
@@ -217,6 +217,13 @@ export default function OriginScreen() {
 
   const { user } = useAuth();
   const { profile, updateProfile } = useUser();
+  // Model B — wandering the life map (drag, crossings, date picker) is depth.
+  // Today's map, the counterweight, and past-encounter revisits stay free.
+  const { active: depthOpen } = useMembership();
+  const invitedThisGesture = useRef(false);
+  const openInvitation = useCallback(() => {
+    router.push("/subscription");
+  }, []);
 
   // ── The life clock ────────────────────────────────────────
   const [now, setNow] = useState(() => new Date());
@@ -380,8 +387,16 @@ export default function OriginScreen() {
   }, []);
 
   const swingRaf = useRef<number | null>(null);
+  // Model B backstop: a closed map can never travel. Any swing away from
+  // today (from any path, present or future) is refused while free.
+  const depthRef = useRef(depthOpen);
+  depthRef.current = depthOpen;
+  const homeAgeRef = useRef<number | null>(null);
+  homeAgeRef.current = clampedCurrent ?? null;
   const swingTo = useCallback(
     (target: number, after?: () => void) => {
+      const home = homeAgeRef.current;
+      if (!depthRef.current && (home == null || Math.abs(target - home) > 0.05)) return;
       if (swingRaf.current != null) cancelAnimationFrame(swingRaf.current);
       const from = displayAgeRef.current;
       const start = nowMs();
@@ -601,6 +616,19 @@ export default function OriginScreen() {
     swingTo(clampedCurrent, () => setWandering(false));
   }, [clampedCurrent, swingTo]);
 
+  // Closed map (lapse or free): no wander state survives. The needle snaps
+  // home rather than animating, so nothing ever moves a free map.
+  useEffect(() => {
+    if (depthOpen) return;
+    if (swingRaf.current != null) {
+      cancelAnimationFrame(swingRaf.current);
+      swingRaf.current = null;
+    }
+    setDatePickerOpen(false);
+    setWandering(false);
+    if (clampedCurrent != null) setDisplayAge(clampedCurrent);
+  }, [depthOpen, clampedCurrent, setDisplayAge]);
+
   const openReading = useCallback(() => {
     if (clampedCurrent == null) return;
     setSheet("reading");
@@ -629,15 +657,18 @@ export default function OriginScreen() {
     try {
       const session = await buildEncounterSession(user.uid, encounter, practiceTurn);
       setEncounterSession(session);
+      if (shouldOfferThresholdInvitation({ profile, now: Date.now(), visiting: false })) {
+        router.push({
+          pathname: "/subscription",
+          params: { from: "day8", ...encounterRouteParams(session) },
+        });
+        return;
+      }
       router.push({
         pathname: "/encounter",
         params: encounterRouteParams(session),
       });
     } catch (err) {
-      if (err instanceof MembershipRequired || err instanceof SubscriptionError) {
-        router.push("/subscription");
-        return;
-      }
       // Offline or missing audio — never a dead end. Today owns the soft
       // refusal (§4), so hand the moment back to it.
       console.warn("[origin] continue failed", err);
@@ -645,7 +676,7 @@ export default function OriginScreen() {
     } finally {
       continuing.current = false;
     }
-  }, [ctaState, user, encounter, practiceTurn]);
+  }, [ctaState, user, encounter, practiceTurn, profile]);
 
   const visitPastDay = useCallback((d: number) => {
     setVisitDay(d);
@@ -655,10 +686,14 @@ export default function OriginScreen() {
   const sheetSwingTo = useCallback(
     (age: number) => {
       setSheet(null);
+      if (!depthOpen) {
+        openInvitation();
+        return;
+      }
       setWandering(true);
       swingTo(Math.max(0.2, Math.min(age, MAX_AGE - 0.2)));
     },
-    [swingTo]
+    [swingTo, depthOpen, openInvitation]
   );
 
   // The wander caption's date opens the platform picker. Its selection is
@@ -671,15 +706,25 @@ export default function OriginScreen() {
   );
   const toggleDatePicker = useCallback(() => {
     if (!birthDate) return;
+    if (!depthOpen) {
+      setDatePickerOpen(false);
+      openInvitation();
+      return;
+    }
     if (!datePickerOpen && dateRange) {
       setDatePickerValue(originDateInRange(dateAtAge(birthDate, displayAge), dateRange));
     }
     setDatePickerOpen((open) => !open);
-  }, [birthDate, datePickerOpen, dateRange, displayAge]);
+  }, [birthDate, datePickerOpen, dateRange, displayAge, depthOpen, openInvitation]);
   const onDatePickerChange = useCallback(
     (event: DateTimePickerEvent, selected?: Date) => {
       if (Platform.OS === "android") setDatePickerOpen(false);
       if (event.type !== "set" || !selected || !birthDate || !dateRange) return;
+      if (!depthOpen) {
+        setDatePickerOpen(false);
+        openInvitation();
+        return;
+      }
       const bounded = new Date(
         Math.max(
           dateRange.minimumDate.getTime(),
@@ -690,7 +735,7 @@ export default function OriginScreen() {
       setWandering(true);
       swingTo(originAgeForDate(birthDate, bounded));
     },
-    [birthDate, dateRange, setWandering, swingTo]
+    [birthDate, dateRange, setWandering, swingTo, depthOpen, openInvitation]
   );
 
   // ── Gestures (stable; live values via ref) ────────────────
@@ -708,6 +753,7 @@ export default function OriginScreen() {
     encounterReady: !!encounter,
     zoneW: zone.w,
     zoneH: zone.h,
+    depthOpen,
   });
   stateRef.current = {
     introRunning,
@@ -723,6 +769,7 @@ export default function OriginScreen() {
     encounterReady: !!encounter,
     zoneW: zone.w,
     zoneH: zone.h,
+    depthOpen,
   };
 
   const actionsRef = useRef({
@@ -739,6 +786,7 @@ export default function OriginScreen() {
     setZoomBoth,
     animateZoomTo,
     setScrub,
+    openInvitation,
   });
   actionsRef.current = {
     toViewBox,
@@ -754,6 +802,7 @@ export default function OriginScreen() {
     setZoomBoth,
     animateZoomTo,
     setScrub,
+    openInvitation,
   };
 
   const dragRef = useRef({
@@ -839,6 +888,7 @@ export default function OriginScreen() {
           wandered: false,
           lastScrubDay: null,
         };
+        invitedThisGesture.current = false;
       })
       .onUpdate((e) => {
         const st = stateRef.current;
@@ -857,6 +907,15 @@ export default function OriginScreen() {
           return;
         }
         if (st.clampedCurrent == null) return;
+        // Dragging the needle away from today is depth: the map stays home
+        // and the invitation opens once per gesture.
+        if (!st.depthOpen) {
+          if (!invitedThisGesture.current && Math.hypot(e.translationX, e.translationY) > 24) {
+            invitedThisGesture.current = true;
+            act.openInvitation();
+          }
+          return;
+        }
         const vb = act.toViewBox(e.x, e.y);
         dragRef.current.wandered = true;
         if (!st.wandering) act.setWandering(true);
@@ -958,6 +1017,13 @@ export default function OriginScreen() {
         const cwAge = displayAgeRef.current - 14;
         if (cwAge >= 0.2) consider(cwAge);
         if (bestAge != null) {
+          if (!st.depthOpen) {
+            // The counterweight stays free as today's reading (its existing
+            // "keep what comes" content), never as travel. Crossings invite.
+            if (bestAge === cwAge) act.openReading();
+            else act.openInvitation();
+            return;
+          }
           act.setWandering(true);
           act.swingTo(bestAge);
           return;

@@ -9,7 +9,7 @@ import { refreshSubscriptionAccess } from "@/lib/subscriptions";
 export default function SubscriptionSync() {
   const { user } = useAuth();
   useEffect(() => {
-    if (!user || process.env.EXPO_PUBLIC_SUBSCRIPTIONS_ENABLED !== "true") return;
+    if (!user) return;
     let last = 0;
     const sync = () => {
       if (Date.now() - last < 30000) return;

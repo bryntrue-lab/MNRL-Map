@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { ENTITLEMENT, membershipFromSubscriber, canStartEncounter, canOpenEncounter, eventUserIds } = require("./subscriptionPolicy");
+const { ENTITLEMENT, membershipFromSubscriber, eventUserIds } = require("./subscriptionPolicy");
 const { authorized, fetchSubscriber, createSubscriptionService } = require("./subscriptions");
 const now = Date.parse("2026-10-25T12:00:00Z");
 function customer({ expiry = now + 10000, sandbox = false, product = "MNRL108", subscription = {}, entitlement = {} } = {}) {
@@ -37,27 +37,20 @@ test("sandbox is denied except for server-allowlisted accounts", () => {
 test("malformed upstream response is an error, not a revocation", () => {
   assert.throws(() => membershipFromSubscriber({}, { now }));
 });
-test("gate begins at eight, and paid expiry is checked", () => {
-  assert.equal(canStartEncounter({ sequenceDay: 7, completedEncounterCount: 6 }, now), true);
-  assert.equal(canStartEncounter({ sequenceDay: 8, completedEncounterCount: 6 }, now), false);
-  assert.equal(canStartEncounter({ sequenceDay: 1, completedEncounterCount: 7 }, now), false);
-  assert.equal(canStartEncounter({ sequenceDay: 8, membershipStatus: "member", membershipExpiresAt: now + 1 }, now), true);
-  assert.equal(canStartEncounter({ sequenceDay: 8, membershipStatus: "member", membershipExpiresAt: now }, now), false);
+test("practice is a server-derived depth entitlement, revoked at expiry", () => {
+  assert.equal(membershipFromSubscriber(customer(), {now}).practice, true);
+  assert.equal(membershipFromSubscriber(customer({expiry:now}), {now}).practice, false);
+  assert.equal(membershipFromSubscriber({subscriber:{}}, {now}).practice, false);
 });
-test("free users cannot bypass the gate by visiting future encounters", () => {
-  const free = {sequenceDay:1,completedEncounterCount:0};
-  assert.equal(canOpenEncounter(free,{phase:"signal",order:7},1,null,now),true);
-  assert.equal(canOpenEncounter(free,{phase:"signal",order:8},1,null,now),false);
-  assert.equal(canOpenEncounter(free,{phase:"field",order:1},1,null,now),false);
-  assert.equal(canOpenEncounter(free,{phase:"signal",order:1},2,null,now),false);
-  assert.equal(canOpenEncounter({...free,sequenceDay:8},{phase:"signal",order:1},1,null,now),false);
-});
-test("lapse leaves completed encounters and genuine in-progress sessions open", () => {
-  const expired={sequenceDay:9,completedEncounterCount:8,membershipStatus:"member",membershipExpiresAt:now-1};
-  for(const status of ["completed","in-progress"])
-    assert.equal(canOpenEncounter(expired,{phase:"signal",order:8},1,{status},now),true);
-  for(const status of ["saved","visited"])
-    assert.equal(canOpenEncounter(expired,{phase:"signal",order:9},1,{status},now),false);
+test("Model B never authorizes encounters through subscription functions or rules", () => {
+  const fs=require("node:fs"),path=require("node:path");
+  const rules=fs.readFileSync(path.join(__dirname,"../firestore.rules"),"utf8");
+  const encounter=rules.split("match /userEncounters/{encounterId}")[1].split("// ── Field notes")[0];
+  assert.match(encounter,/allow read, write: if request.auth.uid == uid;/);
+  assert.doesNotMatch(encounter.replace(/\/\/[^\n]*/g,""),/membership|practice|subscriptionGateEnabled/);
+  assert.match(rules,/hasAny\(\['readingsEnabled', 'practice'\]\)/);
+  assert.equal(require("./subscriptionPolicy").canStartEncounter, undefined);
+  assert.equal(require("./subscriptionPolicy").canOpenEncounter, undefined);
 });
 test("transfer reconciliation includes both owners and ignores unsafe IDs", () => {
   assert.deepEqual(eventUserIds({app_user_id:"new",aliases:["new","old","bad/path","$RCAnonymousID:123"],transferred_from:["old"],transferred_to:["new"]}), ["new", "old"]);

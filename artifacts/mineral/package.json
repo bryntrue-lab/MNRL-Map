@@ -17,6 +17,7 @@
     "test:pattern-evidence": "node --experimental-strip-types lib/patternEvidenceState.test.mjs",
     "test:conditions": "node --experimental-strip-types lib/conditionsCopy.test.mjs",
     "test:subscriptions": "node --test scripts/subscriptions.test.cjs",
+    "test:membership": "node --experimental-strip-types --test lib/membership.test.mjs",
     "test:reading": "node --experimental-strip-types lib/reading.test.mjs"
   },
   "devDependencies": {

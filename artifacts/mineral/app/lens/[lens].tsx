@@ -13,6 +13,7 @@ import colors from "@/constants/colors";
 import { TypeScale } from "@/constants/typography";
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
+import { useMembership } from "@/hooks/useMembership";
 import { db } from "@/lib/firebase";
 import { firstApprovedFieldPassage } from "@/lib/fieldPassages";
 import { fieldNotesQuery } from "@/lib/firestore";
@@ -93,7 +94,21 @@ function conditionCopy(finding: ConditionFinding): { line: string; evidence: str
   return null;
 }
 
-export default function LensScreen() {
+/** Model B — the whole /lens/* route is depth, direct links included. A
+ *  closed visit opens the invitation; a lapse while reading closes the lens. */
+export default function LensRoute() {
+  const { active, ready } = useMembership();
+  const wasOpen = useRef(false);
+  if (active) wasOpen.current = true;
+  useEffect(() => {
+    if (!ready || active) return;
+    if (wasOpen.current) router.replace("/(tabs)/guide");
+    else router.replace("/subscription");
+  }, [active, ready]);
+  return active ? <LensScreen /> : <View style={{ flex: 1, backgroundColor: "#07040d" }} />;
+}
+
+function LensScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { profile } = useUser();

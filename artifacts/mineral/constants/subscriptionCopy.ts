@@ -1,5 +1,28 @@
 /** Founder-approved subscription copy — render verbatim, never rewrite. */
 export const SubscriptionCopy = {
+  /** Model B — the approved invitation (Paywall-selection source image),
+   *  with the two founder-directed row substitutions. */
+  invitation: {
+    eyebrow: "day eight · signal",
+    notNow: "not now",
+    title: "Seven days have been kept. The field has begun to answer.",
+    returned: (times: string) => `returned ${times} times`,
+    fromNotes: (notes: string) => `from your ${notes} notes. the guide is counting.`,
+    body: "The practice continues — and Mineral asks for support. Your daily encounters and field notes are always free. To go deeper, you can become a member.",
+    rows: [
+      { name: "the five lenses", detail: "what returns, and when" },
+      { name: "from the field", detail: "passages left by the practitioner" },
+      { name: "origin", detail: "the full twenty-eight-year map" },
+      { name: "the reflection", detail: "your field, read whole" },
+    ],
+    monthly: (price: string) => `Become a member — ${price} a month`,
+    annual: (price: string) => `or ${price} a year`,
+    restore: "restore",
+    terms: "terms",
+    privacy: "privacy",
+    /** Label uses the founder's Model B sandbox-matrix wording. */
+    redeem: "offer-code redemption",
+  },
   plans: {
     title: "The practice continues.",
     lede: "A little space, every day, to listen more closely.",

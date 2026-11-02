@@ -48,26 +48,6 @@ service cloud.firestore {
 
     // ── Per-user document ─────────────────────────────────────────────────
     match /users/{uid} {
-      function subscriptionGateEnabled() {
-        return exists(/databases/$(database)/documents/subscriptionConfig/runtime)
-          && get(/databases/$(database)/documents/subscriptionConfig/runtime).data.enabled == true;
-      }
-
-      function canOpenNewEncounter(data) {
-        let profile = get(/databases/$(database)/documents/users/$(uid)).data;
-        let encounter = get(/databases/$(database)/documents/encounters/$(data.encounterId)).data;
-        return (profile.membershipStatus == 'member'
-            && profile.membershipExpiresAt is timestamp
-            && profile.membershipExpiresAt > request.time)
-          || (profile.completedEncounterCount < 7 && profile.sequenceDay <= 7
-            && data.turn == 1 && encounter.phase == 'signal'
-            && encounter.order >= 1 && encounter.order <= 7);
-      }
-
-      function sameEncounterIdentity() {
-        return request.resource.data.encounterId == resource.data.encounterId
-          && request.resource.data.turn == resource.data.turn;
-      }
       allow read: if request.auth.uid == uid;
 
       // Create: caller must be the owner, all five membership/count fields
@@ -76,6 +56,8 @@ service cloud.firestore {
       // must be at their initial defaults — prevents forged membershipExpiresAt
       // or self-upgrade to 'member' on creation.
       allow create: if request.auth.uid == uid
+        && request.resource.data.get('practice', false) == false
+        && request.resource.data.get('membershipInvitationSeen', false) is bool
         && request.resource.data.membershipStatus    == 'free'
         && request.resource.data.completedEncounterCount == 0
         && request.resource.data.membershipSince     == null
@@ -86,38 +68,21 @@ service cloud.firestore {
       // Update: server-controlled fields must be unchanged — prevents client
       // self-upgrade and prevents enabling or disabling readings client-side.
       allow update: if request.auth.uid == uid
+        && request.resource.data.get('membershipInvitationSeen', false) is bool
+        && (resource.data.get('membershipInvitationSeen', false) != true
+          || request.resource.data.get('membershipInvitationSeen', false) == true)
         && request.resource.data.membershipStatus        == resource.data.membershipStatus
         && request.resource.data.membershipSince         == resource.data.membershipSince
         && request.resource.data.membershipExpiresAt     == resource.data.membershipExpiresAt
         && request.resource.data.membershipProductId     == resource.data.membershipProductId
         && request.resource.data.completedEncounterCount == resource.data.completedEncounterCount
         && !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['readingsEnabled']);
+          .hasAny(['readingsEnabled', 'practice']);
 
       // ── Encounter instances ─────────────────────────────────────────────
       match /userEncounters/{encounterId} {
-        allow read: if request.auth.uid == uid;
-        allow create: if request.auth.uid == uid
-          && (!subscriptionGateEnabled()
-            || (request.resource.data.turn is int
-              && request.resource.data.turn > 0
-              && encounterId == request.resource.data.encounterId + '_t' + string(request.resource.data.turn)
-              && canOpenNewEncounter(request.resource.data)
-              && request.resource.data.status in ['saved', 'visited', 'in-progress']));
-        allow update: if request.auth.uid == uid
-          && (!subscriptionGateEnabled() || (sameEncounterIdentity()
-            && (
-              (resource.data.status == 'completed'
-                && request.resource.data.status == 'completed'
-                && request.resource.data.completedAt == resource.data.completedAt)
-              || (resource.data.status == 'in-progress'
-                && request.resource.data.status in ['in-progress', 'completed']
-                && request.resource.data.startedAt == resource.data.startedAt)
-              || (resource.data.status in ['visited', 'saved']
-                && canOpenNewEncounter(request.resource.data)
-                && request.resource.data.status in ['saved', 'visited', 'in-progress'])
-            )));
-        allow delete: if request.auth.uid == uid && !subscriptionGateEnabled();
+        // Model B: daily practice and revisits are never membership-gated.
+        allow read, write: if request.auth.uid == uid;
       }
 
       // ── Field notes — most private data ────────────────────────────────
