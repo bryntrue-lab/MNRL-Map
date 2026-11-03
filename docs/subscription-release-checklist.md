@@ -1,8 +1,24 @@
 # Subscription release checklist
 
 This branch contains the subscription screens, purchase service, depth gates,
-rules, and entitlement projection. It is not deployed or native-payment-verified.
-Model B: daily practice is always free. Do not submit until release checks pass.
+rules, and entitlement projection. The Firebase subscription backend and rules
+are deployed; native payments are not yet verified.
+Model B: daily practice is always free. Internal TestFlight testing precedes
+public App Store review.
+
+## Current testing build
+
+Mineral 1.1.0 build 16 finished successfully in EAS for internal subscription testing.
+Build: https://expo.dev/accounts/bryntrue/projects/mineral/builds/fa7360f4-72ab-48dd-8416-466547a2e859
+Upload to Apple App Store Connect succeeded on 2026-11-03. EAS reported the
+binary is processing with Apple; TestFlight availability is not yet confirmed.
+Submission: https://expo.dev/accounts/bryntrue/projects/mineral/submissions/83a0b8e2-ebbc-4ba9-b8bc-b64f14e114f5
+TestFlight: https://appstoreconnect.apple.com/apps/6796385294/testflight/ios
+The native sandbox matrix remains unverified. This upload did not submit the
+version for public App Store review.
+The founder-designated Mineral account is server-allowlisted for sandbox
+verification. No membership, notes, or progress were changed; ordinary accounts
+have not been granted sandbox access.
 
 ## Configuration
 
@@ -14,10 +30,11 @@ Model B: daily practice is always free. Do not submit until release checks pass.
   EAS preview/production profiles using the existing Apple app public SDK key.
   It is not a private server key or Test Store key. The separate Mineral Dev
   bundle is not configured to sell the production app's Apple products.
-- Firebase Secret Manager needs REVENUECAT_SERVER_API_KEY, a secret credential
-  supporting GET /v1/subscribers/{uid}, and REVENUECAT_WEBHOOK_SECRET.
-  Replit secrets alone do not provision Firebase secrets.
-- Configure the outgoing RevenueCat webhook only after the function is deployed.
+- Firebase Secret Manager contains REVENUECAT_SERVER_API_KEY (validated against
+  GET /v1/subscribers/{uid}) and a generated REVENUECAT_WEBHOOK_SECRET.
+  Runtime secret access was configured by the Firebase deploy.
+- RevenueCat's outgoing webhook is configured for the Apple app and both
+  sandbox/production environments at the deployed function URL.
   Authorization must equal `Bearer <REVENUECAT_WEBHOOK_SECRET>`.
   No private keys or token values belong in Git or this document.
 - Apple server notifications point to RevenueCat; they are separate from the
@@ -33,9 +50,9 @@ Model B: daily practice is always free. Do not submit until release checks pass.
   Preserve Notes and Guide essentials including hero inline offering.
 - Day-eight invitation is shown once per user and Not Now continues practice.
   Depth entry re-presents the same invitation; prices come from store offerings.
-- Deploy rules protecting practice from client mutation and the subscription
-  sync functions before releasing. Reconcile existing subscribers to populate
-  practice. Do NOT enable the obsolete subscriptionConfig/runtime encounter gate.
+- Rules protecting practice and the sync, webhook, hourly reconciliation and
+  deletion-fence functions are deployed. Reconcile existing subscribers to
+  populate practice. Do NOT enable any obsolete encounter gate.
 - Decide and implement purchase transfer/recovery behavior and RevenueCat
   customer-data retention/deletion policy. The deletion fence prevents profile
   resurrection; it is NOT cancellation or RevenueCat customer deletion.
@@ -64,6 +81,14 @@ Model B: daily practice is always free. Do not submit until release checks pass.
   subscriptions attached for Apple's first-subscription review.
 
 ## Checks available now
+
+Live synthetic checks passed: authenticated webhook TEST returns 200, missing
+webhook authentication returns 401, unpurchased sync remains free, client
+practice grants are denied, free day-eight encounter writes remain allowed,
+and account deletion removes the profile and nested encounter. Synthetic
+Firebase and RevenueCat customers were cleaned up.
+These checks do not substitute for an actual RevenueCat purchase notification
+or native StoreKit transaction.
 
     cd functions && npm run test:subscriptions
     pnpm --filter @workspace/mineral typecheck
