@@ -10,9 +10,10 @@ Model B: daily practice is always free. Do not submit until release checks pass.
 - Production Apple products: MNRL108 (P1Y) and MNRL8 (P1M).
 - Reuse the existing RevenueCat entitlement and default offering. Apple products
   are attached alongside the Test Store products. Never display lifetime.
-- Supply EXPO_PUBLIC_REVENUECAT_IOS_API_KEY to both the development environment
-  and the EAS build environment. This is the Apple public SDK key, not a secret
-  server key and not the Test Store key.
+- EXPO_PUBLIC_REVENUECAT_IOS_API_KEY is configured in the workspace and the
+  EAS preview/production profiles using the existing Apple app public SDK key.
+  It is not a private server key or Test Store key. The separate Mineral Dev
+  bundle is not configured to sell the production app's Apple products.
 - Firebase Secret Manager needs REVENUECAT_SERVER_API_KEY, a secret credential
   supporting GET /v1/subscribers/{uid}, and REVENUECAT_WEBHOOK_SECRET.
   Replit secrets alone do not provision Firebase secrets.

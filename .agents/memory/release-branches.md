@@ -12,4 +12,4 @@ Keep rejection resubmissions hotfix-only. Do not make incompatible server/schema
 
 **Why:** The founder explicitly separates the submitted release from the revenue-enabling release to protect review scope.
 
-**How to apply:** Subscription scope is RevenueCat, a gate-8 paywall, and offer codes. The supplied Subscription Prep Plan establishes product intent; see subscription-policy.md for locked decisions and unresolved copy conflicts.
+**How to apply:** Subscription scope is RevenueCat, Model B depth membership, a dismissible day-eight invitation, and offer codes. See subscription-policy.md for the final boundaries; earlier encounter-gate drafts are superseded.
