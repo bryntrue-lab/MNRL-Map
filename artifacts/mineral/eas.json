@@ -12,12 +12,14 @@
       },
       "distribution": "internal",
       "env": {
+        "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://madebymineral.com/mineral-quartz-privacy-policy",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
+        "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://madebymineral.com/mineral-quartz-privacy-policy",
     "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic"
       }
     },
@@ -28,6 +30,7 @@
       },
       "autoIncrement": true,
       "env": {
+        "EXPO_PUBLIC_PRIVACY_POLICY_URL": "https://madebymineral.com/mineral-quartz-privacy-policy",
     "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBdUYec4tOP5Pd2EPDorsYRLGUJYi6Jmic",
     "EXPO_PUBLIC_NATIVE_APPCHECK": "1"
       }   

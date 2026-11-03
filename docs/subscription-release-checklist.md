@@ -39,8 +39,12 @@ Model B: daily practice is always free. Do not submit until release checks pass.
   customer-data retention/deletion policy. The deletion fence prevents profile
   resurrection; it is NOT cancellation or RevenueCat customer deletion.
 - SDK identity clearing and foreground refresh are wired.
-- Supply EXPO_PUBLIC_PRIVACY_POLICY_URL in workspace and EAS environments;
-  no policy URL was supplied. Terms link uses Apple's standard EULA.
+- EXPO_PUBLIC_PRIVACY_POLICY_URL is configured in the workspace and all EAS
+  build profiles: https://madebymineral.com/mineral-quartz-privacy-policy
+  The page is publicly accessible. Before release, update its processor list
+  to cover RevenueCat and subscription-data handling; clarify account deletion
+  does not cancel Apple subscriptions. Published policy has not been edited.
+  Terms link uses Apple's standard EULA.
 - Prepare a dedicated reviewer account with seven completed encounters and no
   completion today. Do not automatically reset progress during review.
 - A sandbox tester's subscriptionAccounts/{uid}.allowSandbox is Admin-only.
