@@ -8,6 +8,14 @@ public App Store review.
 
 ## Current testing build
 
+Workspace changes after build 16: the supplied v3 paywall styling/plan picker
+and bounded retries for subscription verification contention. These are not in
+build 16; a new native build is required. Live sync logs showed successful calls
+followed by HTTP 429 within a second during the reported restore period.
+Client regression checks cover that collision without granting SDK-only access.
+Personalized counts use real pattern data; return-day labels are omitted because
+notes do not record the practice-day number at capture.
+
 Mineral 1.1.0 build 16 finished successfully in EAS for internal subscription testing.
 Build: https://expo.dev/accounts/bryntrue/projects/mineral/builds/fa7360f4-72ab-48dd-8416-466547a2e859
 Upload to Apple App Store Connect succeeded on 2026-11-03. EAS reported the

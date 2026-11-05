@@ -70,7 +70,8 @@ export function loadSubscriptionPlans(uid: string): Promise<SubscriptionPlans> {
 
 async function refreshAccess(uid: string, waitForPurchase: boolean): Promise<SubscriptionAccess> {
   const call = httpsCallable<Record<string, never>, SubscriptionAccess>(functions, "syncSubscription");
-  for (let attempt = 0; attempt < (waitForPurchase ? 4 : 1); attempt++) {
+  const attempts = waitForPurchase ? 4 : 3;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     assertIdentity(uid);
     try {
       const { data } = await call({});
@@ -78,9 +79,14 @@ async function refreshAccess(uid: string, waitForPurchase: boolean): Promise<Sub
       if (!waitForPurchase || data.practice === true) return data;
     } catch (error) {
       if (error instanceof SubscriptionError) throw error;
-      if (!waitForPurchase) throw error;
+      // Closing Apple's sheet also triggers foreground sync. Both callers
+      // are serialized, but can still collide with the server's 5s throttle.
+      // Retry transient contention only; never infer access from the SDK.
+      const code = (error as { code?: string })?.code;
+      const contention = code === "functions/resource-exhausted" || code === "functions/aborted";
+      if (!waitForPurchase && (!contention || attempt === attempts - 1)) throw error;
     }
-    if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 5500));
+    if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 5500));
   }
   // A completed payment is never labelled a failed purchase merely because
   // entitlement projection is delayed. Restore/refresh can retry safely.

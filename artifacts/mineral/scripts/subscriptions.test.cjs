@@ -13,6 +13,7 @@ function harness() {
   let active = true;
   let period = "P1M";
   let serverPractice;
+  let serverErrors = [];
   const sdk = {
     isConfigured:async()=>Boolean(identity),
     configure:({appUserID})=>{identity=appUserID;calls.push(["configure",appUserID]);},
@@ -42,12 +43,13 @@ function harness() {
       if(id==="react-native-purchases")return {default:sdk};
       if(id==="firebase/functions")return {httpsCallable:()=>async()=>{
         calls.push(["verify",auth.currentUser?.uid]);
+        if (serverErrors.length) throw serverErrors.shift();
         return {data:{practice:serverPractice??active,membershipStatus:active?"member":"free",membershipExpiresAt:null,membershipSince:null,membershipProductId:null}};
       }};
       throw Error(`Unexpected import: ${id}`);
     },
   });
-  return {api:exports,auth,calls,setServer:v=>serverPractice=v,setActive:v=>active=v,setPeriod:v=>period=v,setError:v=>purchaseError=v};
+  return {api:exports,auth,calls,setServerErrors:v=>serverErrors=v,setServer:v=>serverPractice=v,setActive:v=>active=v,setPeriod:v=>period=v,setError:v=>purchaseError=v};
 }
 test("offering uses real Apple packages and localized prices, excluding lifetime",async()=>{
   const h=harness();const plans=await h.api.loadSubscriptionPlans("alice");
@@ -82,6 +84,24 @@ test("delayed entitlement stays pending and can be restored",async()=>{
 test("restoring an empty account returns free, not a success",async()=>{
   const h=harness();h.setActive(false);
   assert.equal((await h.api.restoreSubscription("alice")).practice,false);
+});
+test("empty restore retries throttle and superseded refresh, then reports no membership",async()=>{
+  const h=harness();h.setActive(false);
+  h.setServerErrors([{code:"functions/resource-exhausted"},{code:"functions/aborted"}]);
+  assert.equal((await h.api.restoreSubscription("alice")).practice,false);
+  assert.equal(h.calls.filter(c=>c[0]==="verify").length,3);
+});
+test("repeated contention is bounded and never grants access",async()=>{
+  const h=harness();h.setActive(false);
+  h.setServerErrors(Array(4).fill({code:"functions/resource-exhausted"}));
+  await assert.rejects(h.api.restoreSubscription("alice"),e=>e.code==="functions/resource-exhausted");
+  assert.equal(h.calls.filter(c=>c[0]==="verify").length,3);
+});
+test("non-contention verification failures are not masked as no membership",async()=>{
+  const h=harness();h.setActive(false);
+  h.setServerErrors([{code:"functions/unauthenticated"}]);
+  await assert.rejects(h.api.restoreSubscription("alice"),e=>e.code==="functions/unauthenticated");
+  assert.equal(h.calls.filter(c=>c[0]==="verify").length,1);
 });
 test("identity switch rejects stale operations and reidentifies SDK",async()=>{
   const h=harness();await h.api.loadSubscriptionPlans("alice");
