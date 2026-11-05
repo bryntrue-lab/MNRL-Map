@@ -76,9 +76,9 @@ const SANS_SEMI = "Inter_600SemiBold";
 function evidenceMeta(e: InvitationEvidence): string {
   const I = C.invitation;
   const base = I.returned(spellNumber(e.count));
-  // Notes do not record the practice-day number at capture. Do not infer
-  // historical days from capped exemplars, dates, or the current day pointer.
-  return base;
+  return e.encounters?.length
+    ? `${base} · ${I.encounters(e.encounters.map(spellNumber))}`
+    : base;
 }
 
 function PaywallGround() {

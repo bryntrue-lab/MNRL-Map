@@ -59,26 +59,39 @@ export function invitationSeenUpdate(
 // ── Personalized evidence — only real patterns and notes ──────────────
 export interface EvidencePatternLike {
   itemCounts?: Record<string, number>;
+  itemNotes?: Record<string, string[]>;
 }
 export interface InvitationEvidence {
   item: string; // raw pattern key
   count: number; // real return count (≥ 2)
   notes: number; // real note count
+  encounters?: number[]; // verified library positions, not capture days
 }
 
 /** The strongest real returning item across motif/thread/resistance, or null. */
 export function invitationEvidence(
   patterns: Partial<Record<string, EvidencePatternLike | undefined>>,
-  noteCount: number
+  noteCount: number,
+  noteEncounters: Record<string, number> = {}
 ): InvitationEvidence | null {
   let best: { item: string; count: number } | null = null;
+  let contributing: string[] = [];
   for (const type of ["motif", "thread", "resistance"]) {
     const counts = patterns[type]?.itemCounts ?? {};
     for (const [item, count] of Object.entries(counts)) {
       if (typeof count !== "number" || count < 2) continue;
-      if (!best || count > best.count) best = { item, count };
+      if (!best || count > best.count) {
+        best = { item, count };
+        contributing = patterns[type]?.itemNotes?.[item] ?? [];
+      }
     }
   }
   if (!best || noteCount < best.count) return null;
-  return { ...best, notes: noteCount };
+  // A capped/partial note set must never appear to describe all returns.
+  const ids = [...new Set(contributing)];
+  const complete = ids.length === best.count && ids.every(id =>
+    Number.isInteger(noteEncounters[id]) && noteEncounters[id] >= 1 && noteEncounters[id] <= 108);
+  return { ...best, notes: noteCount, ...(complete ? {
+    encounters: [...new Set(ids.map(id => noteEncounters[id]))].sort((a, b) => a - b),
+  } : {}) };
 }

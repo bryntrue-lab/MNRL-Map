@@ -13,8 +13,10 @@ and bounded retries for subscription verification contention. These are not in
 build 16; a new native build is required. Live sync logs showed successful calls
 followed by HTTP 429 within a second during the reported restore period.
 Client regression checks cover that collision without granting SDK-only access.
-Personalized counts use real pattern data; return-day labels are omitted because
-notes do not record the practice-day number at capture.
+Personalized counts use real pattern data. Encounter labels resolve contributing
+notes' encounter references against the library's positions (1–108), not elapsed
+days. Labels appear only with complete contributing-note coverage; unsupported
+evidence keeps its verified count without invented encounter numbers.
 
 Mineral 1.1.0 build 16 finished successfully in EAS for internal subscription testing.
 Build: https://expo.dev/accounts/bryntrue/projects/mineral/builds/fa7360f4-72ab-48dd-8416-466547a2e859

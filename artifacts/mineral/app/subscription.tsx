@@ -7,7 +7,7 @@ import SubscriptionView, { type OfferState, type SubscriptionState } from "@/com
 import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/context/UserContext";
 import { useMembership } from "@/hooks/useMembership";
-import { fieldNotesQuery } from "@/lib/firestore";
+import { fieldNotesQuery, fetchEncounterLibrary, dayOfEncounter } from "@/lib/firestore";
 import { invitationEvidence, invitationSeenUpdate, type InvitationEvidence } from "@/lib/membership";
 import { subscribePatternDocuments, type PatternDocuments } from "@/lib/patternEvidence";
 import {
@@ -39,6 +39,8 @@ export default function SubscriptionScreen() {
   const [busy, setBusy] = useState(false);
   const [patterns, setPatterns] = useState<PatternDocuments>({});
   const [noteCount, setNoteCount] = useState(0);
+  const [noteRefs, setNoteRefs] = useState<Record<string, string>>({});
+  const [encounterNumbers, setEncounterNumbers] = useState<Record<string, number>>({});
   const operation = useRef<number | null>(null);
   const generation = useRef(0);
   const uid = user?.uid;
@@ -96,14 +98,32 @@ export default function SubscriptionScreen() {
 
   // ── personal evidence: only real patterns and notes ──
   useEffect(() => {
+    let live = true;
+    fetchEncounterLibrary().then(library => {
+      if (live) setEncounterNumbers(Object.fromEntries(library.map(e => [e.id, dayOfEncounter(e)])));
+    }).catch(() => { if (live) setEncounterNumbers({}); });
+    return () => { live = false; };
+  }, []);
+  useEffect(() => {
     setPatterns({});
     setNoteCount(0);
+    setNoteRefs({});
     if (!uid) return;
     const offP = subscribePatternDocuments(uid, setPatterns, () => setPatterns({}), ["motif", "thread", "resistance"]);
-    const offN = onSnapshot(fieldNotesQuery(uid), (s) => setNoteCount(s.size), () => setNoteCount(0));
+    const offN = onSnapshot(fieldNotesQuery(uid), (s) => {
+      setNoteCount(s.size);
+      setNoteRefs(Object.fromEntries(s.docs.flatMap(d => {
+        const ref = d.data().encounterRef;
+        return typeof ref === "string" ? [[d.id, ref]] : [];
+      })));
+    }, () => { setNoteCount(0); setNoteRefs({}); });
     return () => { offP(); offN(); };
   }, [uid]);
-  const evidence: InvitationEvidence | null = invitationEvidence(patterns, noteCount);
+  const noteEncounters = Object.fromEntries(Object.entries(noteRefs).flatMap(([id, ref]) => {
+    const number = encounterNumbers[ref.replace(/_t\d+$/, "")];
+    return number ? [[id, number]] : [];
+  }));
+  const evidence: InvitationEvidence | null = invitationEvidence(patterns, noteCount, noteEncounters);
 
   const run = useCallback(async (action: () => Promise<void>) => {
     if (operation.current !== null || !uid) return;

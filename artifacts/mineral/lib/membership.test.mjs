@@ -8,6 +8,15 @@ import {
 const at = (ms) => ({ toMillis: () => ms });
 const NOW = 1_800_000_000_000;
 
+test("encounter labels require complete contributing-note coverage", () => {
+  const p = {motif:{itemCounts:{salt:3},itemNotes:{salt:["a","b","c"]}}};
+  assert.deepEqual(invitationEvidence(p,3,{a:6,b:2,c:4}).encounters,[2,4,6]);
+  assert.equal(invitationEvidence(p,3,{a:2,b:4}).encounters,undefined);
+  assert.deepEqual(invitationEvidence(p,3,{a:2,b:2,c:4}).encounters,[2,4]);
+  assert.equal(invitationEvidence(p,3,{a:2,b:4,c:109}).encounters,undefined);
+  assert.equal(invitationEvidence({motif:{itemCounts:{salt:3},itemNotes:{salt:["a"]}}},3,{a:2}).encounters,undefined);
+});
+
 test("practice requires the server bool AND a future expiry", () => {
   assert.equal(practiceActive({ practice: true, membershipExpiresAt: at(NOW + 1) }, NOW), true);
   assert.equal(practiceActive({ practice: true, membershipExpiresAt: at(NOW - 1) }, NOW), false);

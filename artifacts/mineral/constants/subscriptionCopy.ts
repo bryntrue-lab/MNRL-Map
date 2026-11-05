@@ -8,7 +8,7 @@ export const SubscriptionCopy = {
     notNow: "not now",
     title: "Seven days have been kept.\nThe field has begun to answer.",
     returned: (times: string) => `returned ${times} times`,
-    days: (days: string[]) => days.map((d) => `day ${d}`).join(", "),
+    encounters: (numbers: string[]) => numbers.map((n) => `encounter ${n}`).join(", "),
     bodyLead: "The practice continues, always free.",
     body: "Your subscription opens more of the field — revealing patterns, bringing the practitioner's perspective into our conversation, and offering a wider view of your unfolding story.",
     opensEyebrow: "your subscription opens",

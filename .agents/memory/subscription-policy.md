@@ -20,3 +20,9 @@ One logical entitlement, practice, is a server-written profile field. RevenueCat
 **Why:** The founder requires consistent webhook-written access, expiry and recovery.
 
 **How to apply:** Protect the profile grant from clients and check its verified expiry. Existing provider mapping may feed the single practice projection; never introduce a second competing access tier. Sandbox demonstration must cover annual, monthly, offer-code redemption, second-device restore, and lapse closing depth while practice continues. Production release from main remains required.
+
+Use “encounter x”, not “day x”, in personalized paywall evidence.
+
+**Why:** The founder approved encounter attribution instead of missing historical practice-day attribution on 2026-11-05. The evidence refers to the associated encounter, not when a note was captured.
+
+**How to apply:** Use verified encounter references and complete contributing-note coverage. Never infer capture days or fabricate labels for unlinked notes. This does not rename the DAY EIGHT threshold heading.
