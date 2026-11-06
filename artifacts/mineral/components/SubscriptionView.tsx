@@ -104,7 +104,7 @@ function Invitation(p: SubscriptionViewProps) {
   const web = Platform.OS === "web";
   const top = web ? 67 : insets.top;
   const bottom = web ? 34 : insets.bottom;
-  const [plan, setPlan] = useState<Plan>("annual");
+  const [plan, setPlan] = useState<Plan>("monthly");
   const [footerH, setFooterH] = useState(0);
   const canBuy = p.offer === "ready" && p.purchasesEnabled && !p.busy && !!p.monthlyPrice && !!p.annualPrice;
   const price = plan === "annual" ? p.annualPrice : p.monthlyPrice;

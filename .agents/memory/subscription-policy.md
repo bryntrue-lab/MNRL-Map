@@ -26,3 +26,9 @@ Use “encounter x”, not “day x”, in personalized paywall evidence.
 **Why:** The founder approved encounter attribution instead of missing historical practice-day attribution on 2026-11-05. The evidence refers to the associated encounter, not when a note was captured.
 
 **How to apply:** Use verified encounter references and complete contributing-note coverage. Never infer capture days or fabricate labels for unlinked notes. This does not rename the DAY EIGHT threshold heading.
+
+Default the paywall selection to monthly, superseding the annual default in the v3 implementation notes.
+
+**Why:** The founder found the upfront annual price too startling before the plan picker is visible below the fold.
+
+**How to apply:** Start the pinned disclosure and purchase action on the localized monthly offering; retain annual as an explicit choice.
